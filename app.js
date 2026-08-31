@@ -519,7 +519,7 @@ if (clientSearchToggleBtn) {
     });
 }
 
-// STAMPA ETICHETTA CLIENTE (PER SIG.RA CLEO - SENZA ARMADIO)
+// STAMPA ETICHETTA CLIENTE (SENZA SCRITTA "DA LAVARE - SIGNORA CLEO")
 window.printClientReceiptLabel = function() {
     const name = document.getElementById('clientName').value.trim();
     const phone = document.getElementById('clientPhone').value.trim();
@@ -545,10 +545,7 @@ window.printClientReceiptLabel = function() {
     if (dob) printText += "Nascita: " + dob + "\n";
     if (address) printText += "Indirizzo: " + address + "\n";
 
-    printText += "--------------------------------\n" +
-        "\x1B\x61\x01" + // Center alignment
-        "DA LAVARE - SIGNORA CLEO\n" +
-        "\x1B\x21\x00--------------------------------\n\n\n\n" +
+    printText += "--------------------------------\n\n\n\n" +
         "\x1D\x56\x41\x03"; // Cut paper
 
     try {
@@ -767,6 +764,7 @@ if (itemForm) {
     });
 }
 
+// STAMPA CAPO (SINGOLA COPIA - SENZA DICITURA "* Conservare per il ritiro *")
 window.printItemLabel = function() {
     const clientId = selectedClientIdInput.value;
     const type = document.getElementById('itemType').value.trim();
@@ -787,19 +785,27 @@ window.printItemLabel = function() {
     const client = clientsData[clientId];
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
-    const generateSingleReceipt = (copyType) => {
-        let block = "";
-        block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCapo:    " + type + "\n";
-        if (notes) block += `Note:    ${notes}\n`;
-        block += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
-        return block;
-    };
+    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n" +
+        dateStr + "\n" +
+        "\x1B\x21\x00--------------------------------\n" +
+        "\x1B\x61\x00Cliente: " + client.name + "\n" +
+        "Tel:     " + client.phone + "\n" +
+        "Capo:    " + type + "\n";
+    
+    if (notes) printText += "Note:    " + notes + "\n";
+    
+    printText += "--------------------------------\n" +
+        "\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\n" +
+        "POS: " + position + "\n" +
+        "\x1B\x21\x00--------------------------------\n" +
+        "\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n" +
+        "\x1B\x21\x00\x1B\x61\x01\n\n\n\n" +
+        "\x1D\x56\x41\x03";
 
-    let printText = generateSingleReceipt("ATTIVITA") + "\x1D\x56\x41\x03" + generateSingleReceipt("CLIENTE") + "\x1D\x56\x41\x03";
     try {
         const base64Data = btoa(unescape(encodeURIComponent(printText)));
         window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Ricevute inviate in stampa!", "success");
+        showToast("Ricevuta inviata in stampa!", "success");
     } catch (err) {
         showToast("Errore di stampa.", "error");
     }
