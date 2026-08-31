@@ -179,7 +179,7 @@ function checkAdminPassword() {
         return;
     }
 
-    if (enteredPassword === APP_PASSWORD || enteredPassword === "BAUBAU06" 
+    if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true'); // Segna che è entrato come admin
         unlockApp();
@@ -226,7 +226,7 @@ function checkNumericLicense() {
         return;
     }
 
-    if (enteredCode === APP_PASSWORD || enteredCode === "BAUBAU06" 
+    if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER") {
         let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
@@ -356,7 +356,6 @@ function unlockApp() {
     initApp();
 }
 
-// IL TASTO LUCHETTO: Funziona SOLO SE sei entrato come Admin. Se è un operatore con licenza attiva, il lucchetto viene ignorato o bloccato.
 window.lockApp = function() {
     const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
     
@@ -381,7 +380,6 @@ window.lockApp = function() {
     inputs.forEach(input => input.value = '');
 };
 
-// Blocco completo (solo se scade la licenza)
 function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
     sessionStorage.removeItem('laundry_auth');
