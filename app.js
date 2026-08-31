@@ -36,6 +36,10 @@ const assignClientToggleBtn = document.getElementById('assignClientToggleBtn');
 const selectedClientIdInput = document.getElementById('selectedClientIdInput');
 const assignClientDropdown = document.getElementById('assignClientDropdown');
 
+const clientNameInput = document.getElementById('clientName');
+const clientSearchToggleBtn = document.getElementById('clientSearchToggleBtn');
+const clientSearchDropdown = document.getElementById('clientSearchDropdown');
+
 const globalSearch = document.getElementById('globalSearch');
 const globalSearchDropdown = document.getElementById('globalSearchDropdown');
 const searchClearBtn = document.getElementById('searchClearBtn');
@@ -163,7 +167,6 @@ window.closeExpiredModalAndRelogin = function() {
     lockAppComplete();
 };
 
-// ACCESSO AMMINISTRATORE (Tramite Lucchetto / Password)
 function checkAdminPassword() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredPassword = "";
@@ -193,7 +196,6 @@ function checkAdminPassword() {
     }
 }
 
-// INSERIMENTO CODICE LICENZA
 function checkNumericLicense() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredCode = "";
@@ -207,7 +209,6 @@ function checkNumericLicense() {
         return;
     }
 
-    // Licenza Test 1 Minuto
     if (enteredCode.toUpperCase() === "TEST1MIN") {
         let expirationTimestamp = Date.now() + (60 * 1000); 
         localStorage.setItem('laundry_device_activated', 'true');
@@ -227,7 +228,6 @@ function checkNumericLicense() {
         return;
     }
 
-    // Accesso illimitato Amministratore / Master
     if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER") {
         let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
         localStorage.setItem('laundry_device_activated', 'true');
@@ -240,7 +240,6 @@ function checkNumericLicense() {
         return;
     }
 
-    // Verifica Firebase usabilità licenze
     db.ref('used_licenses/' + enteredCode).once('value').then((usedSnap) => {
         if (usedSnap.exists() && enteredCode === "2580") {
             showToast("Questo codice 2580 è già stato utilizzato su un altro dispositivo!", "error");
@@ -269,7 +268,6 @@ function checkNumericLicense() {
                 if (enteredCode === "2580" || matchedKey) {
                     let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
 
-                    // Se presente una data di scadenza personalizzata nel nodo Firebase
                     if (customExpiryVal) {
                         let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
                         if (!isNaN(parsedTime)) {
@@ -443,6 +441,125 @@ window.switchTab = function(tab) {
     }
 };
 
+window.resetClientForm = function() {
+    if (clientForm) clientForm.reset();
+    const manageInput = document.getElementById('manageClientIdInput');
+    if (manageInput) manageInput.value = "";
+    if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
+};
+
+// RICERCA CLIENTE SEZIONE NUOVO CLIENTE
+function renderClientSearchDropdown(filter = "") {
+    if (!clientSearchDropdown) return;
+    clientSearchDropdown.innerHTML = "";
+    
+    const searchTerms = filter.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
+    let matches = 0;
+
+    const rowsContainer = document.createElement('div');
+    rowsContainer.className = "divide-y divide-darkBorder/50";
+
+    for (let [id, client] of sorted) {
+        const fullString = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
+        const isMatch = searchTerms.every(term => fullString.includes(term));
+        if (searchTerms.length > 0 && !isMatch) continue;
+
+        matches++;
+        const rowDiv = document.createElement('div');
+        rowDiv.className = "p-2.5 hover:bg-blue-600/10 cursor-pointer text-xs";
+        rowDiv.innerHTML = `
+            <div class="font-bold text-white">${client.name}</div>
+            <div class="text-slate-400 text-[11px]">Tel: ${client.phone} ${client.address ? '&bull; ' + client.address : ''}</div>
+        `;
+        rowDiv.addEventListener('click', () => {
+            if (clientNameInput) clientNameInput.value = client.name;
+            const phoneEl = document.getElementById('clientPhone');
+            const dobEl = document.getElementById('clientDob');
+            const addrEl = document.getElementById('clientAddress');
+            const manageInput = document.getElementById('manageClientIdInput');
+
+            if (phoneEl) phoneEl.value = client.phone || "";
+            if (dobEl) dobEl.value = client.dob || "";
+            if (addrEl) addrEl.value = client.address || "";
+            if (manageInput) manageInput.value = id;
+
+            clientSearchDropdown.classList.add('hidden');
+        });
+        rowsContainer.appendChild(rowDiv);
+    }
+
+    if (matches === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = "p-4 text-center text-xs text-slate-400 italic";
+        emptyDiv.textContent = "Nessun cliente trovato.";
+        rowsContainer.appendChild(emptyDiv);
+    }
+
+    clientSearchDropdown.appendChild(rowsContainer);
+    clientSearchDropdown.classList.remove('hidden');
+}
+
+if (clientNameInput) {
+    clientNameInput.addEventListener('focus', () => renderClientSearchDropdown(clientNameInput.value.trim()));
+    clientNameInput.addEventListener('input', (e) => {
+        renderClientSearchDropdown(e.target.value.trim());
+    });
+}
+
+if (clientSearchToggleBtn) {
+    clientSearchToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (clientSearchDropdown.classList.contains('hidden')) {
+            renderClientSearchDropdown(clientNameInput ? clientNameInput.value.trim() : "");
+            if (clientNameInput) clientNameInput.focus();
+        } else {
+            clientSearchDropdown.classList.add('hidden');
+        }
+    });
+}
+
+// STAMPA ETICHETTA CLIENTE (PER SIG.RA CLEO - SENZA ARMADIO)
+window.printClientReceiptLabel = function() {
+    const name = document.getElementById('clientName').value.trim();
+    const phone = document.getElementById('clientPhone').value.trim();
+    const dob = document.getElementById('clientDob').value.trim();
+    const address = document.getElementById('clientAddress').value.trim();
+
+    if (!name || !phone) {
+        showToast("Inserisci almeno Nome e Telefono per la stampa", "error");
+        return;
+    }
+
+    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+
+    let printText = "\x1B\x40" + // Initialize printer
+        "\x1B\x61\x01" + // Center alignment
+        "\x1B\x21\x10LAVANDERIA CLEO\n" +
+        "\x1B\x21\x00" + dateStr + "\n" +
+        "--------------------------------\n" +
+        "\x1B\x61\x00" + // Left alignment
+        "\x1B\x21\x08Cliente: " + name + "\n" +
+        "Tel:     " + phone + "\n";
+    
+    if (dob) printText += "Nascita: " + dob + "\n";
+    if (address) printText += "Indirizzo: " + address + "\n";
+
+    printText += "--------------------------------\n" +
+        "\x1B\x61\x01" + // Center alignment
+        "DA LAVARE - SIGNORA CLEO\n" +
+        "\x1B\x21\x00--------------------------------\n\n\n\n" +
+        "\x1D\x56\x41\x03"; // Cut paper
+
+    try {
+        const base64Data = btoa(unescape(encodeURIComponent(printText)));
+        window.location.href = `rawbt:base64,${base64Data}`;
+        showToast("Etichetta cliente inviata in stampa!", "success");
+    } catch (err) {
+        showToast("Errore di stampa.", "error");
+    }
+};
+
 if (clientForm) {
     clientForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -450,10 +567,11 @@ if (clientForm) {
         const phone = document.getElementById('clientPhone').value.trim();
         const dob = document.getElementById('clientDob').value.trim();
         const address = document.getElementById('clientAddress').value.trim();
+        const manageId = document.getElementById('manageClientIdInput') ? document.getElementById('manageClientIdInput').value : "";
 
         if (!name || !phone) return;
 
-        const clientId = 'cli_' + Date.now();
+        const clientId = manageId || ('cli_' + Date.now());
         const newClient = { name, phone, dob, address };
 
         clientsData[clientId] = newClient;
@@ -461,6 +579,7 @@ if (clientForm) {
         db.ref('clients').child(clientId).set(newClient).catch(() => {});
 
         clientForm.reset();
+        if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
         showToast(`Cliente "${name}" registrato!`, "success");
         renderItems();
         const managerModal = document.getElementById('clientManagerModal');
@@ -545,7 +664,6 @@ window.deleteClient = function(id, name) {
     }
 };
 
-// DROPDOWN SELEZIONE CLIENTE INSERIMENTO CAPO CON RICERCA MULTI-PAROLA INTELLIGENTE
 function renderAssignClientDropdown(filter = "") {
     if (!assignClientDropdown || !selectedClientIdInput) return;
     assignClientDropdown.innerHTML = "";
@@ -565,7 +683,6 @@ function renderAssignClientDropdown(filter = "") {
     for (let [id, client] of sorted) {
         const fullString = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
         
-        // Match su tutti i termini inseriti indipendentemente dall'ordine
         const isMatch = searchTerms.every(term => fullString.includes(term));
         if (searchTerms.length > 0 && !isMatch) continue;
 
@@ -638,6 +755,9 @@ if (itemForm) {
         itemsData[itemId] = newItem;
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
+
+        // Stampa dell'etichetta al momento dell'accettazione del capo
+        printItemLabel();
 
         itemForm.reset();
         if(assignClientSearch) assignClientSearch.value = "";
@@ -816,6 +936,7 @@ if (searchClearBtn) {
 document.addEventListener('click', (e) => {
     if (globalSearch && globalSearchDropdown && !globalSearch.contains(e.target) && !globalSearchDropdown.contains(e.target)) globalSearchDropdown.classList.add('hidden');
     if (assignClientSearch && assignClientDropdown && assignClientToggleBtn && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && !assignClientToggleBtn.contains(e.target)) assignClientDropdown.classList.add('hidden');
+    if (clientNameInput && clientSearchDropdown && clientSearchToggleBtn && !clientNameInput.contains(e.target) && !clientSearchDropdown.contains(e.target) && !clientSearchToggleBtn.contains(e.target)) clientSearchDropdown.classList.add('hidden');
 });
 
 window.openClientModal = function(clientId) {
