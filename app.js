@@ -246,15 +246,10 @@ function checkNumericLicense() {
             .then((snapshot) => {
                 const licenses = snapshot.val();
                 let matchedKey = null;
-                let customExpiryVal = null;
 
                 if (licenses) {
                     for (let key in licenses) {
-                        if (String(key) === String(enteredCode)) {
-                            matchedKey = key;
-                            customExpiryVal = licenses[key];
-                            break;
-                        } else if (String(licenses[key]) === String(enteredCode)) {
+                        if (String(key) === String(enteredCode) || String(licenses[key]) === String(enteredCode)) {
                             matchedKey = key;
                             break;
                         }
@@ -263,13 +258,6 @@ function checkNumericLicense() {
 
                 if (enteredCode === "2580" || matchedKey) {
                     let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
-
-                    if (customExpiryVal) {
-                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
-                        if (!isNaN(parsedTime)) {
-                            expirationTimestamp = parsedTime;
-                        }
-                    }
                     
                     db.ref('used_licenses/' + enteredCode).set(true);
                     if (matchedKey) {
@@ -286,8 +274,7 @@ function checkNumericLicense() {
                     
                     unlockApp();
                     startLicenseCountdownMonitor();
-                    const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-                    showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+                    showToast("Licenza attivata con successo fino al 7 Agosto 2027!", "success");
                 } else {
                     showToast("Codice licenza non valido o già utilizzato.", "error");
                 }
@@ -505,20 +492,20 @@ function renderClientManagerTable(filter = "") {
     if(!tbody) return;
     tbody.innerHTML = "";
     const lowerFilter = filter.toLowerCase();
-    const sorted = Object.entries(clientsData).sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
+    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
 
     for (let [id, client] of sorted) {
-        const str = `${client.name || ''} ${client.phone || ''} ${client.address || ''}`.toLowerCase();
+        const str = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
         if (filter && !str.includes(lowerFilter)) continue;
 
         const tr = document.createElement('tr');
         tr.className = "hover:bg-darkCard cursor-pointer";
         tr.innerHTML = `
-            <td class="py-3 px-4 font-bold text-white" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.name || ''}</td>
-            <td class="py-3 px-4 text-slate-400" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.phone || ''}</td>
+            <td class="py-3 px-4 font-bold text-white" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.name}</td>
+            <td class="py-3 px-4 text-slate-400" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.phone}</td>
             <td class="py-3 px-4 text-slate-400" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.address || 'N/D'} &bull; ${client.dob || ''}</td>
             <td class="py-3 px-4 text-right">
-                <button onclick="event.stopPropagation(); deleteClient('${id}', '${(client.name || '').replace(/'/g, "\\'")}')" 
+                <button onclick="event.stopPropagation(); deleteClient('${id}', '${client.name.replace(/'/g, "\\'")}')" 
                     class="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 active:scale-95 text-rose-400 rounded-lg font-semibold cursor-pointer">
                     <i class="fa-solid fa-trash-can mr-1"></i> Elimina
                 </button>
@@ -540,14 +527,13 @@ window.deleteClient = function(id, name) {
 };
 
 // ==========================================
-// DROPDOWN RICERCA CLIENTE FORM INSERIMENTO
+// DROPDOWN RICERCA CLIENTE FORM INSERIMENTO (Codice Originale Ripristinato)
 // ==========================================
 function renderAssignClientDropdown(filter = "") {
     if (!assignClientDropdown || !selectedClientIdInput) return;
     assignClientDropdown.innerHTML = "";
-    
-    const searchTerms = filter.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
-    const sorted = Object.entries(clientsData).sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
+    const lowerFilter = filter.toLowerCase();
+    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
     let matches = 0;
 
     const tableHeader = document.createElement('div');
@@ -559,24 +545,19 @@ function renderAssignClientDropdown(filter = "") {
     rowsContainer.className = "divide-y divide-darkBorder/50";
 
     for (let [id, client] of sorted) {
-        const cName = String(client.name || '');
-        const cPhone = String(client.phone || '');
-        const cAddress = String(client.address || '');
-
-        const fullString = `${cName} ${cPhone} ${cAddress}`.toLowerCase();
-        const isMatch = searchTerms.every(term => fullString.includes(term));
-        if (searchTerms.length > 0 && !isMatch) continue;
+        const str = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
+        if (filter && !str.includes(lowerFilter)) continue;
 
         matches++;
         const rowDiv = document.createElement('div');
         rowDiv.className = "grid grid-cols-3 px-4 py-2.5 hover:bg-blue-600/10 cursor-pointer text-xs items-center";
         rowDiv.innerHTML = `
-            <span class="font-bold text-white truncate pr-2">${cName}</span>
-            <span class="text-slate-400 truncate pr-2">${cPhone}</span>
-            <span class="text-slate-400 truncate">${cAddress || 'N/D'}</span>
+            <span class="font-bold text-white truncate pr-2">${client.name}</span>
+            <span class="text-slate-400 truncate pr-2">${client.phone}</span>
+            <span class="text-slate-400 truncate">${client.address || 'N/D'}</span>
         `;
         rowDiv.addEventListener('click', () => {
-            assignClientSearch.value = `${cName} (${cPhone})`;
+            assignClientSearch.value = `${client.name} (${client.phone})`;
             selectedClientIdInput.value = id;
             assignClientDropdown.classList.add('hidden');
         });
@@ -646,7 +627,7 @@ if (itemForm) {
 }
 
 // ==========================================
-// GESTIONE STAMPA TERMICA RAWBT
+// GESTIONE STAMPA TERMICA RAWBT (Codice Originale Ripristinato per IP 192.168.1.200)
 // ==========================================
 window.printItemLabel = function() {
     const clientId = selectedClientIdInput.value;
@@ -668,39 +649,21 @@ window.printItemLabel = function() {
     const client = clientsData[clientId];
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
-    const generateSingleReceiptText = (copyType) => {
-        let txt = "";
-        txt += "--------------------------------\n";
-        txt += "        LAVANDERIA CLEO\n";
-        txt += `        [COPIA ${copyType}]\n`;
-        txt += `       ${dateStr}\n`;
-        txt += "--------------------------------\n";
-        txt += `Cliente: ${client.name || ''}\n`;
-        txt += `Tel:     ${client.phone || ''}\n`;
-        txt += `Capo:    ${type}\n`;
-        if (notes) txt += `Note:    ${notes}\n`;
-        txt += "--------------------------------\n";
-        txt += `ARMADIO: ${cabinet}\n`;
-        txt += `POSIZIONE: ${position}\n`;
-        txt += "--------------------------------\n";
-        txt += `PREZZO: EUR ${parseFloat(price || 0).toFixed(2)}\n`;
-        txt += "--------------------------------\n";
-        txt += "  * Conservare per il ritiro *\n\n\n\n";
-        return txt;
+    const generateSingleReceipt = (copyType) => {
+        let block = "";
+        block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCapo:    " + type + "\n";
+        if (notes) block += `Note:    ${notes}\n`;
+        block += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
+        return block;
     };
 
-    const fullText = generateSingleReceiptText("ATTIVITA") + generateSingleReceiptText("CLIENTE");
-
+    let printText = generateSingleReceipt("ATTIVITA") + "\x1D\x56\x41\x03" + generateSingleReceipt("CLIENTE") + "\x1D\x56\x41\x03";
     try {
-        const encodedData = encodeURIComponent(fullText);
-        window.location.href = `intent:${encodedData}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
-        showToast("Inviato alla stampante RawBT!", "success");
+        const base64Data = btoa(unescape(encodeURIComponent(printText)));
+        window.location.href = `rawbt:base64,${base64Data}`;
+        showToast("Ricevute inviate in stampa!", "success");
     } catch (err) {
-        try {
-            window.location.href = `rawbt:base64,${btoa(fullText)}`;
-        } catch(e) {
-            showToast("Impossibile avviare la stampa RawBT.", "error");
-        }
+        showToast("Errore di stampa.", "error");
     }
 };
 
@@ -732,7 +695,7 @@ function renderItems() {
     for (let [id, item] of sorted) {
         count++;
         const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        const rowStr = `${client.name || ''} ${client.phone || ''} ${item.type || ''} ${item.cabinet || ''} ${item.position || ''}`.toLowerCase();
+        const rowStr = `${client.name} ${client.phone} ${item.type} ${item.cabinet} ${item.position}`.toLowerCase();
         if (filterVal && !rowStr.includes(filterVal)) continue;
 
         visibleCount++;
@@ -740,8 +703,8 @@ function renderItems() {
         tr.className = "hover:bg-darkCard";
         tr.innerHTML = `
             <td class="py-4 px-4">
-                <span class="font-semibold text-white cursor-pointer hover:underline" onclick="openClientModal('${item.clientId}')">${client.name || ''}</span>
-                <div class="text-xs text-slate-400">${client.phone || ''}</div>
+                <span class="font-semibold text-white cursor-pointer hover:underline" onclick="openClientModal('${item.clientId}')">${client.name}</span>
+                <div class="text-xs text-slate-400">${client.phone}</div>
             </td>
             <td class="py-4 px-4">
                 <span class="font-medium text-slate-200">${item.type}</span>
@@ -751,7 +714,7 @@ function renderItems() {
             <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
             <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
             <td class="py-4 px-4 text-right">
-                <button onclick="confirmAndReturn('${id}', '${(item.type || '').replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
+                <button onclick="confirmAndReturn('${id}', '${item.type.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
             </td>
         `;
         itemsTableBody.appendChild(tr);
@@ -803,8 +766,8 @@ if (globalSearch) {
                 if (item.clientId === clientId) clientActiveItems.push(item);
             }
 
-            const matchClient = `${client.name || ''} ${client.phone || ''} ${client.address || ''}`.toLowerCase().includes(val);
-            const matchItem = clientActiveItems.some(i => (i.type || '').toLowerCase().includes(val) || (i.cabinet || '').toLowerCase().includes(val));
+            const matchClient = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase().includes(val);
+            const matchItem = clientActiveItems.some(i => i.type.toLowerCase().includes(val) || i.cabinet.toLowerCase().includes(val));
 
             if (matchClient || matchItem) {
                 resultsFound++;
@@ -816,7 +779,7 @@ if (globalSearch) {
                 });
                 if(clientActiveItems.length > 0) itemsHtml += `</div>`;
 
-                div.innerHTML = `<div class="flex justify-between items-start"><div><div class="font-bold text-white text-sm">${client.name || ''}</div><div class="text-xs text-slate-400 mt-0.5">Tel: ${client.phone || ''}</div></div><button type="button" onclick="openClientModal('${clientId}'); globalSearchDropdown.classList.add('hidden'); globalSearch.value='';" class="text-xs bg-blue-950 hover:bg-blue-900 text-blue-400 px-3 py-1.5 rounded-lg font-semibold cursor-pointer">Scheda</button></div>${itemsHtml}`;
+                div.innerHTML = `<div class="flex justify-between items-start"><div><div class="font-bold text-white text-sm">${client.name}</div><div class="text-xs text-slate-400 mt-0.5">Tel: ${client.phone}</div></div><button type="button" onclick="openClientModal('${clientId}'); globalSearchDropdown.classList.add('hidden'); globalSearch.value='';" class="text-xs bg-blue-950 hover:bg-blue-900 text-blue-400 px-3 py-1.5 rounded-lg font-semibold cursor-pointer">Scheda</button></div>${itemsHtml}`;
                 globalSearchDropdown.appendChild(div);
             }
         }
@@ -841,8 +804,8 @@ window.openClientModal = function(clientId) {
     const client = clientsData[clientId];
     if (!client) return;
 
-    document.getElementById('modalClientName').textContent = client.name || '';
-    document.getElementById('modalClientDetails').textContent = `Tel: ${client.phone || ''} | Nascita: ${client.dob || 'N/D'} | Indirizzo: ${client.address || 'N/D'}`;
+    document.getElementById('modalClientName').textContent = client.name;
+    document.getElementById('modalClientDetails').textContent = `Tel: ${client.phone} | Nascita: ${client.dob || 'N/D'} | Indirizzo: ${client.address || 'N/D'}`;
 
     let totalItems = 0, totalSpent = 0;
     const activeList = document.getElementById('modalClientActiveItemsList');
@@ -970,7 +933,7 @@ function renderHistory() {
         const client = clientsData[item.clientId] || { name: "Non trovato" };
         const tr = document.createElement('tr');
         tr.className = "hover:bg-darkCard text-sm";
-        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name || ''}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
+        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
         historyTableBody.appendChild(tr);
     }
 
@@ -1023,7 +986,7 @@ window.exportBackup = function() {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
         const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}";"${client.name || ''}";"${client.phone || ''}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
+        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
     }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
