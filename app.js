@@ -96,7 +96,7 @@ function startAppListeners() {
     });
 }
 
-// ================= LENTE DI RICERCA NEL BOX "NUOVO CLIENTE" =================
+// ================= TABELLA DROPDOWN "NUOVO / CERCA CLIENTE" =================
 function setupManageClientSearchDropdown() {
     const searchInput = document.getElementById('clientName');
     const hiddenIdInput = document.getElementById('manageClientIdInput');
@@ -104,19 +104,29 @@ function setupManageClientSearchDropdown() {
     const toggleBtn = document.getElementById('clientSearchToggleBtn');
 
     function filterAndShow(query) {
-        dropdown.innerHTML = '';
+        dropdown.innerHTML = `
+            <div class="grid grid-cols-3 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase border-b border-darkBorder bg-darkSurface sticky top-0">
+                <div>Cliente (Nome)</div>
+                <div>Telefono</div>
+                <div>Indirizzo</div>
+            </div>
+        `;
         const q = query.toLowerCase();
         const matches = Object.entries(allClients).filter(([id, c]) => 
             c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
         );
 
         if (matches.length === 0) {
-            dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente esistente. Compila i dati per registrarlo.</div>`;
+            dropdown.innerHTML += `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente esistente. Compila i dati per registrarlo.</div>`;
         } else {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
-                item.className = "p-2.5 hover:bg-darkCard cursor-pointer text-xs flex justify-between items-center border-b border-darkBorder/30 last:border-0";
-                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone || ''}</span></div><span class="text-[10px] text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-900">Seleziona</span>`;
+                item.className = "grid grid-cols-3 p-2.5 hover:bg-darkCard cursor-pointer text-xs items-center border-b border-darkBorder/30 last:border-0";
+                item.innerHTML = `
+                    <div class="font-semibold text-white truncate">${c.name}</div>
+                    <div class="text-slate-300 truncate">${c.phone || '-'}</div>
+                    <div class="text-slate-400 truncate">${c.address || 'N/D'}</div>
+                `;
                 item.onclick = (e) => {
                     e.stopPropagation();
                     searchInput.value = c.name;
@@ -164,7 +174,7 @@ function resetClientForm() {
     showToast("Modulo cliente pulito per inserimento nuovo.");
 }
 
-// ================= REGISTRAZIONE E STAMPA RICEVUTA CLIENTE =================
+// ================= REGISTRAZIONE E STAMPA ETICHETTA CLIENTE =================
 function handleClientSubmit(e) {
     e.preventDefault();
     const name = document.getElementById('clientName').value.trim();
@@ -207,6 +217,11 @@ function printClientReceiptLabel() {
     }
 
     const printWindow = window.open('', '_blank', 'width=400,height=500');
+    if (!printWindow) {
+        showToast("Il browser ha bloccato il pop-up di stampa. Consenti i pop-up.", "error");
+        return;
+    }
+
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -242,7 +257,7 @@ function printClientReceiptLabel() {
     printWindow.document.close();
 }
 
-// ================= LENTE DI RICERCA ACCETTAZIONE CAPO =================
+// ================= TABELLA DROPDOWN "ACCETTA CAPO" =================
 function setupAssignClientSearchDropdown() {
     const searchInput = document.getElementById('assignClientSearch');
     const hiddenIdInput = document.getElementById('selectedClientIdInput');
@@ -250,19 +265,29 @@ function setupAssignClientSearchDropdown() {
     const toggleBtn = document.getElementById('assignClientToggleBtn');
 
     function filterAndShow(query) {
-        dropdown.innerHTML = '';
+        dropdown.innerHTML = `
+            <div class="grid grid-cols-3 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase border-b border-darkBorder bg-darkSurface sticky top-0">
+                <div>Cliente (Nome)</div>
+                <div>Telefono</div>
+                <div>Indirizzo</div>
+            </div>
+        `;
         const q = query.toLowerCase();
         const matches = Object.entries(allClients).filter(([id, c]) => 
             c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
         );
 
         if (matches.length === 0) {
-            dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente trovato. Registralo nel box sopra.</div>`;
+            dropdown.innerHTML += `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente trovato. Registralo nel box sopra.</div>`;
         } else {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
-                item.className = "p-2.5 hover:bg-darkCard cursor-pointer text-xs flex justify-between items-center border-b border-darkBorder/30 last:border-0";
-                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone || ''}</span></div><i class="fa-solid fa-check text-blue-500"></i>`;
+                item.className = "grid grid-cols-3 p-2.5 hover:bg-darkCard cursor-pointer text-xs items-center border-b border-darkBorder/30 last:border-0";
+                item.innerHTML = `
+                    <div class="font-semibold text-white truncate">${c.name}</div>
+                    <div class="text-slate-300 truncate">${c.phone || '-'}</div>
+                    <div class="text-slate-400 truncate">${c.address || 'N/D'}</div>
+                `;
                 item.onclick = (e) => {
                     e.stopPropagation();
                     searchInput.value = c.name;
@@ -318,6 +343,11 @@ function handleItemSubmitWithPrint(e) {
     }
 
     const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) {
+        showToast("Il browser ha bloccato il pop-up di stampa. Consenti i pop-up.", "error");
+        return;
+    }
+
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
