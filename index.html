@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lavanderia Cleo - Gestionale</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -21,15 +20,13 @@
             }
         }
     </script>
-    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase App & Database (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body class="bg-darkBg text-slate-100 min-h-screen font-sans antialiased flex flex-col">
 
-    <!-- SCHERMATA LOGIN / LICENZA -->
+    <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="fixed inset-0 z-50 bg-darkBg flex items-center justify-center p-4 transition-opacity duration-300">
         <div class="bg-darkCard border border-darkBorder p-8 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
             <div class="text-center mb-6">
@@ -51,8 +48,6 @@
                     <input type="password" id="passwordInput" class="w-full bg-darkBg border border-darkBorder rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Password admin">
                 </div>
 
-                <p id="loginError" class="text-xs text-rose-400 font-semibold hidden text-center"></p>
-
                 <div class="grid grid-cols-2 gap-3 pt-2">
                     <button type="button" onclick="checkNumericLicense()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold py-3 rounded-xl text-xs transition-all shadow-lg shadow-blue-600/20">
                         Attiva Licenza
@@ -65,7 +60,7 @@
         </div>
     </div>
 
-    <!-- APP PRINCIPALE -->
+    <!-- MAIN APP CONTAINER -->
     <div id="appContainer" class="hidden opacity-0 transition-opacity duration-300 flex-1 flex flex-col">
         <!-- HEADER -->
         <header class="bg-darkCard border-b border-darkBorder sticky top-0 z-30 px-4 py-3">
@@ -83,7 +78,6 @@
                     </div>
                 </div>
 
-                <!-- NAVBAR NAVIGATION -->
                 <div class="flex items-center gap-2 bg-darkBg p-1 rounded-xl border border-darkBorder">
                     <button id="navTabActive" onclick="switchTab('active')" class="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95">
                         <i class="fa-solid fa-layer-group mr-1.5"></i> Capi in Lavorazione
@@ -110,12 +104,11 @@
         <!-- CONTENUTO PRINCIPALE -->
         <main class="flex-1 max-w-7xl w-full mx-auto p-4 space-y-6">
 
-            <!-- VISTA 1: CAPI ATTIVI E NUOVE REGISTRAZIONI -->
             <div id="viewActive" class="space-y-6">
                 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    <!-- SEZIONE 1: ANAGRAFICA NUOVO CLIENTE -->
+                    <!-- REGISTRAZIONE CLIENTE -->
                     <div class="bg-darkCard border border-darkBorder rounded-2xl p-5 shadow-xl flex flex-col justify-between">
                         <div>
                             <div class="flex items-center gap-2 mb-4 text-blue-400 font-semibold text-sm">
@@ -140,47 +133,43 @@
                         </div>
                     </div>
 
-                    <!-- SEZIONE 2: NUOVO CAPO / CERCA CLIENTE -->
+                    <!-- ACCETTAZIONE CAPO CON RICERCA E STAMPA ETICHETTA CLIENTE -->
                     <div class="lg:col-span-2 bg-darkCard border border-darkBorder rounded-2xl p-5 shadow-xl">
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
                                 <i class="fa-solid fa-tags"></i>
                                 <h3>2. Accetta Capo in Armadio</h3>
                             </div>
-                            <!-- BOTTONE PER STAMPARE SOLO ETICHETTA CLIENTE -->
+                            <!-- BOTTONE PER STAMPARE ETICHETTA CLIENTE -->
                             <button type="button" onclick="printClientOnlyLabel()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all">
                                 <i class="fa-solid fa-address-card text-blue-400"></i> Stampa Etichetta Cliente
                             </button>
                         </div>
 
                         <form id="itemForm" class="space-y-4" onsubmit="return false;">
-                            <!-- SELETTORE / RICERCA CLIENTE CON LENTE -->
+                            <!-- RICERCA CLIENTE CON LISTA TIPO DROPDOWN -->
                             <div class="relative">
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona o Cerca Cliente Registrato *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Cerca e Seleziona Cliente *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-slate-400 text-xs"></i>
-                                    <input type="text" id="assignClientSearch" autocomplete="off" placeholder="Digita nome o telefono per cercare..." class="w-full bg-darkBg border border-darkBorder rounded-xl pl-9 pr-10 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                                    <input type="text" id="assignClientSearch" autocomplete="off" placeholder="Digita nome o telefono..." class="w-full bg-darkBg border border-darkBorder rounded-xl pl-9 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
                                     <input type="hidden" id="selectedClientIdInput">
-                                    <button type="button" id="assignClientToggleBtn" class="absolute right-3 text-slate-400 hover:text-white">
-                                        <i class="fa-solid fa-chevron-down text-xs"></i>
-                                    </button>
                                 </div>
                                 <div id="assignClientDropdown" class="hidden absolute left-0 right-0 top-full mt-1 z-50"></div>
                             </div>
 
-                            <!-- DATI DEL CAPO IN ACCETTAZIONE -->
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tipo Capo *</label>
-                                    <input type="text" id="itemType" placeholder="Es. Giacca, Piumone..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                                    <input type="text" id="itemType" placeholder="Es. Giacca..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 mb-1">Armadio *</label>
-                                    <input type="text" id="itemCabinet" placeholder="Es. A, B, 1, 2..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                                    <input type="text" id="itemCabinet" placeholder="Es. A, 1..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 mb-1">Posizione *</label>
-                                    <input type="text" id="itemPosition" placeholder="Es. 12, Top..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                                    <input type="text" id="itemPosition" placeholder="Es. 12..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 mb-1">Prezzo (€) *</label>
@@ -190,10 +179,9 @@
 
                             <div>
                                 <label class="block text-[11px] font-semibold text-slate-400 mb-1">Note Opzionali</label>
-                                <input type="text" id="itemNotes" placeholder="Es. Macchia manica destra, cerniera rotta..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                                <input type="text" id="itemNotes" placeholder="Note del capo..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                             </div>
 
-                            <!-- PULSANTI ACCETTAZIONE CAPO E STAMPA SCONTRINO -->
                             <div class="flex items-center gap-3 pt-1">
                                 <button type="button" onclick="saveNewItem()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 cursor-pointer">
                                     <i class="fa-solid fa-check mr-1"></i> Inserisci Capo in Armadio
@@ -207,7 +195,7 @@
 
                 </div>
 
-                <!-- TABELLA CAPI IN LAVORAZIONE -->
+                <!-- TABELLA CAPI -->
                 <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
                     <div class="p-4 border-b border-darkBorder flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
@@ -240,9 +228,8 @@
 
             </div>
 
-            <!-- VISTA 2: STATISTICHE E STORICO -->
+            <!-- STATISTICHE E STORICO -->
             <div id="viewStats" class="hidden space-y-6">
-                <!-- CARDS RESOCONTO -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="bg-darkCard border border-darkBorder p-4 rounded-2xl">
                         <span class="text-xs text-slate-400 font-semibold block mb-1">Capi Consegnati</span>
@@ -262,7 +249,6 @@
                     </div>
                 </div>
 
-                <!-- TABELLA STORICO CONSEGNE -->
                 <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
                     <div class="p-4 border-b border-darkBorder flex items-center justify-between">
                         <h3 class="font-bold text-white text-sm">Storico Capi Ritirati</h3>
@@ -288,7 +274,7 @@
         </main>
     </div>
 
-    <!-- MODALE SCHEDA DETTAGLIO CLIENTE -->
+    <!-- MODALI -->
     <div id="clientModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-darkCard border border-darkBorder rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             <div class="p-5 border-b border-darkBorder flex items-center justify-between">
@@ -325,7 +311,6 @@
         </div>
     </div>
 
-    <!-- MODALE GESTIONE ANAGRAFICA COMPLETA -->
     <div id="clientManagerModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-darkCard border border-darkBorder rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             <div class="p-5 border-b border-darkBorder flex items-center justify-between">
@@ -361,7 +346,6 @@
         </div>
     </div>
 
-    <!-- SCRIPT APPLICATION -->
     <script src="app.js"></script>
 </body>
 </html>
