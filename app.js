@@ -592,12 +592,12 @@ if (assignClientToggleBtn) {
     });
 }
 
+// INSERISCI CAPO (DOPO IL LAVAGGIO E LA RIMOZIONE DELL'ETICHETTA ARTIGIANALE)
 if (itemForm) {
     itemForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const clientId = selectedClientIdInput.value;
         const type = document.getElementById('itemType').value.trim();
-        const basket = document.getElementById('itemBasket') ? document.getElementById('itemBasket').value.trim() : "";
         const cabinet = document.getElementById('itemCabinet').value.trim();
         const position = document.getElementById('itemPosition').value.trim();
         const price = parseFloat(document.getElementById('itemPrice').value) || 0;
@@ -610,7 +610,7 @@ if (itemForm) {
         }
 
         const itemId = 'item_' + Date.now();
-        const newItem = { clientId, type, basket, cabinet, position, price, notes, status, timestamp: Date.now() };
+        const newItem = { clientId, type, cabinet, position, price, notes, status, timestamp: Date.now() };
 
         itemsData[itemId] = newItem;
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
@@ -619,15 +619,15 @@ if (itemForm) {
         itemForm.reset();
         if(assignClientSearch) assignClientSearch.value = "";
         if(selectedClientIdInput) selectedClientIdInput.value = "";
-        showToast(`Capo (${type}) registrato in cesta ${basket}`, "success");
+        showToast(`Capo (${type}) registrato e pronto in armadio ${cabinet}`, "success");
         renderItems();
     });
 }
 
+// STAMPA RICEVUTA (DOPO CHE IL CAPO È LAVATO E REGISTRATO SUL SITO)
 window.printItemLabel = function() {
     const clientId = selectedClientIdInput.value;
     const type = document.getElementById('itemType').value.trim();
-    const basket = document.getElementById('itemBasket') ? document.getElementById('itemBasket').value.trim() : "";
     const cabinet = document.getElementById('itemCabinet').value.trim();
     const position = document.getElementById('itemPosition').value.trim();
     const price = document.getElementById('itemPrice').value;
@@ -637,8 +637,8 @@ window.printItemLabel = function() {
         showToast("Seleziona prima un cliente", "error");
         return;
     }
-    if (!type || !basket || !cabinet || !position) {
-        showToast("Compila cesta, tipo capo, armadio e posizione", "error");
+    if (!type || !cabinet || !position) {
+        showToast("Compila tipo capo, armadio e posizione", "error");
         return;
     }
 
@@ -647,7 +647,7 @@ window.printItemLabel = function() {
 
     const generateSingleReceipt = (copyType) => {
         let block = "";
-        block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCesta:   " + basket + "\nCapo:    " + type + "\n";
+        block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCapo:    " + type + "\n";
         if (notes) block += `Note:    ${notes}\n`;
         block += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
         return block;
@@ -691,7 +691,7 @@ function renderItems() {
     for (let [id, item] of sorted) {
         count++;
         const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        const rowStr = `${client.name} ${client.phone} ${item.type} ${item.basket || ''} ${item.cabinet} ${item.position}`.toLowerCase();
+        const rowStr = `${client.name} ${client.phone} ${item.type} ${item.cabinet} ${item.position}`.toLowerCase();
         if (filterVal && !rowStr.includes(filterVal)) continue;
 
         visibleCount++;
@@ -707,11 +707,8 @@ function renderItems() {
                 ${item.notes ? `<div class="text-[11px] text-amber-300/90 italic mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>${item.notes}</div>` : ''}
                 <div class="text-xs font-semibold text-emerald-400">€ ${item.price.toFixed(2)}</div>
             </td>
-            <td class="py-4 px-4">
-                <span class="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-900 rounded font-bold">${item.basket || 'N/D'}</span>
-            </td>
             <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
-            <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
+            <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-900">In Deposito</span></td>
             <td class="py-4 px-4 text-right">
                 <button onclick="confirmAndReturn('${id}', '${item.type.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
             </td>
@@ -743,7 +740,7 @@ window.markAsReturned = function(id) {
     db.ref('history').child(historyId).set(historyItem);
     db.ref('items').child(id).remove();
     renderItems();
-    showToast("Capo archiviato", "success");
+    showToast("Capo archiviato e statistiche aggiornate", "success");
 };
 
 if (globalSearch) {
@@ -766,7 +763,7 @@ if (globalSearch) {
             }
 
             const matchClient = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase().includes(val);
-            const matchItem = clientActiveItems.some(i => i.type.toLowerCase().includes(val) || (i.basket && i.basket.toLowerCase().includes(val)) || i.cabinet.toLowerCase().includes(val));
+            const matchItem = clientActiveItems.some(i => i.type.toLowerCase().includes(val) || i.cabinet.toLowerCase().includes(val));
 
             if (matchClient || matchItem) {
                 resultsFound++;
@@ -774,7 +771,7 @@ if (globalSearch) {
                 div.className = "p-4 hover:bg-darkCard cursor-default";
                 let itemsHtml = clientActiveItems.length > 0 ? `<div class="mt-2.5 space-y-1.5 border-t border-darkBorder pt-2">` : `<div class="mt-2 text-xs text-slate-400 italic">Nessun capo attivo.</div>`;
                 clientActiveItems.forEach(item => {
-                    itemsHtml += `<div class="flex items-center justify-between text-xs bg-darkBg p-2 rounded-lg border border-darkBorder"><div><span class="font-bold text-white">${item.type}</span> <span class="text-slate-400 ml-1">&bull; Cesta: <strong class="text-blue-400">${item.basket || '-'}</strong></span></div><span class="font-bold text-emerald-400">€ ${item.price.toFixed(2)}</span></div>`;
+                    itemsHtml += `<div class="flex items-center justify-between text-xs bg-darkBg p-2 rounded-lg border border-darkBorder"><div><span class="font-bold text-white">${item.type}</span> <span class="text-slate-400 ml-1">&bull; Armadio: <strong class="text-blue-400">${item.cabinet}</strong></span></div><span class="font-bold text-emerald-400">€ ${item.price.toFixed(2)}</span></div>`;
                 });
                 if(clientActiveItems.length > 0) itemsHtml += `</div>`;
 
@@ -815,7 +812,7 @@ window.openClientModal = function(clientId) {
             activeCount++; totalItems++; totalSpent += (item.price || 0);
             const div = document.createElement('div');
             div.className = "p-3 bg-darkCard rounded-xl border border-darkBorder flex justify-between items-center text-xs";
-            div.innerHTML = `<span class="font-bold text-slate-200">${item.type} (Cesta ${item.basket || '-'})</span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
+            div.innerHTML = `<span class="font-bold text-slate-200">${item.type} (Armadio ${item.cabinet})</span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
             activeList.appendChild(div);
         }
     }
@@ -830,7 +827,7 @@ window.openClientModal = function(clientId) {
             const dateStr = new Date(item.returnedAt).toLocaleDateString('it-IT');
             const div = document.createElement('div');
             div.className = "p-3 bg-darkCard rounded-xl border border-darkBorder flex justify-between items-center text-xs";
-            div.innerHTML = `<span class="text-slate-400">${dateStr} &bull; <strong class="text-slate-200">${item.type}</strong> (Cesta ${item.basket || '-'})</span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
+            div.innerHTML = `<span class="text-slate-400">${dateStr} &bull; <strong class="text-slate-200">${item.type}</strong></span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
             historyList.appendChild(div);
         }
     }
@@ -932,7 +929,7 @@ function renderHistory() {
         const client = clientsData[item.clientId] || { name: "Non trovato" };
         const tr = document.createElement('tr');
         tr.className = "hover:bg-darkCard text-sm";
-        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Cesta ${item.basket || '-'} / Armadio ${item.cabinet}</td>`;
+        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
         historyTableBody.appendChild(tr);
     }
 
@@ -971,16 +968,21 @@ window.exportBackup = function() {
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
     }
 
+    let topProduct = "Nessuno", maxCount = 0;
+    for (let [t, c] of Object.entries(typeCounts)) {
+        if (c > maxCount) { maxCount = c; topProduct = t.charAt(0).toUpperCase() + t.slice(1); }
+    }
+
     let csvContent = "\uFEFF";
     csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
     csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
     
-    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Cesta";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
+    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
     for (let entry of filteredHistory) {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
         const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.basket || '-'}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
+        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
     }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
