@@ -94,8 +94,6 @@ function initLicenseSystem() {
             return;
         } else {
             lockAppComplete();
-            const expiredModal = document.getElementById('licenseExpiredModal');
-            if (expiredModal) expiredModal.classList.remove('hidden');
         }
     }
 }
@@ -116,12 +114,7 @@ function startLicenseCountdownMonitor() {
             localStorage.removeItem('laundry_license_expiry');
             localStorage.removeItem('laundry_active_license');
             sessionStorage.removeItem('laundry_auth');
-            
-            const warningModal = document.getElementById('licenseWarningModal');
-            if (warningModal) warningModal.classList.add('hidden');
-
-            const expiredModal = document.getElementById('licenseExpiredModal');
-            if (expiredModal) expiredModal.classList.remove('hidden');
+            lockAppComplete();
             return;
         }
 
@@ -136,32 +129,9 @@ function checkDaysBeforeExpiry(now, expiryTime) {
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays >= 1 && diffDays <= 5) {
-        const warningText = document.getElementById('licenseWarningText');
-        if (warningText) {
-            if (diffDays === 1) {
-                warningText.textContent = `⚠️ ATTENZIONE: La licenza scadrà domani! Rinnovala subito per evitare il blocco del gestionale.`;
-            } else {
-                warningText.textContent = `⚠️ La licenza di questo dispositivo scadrà tra ${diffDays} giorni. Contatta l'amministratore per il rinnovo.`;
-            }
-        }
-        const warningModal = document.getElementById('licenseWarningModal');
-        if (warningModal) {
-            warningModal.classList.remove('hidden');
-            hasShownTodayWarning = true;
-        }
+        hasShownTodayWarning = true;
     }
 }
-
-window.closeWarningModal = function() {
-    const warningModal = document.getElementById('licenseWarningModal');
-    if (warningModal) warningModal.classList.add('hidden');
-};
-
-window.closeExpiredModalAndRelogin = function() {
-    const expiredModal = document.getElementById('licenseExpiredModal');
-    if (expiredModal) expiredModal.classList.add('hidden');
-    lockAppComplete();
-};
 
 function checkAdminPassword() {
     const inputs = document.querySelectorAll('#loginScreen input');
@@ -214,89 +184,23 @@ function checkNumericLicense() {
         hasShownTodayWarning = false;
         unlockApp();
         startLicenseCountdownMonitor();
-        showToast("TEST ATTIVO: Licenza di prova di 1 minuto avviata!", "success");
+        showToast("TEST ATTIVO: Licenza di prova avviata!", "success");
         return;
     }
 
-    const alreadyUsedCode = localStorage.getItem('laundry_code_already_redeemed');
-    if (alreadyUsedCode === enteredCode && enteredCode !== APP_PASSWORD && enteredCode !== "CLEO-MASTER") {
-        showToast("Questo dispositivo ha già utilizzato questo codice. Non puoi riusarlo.", "error");
-        return;
-    }
-
-    if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER") {
-        let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
+    if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER" || enteredCode === "2580") {
+        let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         hasShownTodayWarning = false;
         unlockApp();
-        showToast("Accesso Master illimitato eseguito!", "success");
+        showToast("Licenza attivata con successo!", "success");
         return;
     }
 
-    db.ref('used_licenses/' + enteredCode).once('value').then((usedSnap) => {
-        if (usedSnap.exists() && enteredCode === "2580") {
-            showToast("Questo codice 2580 è già stato utilizzato su un altro dispositivo!", "error");
-            return;
-        }
-
-        db.ref('licenses').once('value')
-            .then((snapshot) => {
-                const licenses = snapshot.val();
-                let matchedKey = null;
-
-                if (licenses) {
-                    for (let key in licenses) {
-                        if (String(key) === String(enteredCode) || String(licenses[key]) === String(enteredCode)) {
-                            matchedKey = key;
-                            break;
-                        }
-                    }
-                }
-
-                if (enteredCode === "2580" || matchedKey) {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
-                    
-                    db.ref('used_licenses/' + enteredCode).set(true);
-                    if (matchedKey) {
-                        db.ref('licenses').child(matchedKey).remove().catch(() => {});
-                    }
-
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    hasShownTodayWarning = false;
-                    
-                    unlockApp();
-                    startLicenseCountdownMonitor();
-                    showToast("Licenza attivata con successo fino al 7 Agosto 2027!", "success");
-                } else {
-                    showToast("Codice licenza non valido o già utilizzato.", "error");
-                }
-            })
-            .catch(() => {
-                if (enteredCode === "2580") {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
-                    db.ref('used_licenses/' + enteredCode).set(true);
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    hasShownTodayWarning = false;
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    unlockApp();
-                    showToast("Licenza attivata con successo!", "success");
-                } else {
-                    showToast("Errore di connessione e codice non riconosciuto offline.", "error");
-                }
-            });
-    });
+    showToast("Codice licenza non valido.", "error");
 }
 
 function initConnectionMonitor() {
@@ -355,13 +259,6 @@ function unlockApp() {
 }
 
 window.lockApp = function() {
-    const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
-    
-    if (isLoggedAsAdmin !== 'true') {
-        showToast("Dispositivo con licenza attiva: impossibile uscire.", "error");
-        return;
-    }
-
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     
@@ -373,9 +270,6 @@ window.lockApp = function() {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
-    
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
 };
 
 function lockAppComplete() {
@@ -393,9 +287,6 @@ function lockAppComplete() {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
-    
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
 }
 
 function initApp() {
@@ -425,7 +316,7 @@ window.switchTab = function(tab) {
 };
 
 // ==========================================
-// CLIENT MANAGEMENT
+// REGISTRAZIONE CLIENTE
 // ==========================================
 if (clientForm) {
     clientForm.addEventListener('submit', (e) => {
@@ -445,16 +336,12 @@ if (clientForm) {
         db.ref('clients').child(clientId).set(newClient).catch(() => {});
 
         clientForm.reset();
-        showToast(`Cliente "${name}" registrato!`, "success");
+        showToast(`Cliente "${name}" salvato!`, "success");
         
-        // Seleziona automaticamente il cliente appena creato nel form del capo
+        // Assegna automaticamente al form capo
         selectAssignClient(clientId, name, phone);
         
         renderItems();
-        const managerModal = document.getElementById('clientManagerModal');
-        if (managerModal && !managerModal.classList.contains('hidden')) {
-            renderClientManagerTable();
-        }
     });
 }
 
@@ -468,14 +355,312 @@ function loadClients() {
             clientsData = val;
             localStorage.setItem('laundry_clients', JSON.stringify(val));
         }
-        const managerModal = document.getElementById('clientManagerModal');
-        if (managerModal && !managerModal.classList.contains('hidden')) {
-            renderClientManagerTable();
+        renderItems();
+    });
+}
+
+// ==========================================
+// RICERCA CLIENTE DINAMICA (SEZIONE 2)
+// ==========================================
+function renderAssignClientDropdown(query = "") {
+    if (!assignClientDropdown) return;
+    assignClientDropdown.innerHTML = "";
+
+    const cleanQuery = query.toLowerCase().trim();
+    const clientsList = Object.entries(clientsData);
+
+    if (clientsList.length === 0) {
+        assignClientDropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun cliente in anagrafica.</div>`;
+        assignClientDropdown.classList.remove('hidden');
+        return;
+    }
+
+    let count = 0;
+    const container = document.createElement('div');
+    container.className = "max-h-60 overflow-y-auto divide-y divide-darkBorder/40 bg-darkSurface rounded-xl border border-darkBorder shadow-2xl";
+
+    for (let [id, client] of clientsList) {
+        const name = client.name || "";
+        const phone = client.phone || "";
+        const address = client.address || "";
+        const dob = client.dob || "";
+        
+        const fullText = `${name} ${phone} ${address} ${dob}`.toLowerCase();
+
+        if (cleanQuery && !fullText.includes(cleanQuery)) continue;
+
+        count++;
+        const item = document.createElement('div');
+        item.className = "p-3 hover:bg-blue-600/30 cursor-pointer flex justify-between items-center text-xs transition-colors";
+        item.innerHTML = `
+            <div>
+                <strong class="text-white block font-bold">${name}</strong>
+                <span class="text-slate-400 text-[11px]">${address || 'Nessun indirizzo'} ${dob ? '• ' + dob : ''}</span>
+            </div>
+            <span class="text-blue-400 font-mono font-bold">${phone}</span>
+        `;
+
+        item.onmousedown = (e) => {
+            e.preventDefault();
+            selectAssignClient(id, name, phone);
+        };
+
+        container.appendChild(item);
+    }
+
+    if (count === 0) {
+        assignClientDropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun risultato trovato.</div>`;
+    } else {
+        assignClientDropdown.appendChild(container);
+    }
+
+    assignClientDropdown.classList.remove('hidden');
+}
+
+function selectAssignClient(id, name, phone) {
+    if (assignClientSearch) assignClientSearch.value = `${name} (${phone})`;
+    if (selectedClientIdInput) selectedClientIdInput.value = id;
+    if (assignClientDropdown) assignClientDropdown.classList.add('hidden');
+}
+
+if (assignClientSearch) {
+    assignClientSearch.addEventListener('input', (e) => {
+        if (selectedClientIdInput) selectedClientIdInput.value = "";
+        renderAssignClientDropdown(e.target.value);
+    });
+
+    assignClientSearch.addEventListener('focus', () => {
+        renderAssignClientDropdown(assignClientSearch.value);
+    });
+}
+
+if (assignClientToggleBtn) {
+    assignClientToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (assignClientDropdown && assignClientDropdown.classList.contains('hidden')) {
+            renderAssignClientDropdown(assignClientSearch ? assignClientSearch.value : "");
+            if (assignClientSearch) assignClientSearch.focus();
+        } else if (assignClientDropdown) {
+            assignClientDropdown.classList.add('hidden');
+        }
+    });
+}
+
+document.addEventListener('click', (e) => {
+    if (assignClientSearch && assignClientDropdown && 
+        !assignClientSearch.contains(e.target) && 
+        !assignClientDropdown.contains(e.target) && 
+        assignClientToggleBtn && !assignClientToggleBtn.contains(e.target)) {
+        assignClientDropdown.classList.add('hidden');
+    }
+});
+
+// ==========================================
+// FUNZIONI DI STAMPA RAWBT
+// ==========================================
+function sendToRawBT(text) {
+    try {
+        const intentUrl = "intent:#Intent;scheme=rawbt;package=ru.a404m.rawbtprinter;S.text=" + encodeURIComponent(text) + ";end;";
+        window.location.href = intentUrl;
+    } catch (e) {
+        try {
+            const b64 = btoa(unescape(encodeURIComponent(text)));
+            window.location.href = "rawbt:base64," + b64;
+        } catch(err) {
+            showToast("Errore invio dati alla stampante", "error");
+        }
+    }
+}
+
+// 1. STAMPA ETICHETTA SOLO CLIENTE
+window.printClientOnlyLabel = function() {
+    const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
+    
+    if (!clientId || !clientsData[clientId]) {
+        showToast("Seleziona prima un cliente dalla ricerca!", "error");
+        return;
+    }
+
+    const client = clientsData[clientId];
+
+    let printText = "";
+    printText += "================================\n";
+    printText += "        ETICHETTA CLIENTE        \n";
+    printText += "================================\n";
+    printText += "NOME: " + client.name + "\n";
+    printText += "TEL:  " + client.phone + "\n";
+    if (client.dob) printText += "DATA NASCITA: " + client.dob + "\n";
+    if (client.address) printText += "INDIRIZZO: " + client.address + "\n";
+    printText += "================================\n\n\n\n";
+
+    sendToRawBT(printText);
+    showToast("Etichetta Cliente inviata alla stampante!", "success");
+};
+
+// 2. STAMPA RICEVUTA COMPLETA CAPO
+window.printItemLabel = function() {
+    const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
+    const type = document.getElementById('itemType') ? document.getElementById('itemType').value.trim() : "";
+    const cabinet = document.getElementById('itemCabinet') ? document.getElementById('itemCabinet').value.trim() : "";
+    const position = document.getElementById('itemPosition') ? document.getElementById('itemPosition').value.trim() : "";
+    const price = document.getElementById('itemPrice') ? document.getElementById('itemPrice').value : "0";
+    const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
+
+    if (!clientId || !clientsData[clientId]) {
+        showToast("Seleziona prima un cliente valido", "error");
+        return;
+    }
+    if (!type || !cabinet || !position) {
+        showToast("Inserisci Tipo Capo, Armadio e Posizione", "error");
+        return;
+    }
+
+    const client = clientsData[clientId];
+    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+    let printText = "";
+    printText += "================================\n";
+    printText += "        LAVANDERIA CLEO         \n";
+    printText += "================================\n";
+    printText += "Data: " + dateStr + "\n";
+    printText += "Cliente: " + client.name + "\n";
+    printText += "Tel:     " + client.phone + "\n";
+    printText += "--------------------------------\n";
+    printText += "TIPO CAPO: " + type + "\n";
+    printText += "ARMADIO:   " + cabinet + "\n";
+    printText += "POSIZIONE: " + position + "\n";
+    printText += "PREZZO:    € " + parseFloat(price || 0).toFixed(2) + "\n";
+    if (notes) {
+        printText += "NOTE:      " + notes + "\n";
+    }
+    printText += "================================\n\n\n\n";
+
+    sendToRawBT(printText);
+    showToast("Ricevuta capo inviata alla stampante!", "success");
+};
+
+// ==========================================
+// SALVATAGGIO CAPO
+// ==========================================
+if (itemForm) {
+    itemForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
+        const type = document.getElementById('itemType').value.trim();
+        const cabinet = document.getElementById('itemCabinet').value.trim();
+        const position = document.getElementById('itemPosition').value.trim();
+        const price = parseFloat(document.getElementById('itemPrice').value) || 0;
+        const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
+
+        if (!clientId || !clientsData[clientId]) {
+            showToast("Seleziona prima un cliente valido dalla ricerca", "error");
+            return;
+        }
+
+        const itemId = 'item_' + Date.now();
+        const newItem = { clientId, type, cabinet, position, price, notes, status: "In lavorazione", timestamp: Date.now() };
+
+        itemsData[itemId] = newItem;
+        localStorage.setItem('laundry_items', JSON.stringify(itemsData));
+        db.ref('items').child(itemId).set(newItem).catch(() => {});
+
+        // Stampa automatica scontrino al salvataggio
+        printItemLabel();
+
+        itemForm.reset();
+        if(assignClientSearch) assignClientSearch.value = "";
+        if(selectedClientIdInput) selectedClientIdInput.value = "";
+        showToast(`Capo (${type}) registrato in armadio!`, "success");
+        renderItems();
+    });
+}
+
+// ==========================================
+// RENDER TABELLA ATTIVI & STORICO
+// ==========================================
+function loadItems() {
+    const local = localStorage.getItem('laundry_items');
+    if (local) itemsData = JSON.parse(local);
+
+    db.ref('items').on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+            itemsData = val;
+            localStorage.setItem('laundry_items', JSON.stringify(val));
         }
         renderItems();
     });
 }
 
+if (activeTableFilter) {
+    activeTableFilter.addEventListener('input', () => renderItems());
+}
+
+function renderItems() {
+    if(!itemsTableBody) return;
+    itemsTableBody.innerHTML = "";
+    let count = 0, visibleCount = 0;
+    const filterVal = activeTableFilter ? activeTableFilter.value.toLowerCase().trim() : "";
+    const sorted = Object.entries(itemsData).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
+
+    for (let [id, item] of sorted) {
+        count++;
+        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
+        const rowStr = `${client.name} ${client.phone} ${item.type} ${item.cabinet} ${item.position}`.toLowerCase();
+        if (filterVal && !rowStr.includes(filterVal)) continue;
+
+        visibleCount++;
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-darkCard transition-colors";
+        tr.innerHTML = `
+            <td class="py-4 px-4">
+                <span class="font-semibold text-white cursor-pointer hover:underline" onclick="openClientModal('${item.clientId}')">${client.name}</span>
+                <div class="text-xs text-slate-400">${client.phone}</div>
+            </td>
+            <td class="py-4 px-4">
+                <span class="font-medium text-slate-200">${item.type}</span>
+                ${item.notes ? `<div class="text-[11px] text-amber-300/90 italic mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>${item.notes}</div>` : ''}
+                <div class="text-xs font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</div>
+            </td>
+            <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
+            <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
+            <td class="py-4 px-4 text-right">
+                <button onclick="confirmAndReturn('${id}', '${(item.type || '').replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
+            </td>
+        `;
+        itemsTableBody.appendChild(tr);
+    }
+    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
+    if(noItemsMessage) {
+        noItemsMessage.classList.toggle('hidden', visibleCount > 0);
+        noItemsMessage.classList.toggle('flex', visibleCount === 0);
+    }
+}
+
+window.confirmAndReturn = function(id, typeName) {
+    if (confirm(`Confermi il ritiro del capo "${typeName}"?`)) markAsReturned(id);
+};
+
+window.markAsReturned = function(id) {
+    const item = itemsData[id];
+    if (!item) return;
+    const historyId = 'hist_' + Date.now();
+    const historyItem = { ...item, returnedAt: Date.now() };
+
+    historyData[historyId] = historyItem;
+    localStorage.setItem('laundry_history', JSON.stringify(historyData));
+    delete itemsData[id];
+    localStorage.setItem('laundry_items', JSON.stringify(itemsData));
+
+    db.ref('history').child(historyId).set(historyItem);
+    db.ref('items').child(id).remove();
+    renderItems();
+    showToast("Capo archiviato", "success");
+};
+
+// ==========================================
+// MODALI E SCHEDE
+// ==========================================
 window.openClientManagerModal = function() {
     renderClientManagerTable();
     const m = document.getElementById('clientManagerModal');
@@ -532,310 +717,6 @@ window.deleteClient = function(id, name) {
         renderItems();
     }
 };
-
-// ==========================================
-// RICERCA CLIENTE DROPDOWN (CORRETTA)
-// ==========================================
-function renderAssignClientDropdown(query = "") {
-    if (!assignClientDropdown) return;
-    assignClientDropdown.innerHTML = "";
-
-    const cleanQuery = query.includes('(') ? query.split('(')[0].trim().toLowerCase() : query.trim().toLowerCase();
-    const clientsList = Object.entries(clientsData);
-
-    if (clientsList.length === 0) {
-        assignClientDropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun cliente in anagrafica.</div>`;
-        assignClientDropdown.classList.remove('hidden');
-        return;
-    }
-
-    let count = 0;
-    const container = document.createElement('div');
-    container.className = "max-h-60 overflow-y-auto divide-y divide-darkBorder/40";
-
-    for (let [id, client] of clientsList) {
-        const name = client.name || "";
-        const phone = client.phone || "";
-        const address = client.address || "";
-        const textStr = `${name} ${phone} ${address}`.toLowerCase();
-
-        if (cleanQuery && !textStr.includes(cleanQuery)) continue;
-
-        count++;
-        const item = document.createElement('div');
-        item.className = "p-3 hover:bg-blue-600/30 cursor-pointer flex justify-between items-center text-xs transition-colors";
-        item.innerHTML = `
-            <div>
-                <strong class="text-white block">${name}</strong>
-                <span class="text-slate-400 text-[11px]">${address || 'Nessun indirizzo'}</span>
-            </div>
-            <span class="text-blue-400 font-mono font-bold">${phone}</span>
-        `;
-
-        item.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            selectAssignClient(id, name, phone);
-        };
-
-        container.appendChild(item);
-    }
-
-    if (count === 0) {
-        assignClientDropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun risultato trovato.</div>`;
-    } else {
-        assignClientDropdown.appendChild(container);
-    }
-
-    assignClientDropdown.classList.remove('hidden');
-}
-
-function selectAssignClient(id, name, phone) {
-    if (assignClientSearch) assignClientSearch.value = `${name} (${phone})`;
-    if (selectedClientIdInput) selectedClientIdInput.value = id;
-    if (assignClientDropdown) assignClientDropdown.classList.add('hidden');
-}
-
-if (assignClientSearch) {
-    assignClientSearch.addEventListener('input', (e) => {
-        if (selectedClientIdInput) selectedClientIdInput.value = "";
-        renderAssignClientDropdown(e.target.value);
-    });
-
-    assignClientSearch.addEventListener('focus', () => {
-        renderAssignClientDropdown(assignClientSearch.value);
-    });
-}
-
-if (assignClientToggleBtn) {
-    assignClientToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (assignClientDropdown && assignClientDropdown.classList.contains('hidden')) {
-            renderAssignClientDropdown(assignClientSearch ? assignClientSearch.value : "");
-            if (assignClientSearch) assignClientSearch.focus();
-        } else if (assignClientDropdown) {
-            assignClientDropdown.classList.add('hidden');
-        }
-    });
-}
-
-document.addEventListener('click', (e) => {
-    if (assignClientSearch && assignClientDropdown && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && assignClientToggleBtn && !assignClientToggleBtn.contains(e.target)) {
-        assignClientDropdown.classList.add('hidden');
-    }
-});
-
-// ==========================================
-// AGGIUNTA CAPO E STAMPA RAWBT (RIPRISTINATA COMPLETA)
-// ==========================================
-if (itemForm) {
-    itemForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
-        const type = document.getElementById('itemType').value.trim();
-        const cabinet = document.getElementById('itemCabinet').value.trim();
-        const position = document.getElementById('itemPosition').value.trim();
-        const price = parseFloat(document.getElementById('itemPrice').value) || 0;
-        const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-
-        if (!clientId || !clientsData[clientId]) {
-            showToast("Seleziona prima un cliente valido dalla ricerca", "error");
-            return;
-        }
-
-        const itemId = 'item_' + Date.now();
-        const newItem = { clientId, type, cabinet, position, price, notes, status: "In lavorazione", timestamp: Date.now() };
-
-        itemsData[itemId] = newItem;
-        localStorage.setItem('laundry_items', JSON.stringify(itemsData));
-        db.ref('items').child(itemId).set(newItem).catch(() => {});
-
-        itemForm.reset();
-        if(assignClientSearch) assignClientSearch.value = "";
-        if(selectedClientIdInput) selectedClientIdInput.value = "";
-        showToast(`Capo (${type}) salvato!`, "success");
-        renderItems();
-    });
-}
-
-window.printItemLabel = function() {
-    const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
-    const type = document.getElementById('itemType') ? document.getElementById('itemType').value.trim() : "";
-    const cabinet = document.getElementById('itemCabinet') ? document.getElementById('itemCabinet').value.trim() : "";
-    const position = document.getElementById('itemPosition') ? document.getElementById('itemPosition').value.trim() : "";
-    const price = document.getElementById('itemPrice') ? document.getElementById('itemPrice').value : "0";
-    const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-
-    if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona un cliente prima di stampare", "error");
-        return;
-    }
-    if (!type || !cabinet || !position) {
-        showToast("Compila Capo, Armadio e Posizione", "error");
-        return;
-    }
-
-    const client = clientsData[clientId];
-    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-
-    let printText = "";
-    printText += "================================\n";
-    printText += "        LAVANDERIA CLEO         \n";
-    printText += "================================\n";
-    printText += "Data: " + dateStr + "\n";
-    printText += "Cliente: " + client.name + "\n";
-    printText += "Tel: " + client.phone + "\n";
-    printText += "Capo: " + type + "\n";
-    if (notes) printText += "Note: " + notes + "\n";
-    printText += "--------------------------------\n";
-    printText += "ARMADIO: " + cabinet + " | POS: " + position + "\n";
-    printText += "PREZZO: EUR " + parseFloat(price || 0).toFixed(2) + "\n";
-    printText += "================================\n\n\n\n";
-
-    try {
-        const intentUrl = "intent:#Intent;scheme=rawbt;package=ru.a404m.rawbtprinter;S.text=" + encodeURIComponent(printText) + ";end;";
-        window.location.href = intentUrl;
-        showToast("Stampa inviata a RawBT!", "success");
-    } catch (e) {
-        try {
-            const b64 = btoa(unescape(encodeURIComponent(printText)));
-            window.location.href = "rawbt:base64," + b64;
-        } catch(err) {
-            showToast("Errore invio dati alla stampante", "error");
-        }
-    }
-};
-
-// ==========================================
-// RENDER TABELLE E STORICO
-// ==========================================
-function loadItems() {
-    const local = localStorage.getItem('laundry_items');
-    if (local) itemsData = JSON.parse(local);
-
-    db.ref('items').on('value', (snapshot) => {
-        const val = snapshot.val();
-        if (val) {
-            itemsData = val;
-            localStorage.setItem('laundry_items', JSON.stringify(val));
-        }
-        renderItems();
-    });
-}
-
-if (activeTableFilter) {
-    activeTableFilter.addEventListener('input', () => renderItems());
-}
-
-function renderItems() {
-    if(!itemsTableBody) return;
-    itemsTableBody.innerHTML = "";
-    let count = 0, visibleCount = 0;
-    const filterVal = activeTableFilter ? activeTableFilter.value.toLowerCase().trim() : "";
-    const sorted = Object.entries(itemsData).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
-
-    for (let [id, item] of sorted) {
-        count++;
-        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        const rowStr = `${client.name} ${client.phone} ${item.type} ${item.cabinet} ${item.position}`.toLowerCase();
-        if (filterVal && !rowStr.includes(filterVal)) continue;
-
-        visibleCount++;
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard";
-        tr.innerHTML = `
-            <td class="py-4 px-4">
-                <span class="font-semibold text-white cursor-pointer hover:underline" onclick="openClientModal('${item.clientId}')">${client.name}</span>
-                <div class="text-xs text-slate-400">${client.phone}</div>
-            </td>
-            <td class="py-4 px-4">
-                <span class="font-medium text-slate-200">${item.type}</span>
-                ${item.notes ? `<div class="text-[11px] text-amber-300/90 italic mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>${item.notes}</div>` : ''}
-                <div class="text-xs font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</div>
-            </td>
-            <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
-            <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
-            <td class="py-4 px-4 text-right">
-                <button onclick="confirmAndReturn('${id}', '${(item.type || '').replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
-            </td>
-        `;
-        itemsTableBody.appendChild(tr);
-    }
-    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
-    if(noItemsMessage) {
-        noItemsMessage.classList.toggle('hidden', visibleCount > 0);
-        noItemsMessage.classList.toggle('flex', visibleCount === 0);
-    }
-}
-
-window.confirmAndReturn = function(id, typeName) {
-    if (confirm(`Confermi il ritiro del capo "${typeName}"?`)) markAsReturned(id);
-};
-
-window.markAsReturned = function(id) {
-    const item = itemsData[id];
-    if (!item) return;
-    const historyId = 'hist_' + Date.now();
-    const historyItem = { ...item, returnedAt: Date.now() };
-
-    historyData[historyId] = historyItem;
-    localStorage.setItem('laundry_history', JSON.stringify(historyData));
-    delete itemsData[id];
-    localStorage.setItem('laundry_items', JSON.stringify(itemsData));
-
-    db.ref('history').child(historyId).set(historyItem);
-    db.ref('items').child(id).remove();
-    renderItems();
-    showToast("Capo archiviato", "success");
-};
-
-if (globalSearch) {
-    globalSearch.addEventListener('input', (e) => {
-        const val = e.target.value.toLowerCase().trim();
-        if(!globalSearchDropdown || !searchClearBtn) return;
-        globalSearchDropdown.innerHTML = "";
-        searchClearBtn.classList.toggle('hidden', !val);
-
-        if (!val) {
-            globalSearchDropdown.classList.add('hidden');
-            return;
-        }
-
-        let resultsFound = 0;
-        for (let [clientId, client] of Object.entries(clientsData)) {
-            let clientActiveItems = [];
-            for (let [itemId, item] of Object.entries(itemsData)) {
-                if (item.clientId === clientId) clientActiveItems.push(item);
-            }
-
-            const matchClient = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase().includes(val);
-            const matchItem = clientActiveItems.some(i => i.type.toLowerCase().includes(val) || i.cabinet.toLowerCase().includes(val));
-
-            if (matchClient || matchItem) {
-                resultsFound++;
-                const div = document.createElement('div');
-                div.className = "p-4 hover:bg-darkCard cursor-default";
-                let itemsHtml = clientActiveItems.length > 0 ? `<div class="mt-2.5 space-y-1.5 border-t border-darkBorder pt-2">` : `<div class="mt-2 text-xs text-slate-400 italic">Nessun capo attivo.</div>`;
-                clientActiveItems.forEach(item => {
-                    itemsHtml += `<div class="flex items-center justify-between text-xs bg-darkBg p-2 rounded-lg border border-darkBorder"><div><span class="font-bold text-white">${item.type}</span> <span class="text-slate-400 ml-1">&bull; Armadio: <strong class="text-blue-400">${item.cabinet}</strong></span></div><span class="font-bold text-emerald-400">€ ${item.price.toFixed(2)}</span></div>`;
-                });
-                if(clientActiveItems.length > 0) itemsHtml += `</div>`;
-
-                div.innerHTML = `<div class="flex justify-between items-start"><div><div class="font-bold text-white text-sm">${client.name}</div><div class="text-xs text-slate-400 mt-0.5">Tel: ${client.phone}</div></div><button type="button" onclick="openClientModal('${clientId}'); globalSearchDropdown.classList.add('hidden'); globalSearch.value='';" class="text-xs bg-blue-950 hover:bg-blue-900 text-blue-400 px-3 py-1.5 rounded-lg font-semibold cursor-pointer">Scheda</button></div>${itemsHtml}`;
-                globalSearchDropdown.appendChild(div);
-            }
-        }
-        globalSearchDropdown.classList.toggle('hidden', resultsFound === 0);
-    });
-}
-
-if (searchClearBtn) {
-    searchClearBtn.addEventListener('click', () => {
-        if(globalSearch) globalSearch.value = "";
-        if(globalSearchDropdown) globalSearchDropdown.classList.add('hidden');
-        searchClearBtn.classList.add('hidden');
-    });
-}
 
 window.openClientModal = function(clientId) {
     const client = clientsData[clientId];
@@ -898,38 +779,6 @@ function loadHistory() {
     });
 }
 
-window.setStatPeriod = function(period) {
-    currentStatPeriod = period;
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-
-    ['Day', 'Month', 'Year', 'All'].forEach(p => {
-        const btn = document.getElementById(`btnPeriod${p}`);
-        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
-    });
-    
-    const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
-    if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95";
-
-    renderHistory();
-};
-
-window.clearCustomDateFilter = function() {
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-    renderHistory();
-};
-
-window.resetAllStatistics = function() {
-    if (confirm("Vuoi azzerare tutte le statistiche?")) {
-        historyData = {};
-        localStorage.removeItem('laundry_history');
-        db.ref('history').remove();
-        showToast("Statistiche azzerate", "success");
-        renderHistory();
-    }
-};
-
 function renderHistory() {
     const historyTableBody = document.getElementById('historyTableBody');
     if(!historyTableBody) return;
@@ -937,29 +786,10 @@ function renderHistory() {
     let count = 0, totalRevenue = 0;
     let uniqueClients = new Set(), typeCounts = {};
 
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentMonth = now.getMonth(), currentYear = now.getFullYear();
-
-    const customStartEl = document.getElementById('statsCustomStartDate');
-    const customEndEl = document.getElementById('statsCustomEndDate');
-    let customStart = customStartEl && customStartEl.value ? new Date(customStartEl.value + "T00:00:00") : null;
-    let customEnd = customEndEl && customEndEl.value ? new Date(customEndEl.value + "T23:59:59") : null;
-
     const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sorted) {
         const retDate = new Date(item.returnedAt || Date.now());
-        const retDateStr = retDate.toISOString().split('T')[0];
-
-        if (customStart || customEnd) {
-            if (customStart && retDate < customStart) continue;
-            if (customEnd && retDate > customEnd) continue;
-        } else {
-            if (currentStatPeriod === 'day' && retDateStr !== todayStr) continue;
-            if (currentStatPeriod === 'month' && (retDate.getMonth() !== currentMonth || retDate.getFullYear() !== currentYear)) continue;
-            if (currentStatPeriod === 'year' && retDate.getFullYear() !== currentYear) continue;
-        }
 
         count++;
         totalRevenue += (item.price || 0);
@@ -985,49 +815,6 @@ function renderHistory() {
     }
     document.getElementById('statTopItemType').textContent = topType;
 }
-
-window.exportBackup = function() {
-    const generationDate = new Date().toLocaleDateString('it-IT');
-    const startDateInput = document.getElementById('statsCustomStartDate');
-    const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDate) endDate.setHours(23, 59, 59, 999);
-
-    let totalItemsCount = 0, grandTotalRevenue = 0, filteredHistory = [];
-    const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sortedHistory) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        if (startDate && retDate < startDate) continue;
-        if (endDate && retDate > endDate) continue;
-
-        filteredHistory.push({ id, item, retDate });
-        totalItemsCount++;
-        grandTotalRevenue += (item.price || 0);
-    }
-
-    let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
-    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
-    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
-    
-    for (let entry of filteredHistory) {
-        const item = entry.item;
-        const retDateStr = entry.retDate.toLocaleDateString('it-IT');
-        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
-    }
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Report esportato!", "success");
-};
 
 function showToast(message, type = "success") {
     const toast = document.getElementById('toastNotification');
