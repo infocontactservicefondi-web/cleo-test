@@ -163,7 +163,6 @@ window.closeExpiredModalAndRelogin = function() {
     lockAppComplete();
 };
 
-// ACCESSO AMMINISTRATORE (Tramite Lucchetto / Password) -> Permette di rientrare
 function checkAdminPassword() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredPassword = "";
@@ -181,7 +180,7 @@ function checkAdminPassword() {
 
     if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'true'); // Segna che è entrato come admin
+        sessionStorage.setItem('laundry_logged_as_admin', 'true');
         unlockApp();
         showToast("Accesso amministratore eseguito", "success");
     } else {
@@ -193,7 +192,6 @@ function checkAdminPassword() {
     }
 }
 
-// INSERIMENTO CODICE LICENZA (Una tantum) -> Blocca definitivamente il ritorno indietro
 function checkNumericLicense() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredCode = "";
@@ -212,7 +210,7 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Non è admin, è licenza standard blindata
+        sessionStorage.setItem('laundry_logged_as_admin', 'false');
         hasShownTodayWarning = false;
         unlockApp();
         startLicenseCountdownMonitor();
@@ -271,7 +269,7 @@ function checkNumericLicense() {
                     localStorage.setItem('laundry_code_already_redeemed', enteredCode);
                     localStorage.setItem('laundry_license_expiry', expirationTimestamp);
                     sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Bloccato: niente ritorno indietro per gli operatori
+                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
                     hasShownTodayWarning = false;
                     
                     unlockApp();
