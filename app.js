@@ -1,6 +1,4 @@
-// ==========================================
-// CONFIGURAZIONE FIREBASE & VARIABILI
-// ==========================================
+// CONFIGURAZIONE FIREBASE
 const firebaseConfig = {
     apiKey: "AIzaSyD-tuo-firebase-api-key-da-completare",
     authDomain: "lavanderia-d9c29.firebaseapp.com",
@@ -24,9 +22,6 @@ let clientsData = {};
 let itemsData = {};
 let historyData = {};
 
-// ==========================================
-// INIZIALIZZAZIONE
-// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     initLicenseSystem();
     initTheme();
@@ -54,12 +49,11 @@ function initConnectionMonitor() {
     });
 }
 
-// ==========================================
-// RICERCA CLIENTE DROPDOWN DINAMICA
-// ==========================================
+// ------------------------------------------
+// CORREZIONE 1: RICERCA CLIENTE IN TEMPO REALE
+// ------------------------------------------
 function initAssignClientEvents() {
     const input = document.getElementById('assignClientSearch');
-    const toggleBtn = document.getElementById('assignClientToggleBtn');
     const dropdown = document.getElementById('assignClientDropdown');
 
     if (input) {
@@ -70,18 +64,6 @@ function initAssignClientEvents() {
 
         input.addEventListener('focus', () => {
             renderAssignClientDropdown(input.value);
-        });
-    }
-
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (dropdown && dropdown.classList.contains('hidden')) {
-                renderAssignClientDropdown(input ? input.value : "");
-                if (input) input.focus();
-            } else if (dropdown) {
-                dropdown.classList.add('hidden');
-            }
         });
     }
 
@@ -101,7 +83,7 @@ function renderAssignClientDropdown(query = "") {
     const clientsList = Object.entries(clientsData);
 
     if (clientsList.length === 0) {
-        dropdown.innerHTML = `<div class="p-3 bg-darkSurface border border-darkBorder rounded-xl text-xs text-slate-400 italic">Nessun cliente salvato in anagrafica.</div>`;
+        dropdown.innerHTML = `<div class="p-3 bg-darkSurface border border-darkBorder rounded-xl text-xs text-slate-400 italic">Nessun cliente in anagrafica.</div>`;
         dropdown.classList.remove('hidden');
         return;
     }
@@ -113,9 +95,7 @@ function renderAssignClientDropdown(query = "") {
     for (let [id, client] of clientsList) {
         const name = client.name || "";
         const phone = client.phone || "";
-        const address = client.address || "";
-        const dob = client.dob || "";
-        const fullText = `${name} ${phone} ${address} ${dob}`.toLowerCase();
+        const fullText = `${name} ${phone}`.toLowerCase();
 
         if (cleanQuery && !fullText.includes(cleanQuery)) continue;
 
@@ -125,7 +105,7 @@ function renderAssignClientDropdown(query = "") {
         item.innerHTML = `
             <div>
                 <strong class="text-white block font-bold">${name}</strong>
-                <span class="text-slate-400 text-[11px]">${address || 'Nessun indirizzo'} ${dob ? '• ' + dob : ''}</span>
+                <span class="text-slate-400 text-[11px]">${client.address || ''} ${client.dob ? '• ' + client.dob : ''}</span>
             </div>
             <span class="text-blue-400 font-mono font-bold">${phone}</span>
         `;
@@ -139,7 +119,7 @@ function renderAssignClientDropdown(query = "") {
     }
 
     if (count === 0) {
-        dropdown.innerHTML = `<div class="p-3 bg-darkSurface border border-darkBorder rounded-xl text-xs text-slate-400 italic">Nessun cliente corrisponde alla ricerca.</div>`;
+        dropdown.innerHTML = `<div class="p-3 bg-darkSurface border border-darkBorder rounded-xl text-xs text-slate-400 italic">Nessun cliente trovato.</div>`;
     } else {
         dropdown.appendChild(container);
     }
@@ -157,9 +137,9 @@ function selectAssignClient(id, name, phone) {
     if (dropdown) dropdown.classList.add('hidden');
 }
 
-// ==========================================
-// FUNZIONI STAMPA RAWBT
-// ==========================================
+// ------------------------------------------
+// CORREZIONE 2: INVIO E STAMPA RAWBT
+// ------------------------------------------
 function sendToRawBT(text) {
     try {
         const intentUrl = "intent:#Intent;scheme=rawbt;package=ru.a404m.rawbtprinter;S.text=" + encodeURIComponent(text) + ";end;";
@@ -169,17 +149,16 @@ function sendToRawBT(text) {
             const b64 = btoa(unescape(encodeURIComponent(text)));
             window.location.href = "rawbt:base64," + b64;
         } catch(err) {
-            showToast("Errore di comunicazione con RawBT", "error");
+            showToast("Errore di avvio RawBT", "error");
         }
     }
 }
 
-// 1. STAMPA SOLO ANAGRAFICA CLIENTE
 window.printClientOnlyLabel = function() {
     const clientId = document.getElementById('selectedClientIdInput') ? document.getElementById('selectedClientIdInput').value : "";
 
     if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente dalla ricerca!", "error");
+        showToast("Seleziona prima un cliente!", "error");
         return;
     }
 
@@ -196,10 +175,9 @@ window.printClientOnlyLabel = function() {
     printText += "================================\n\n\n\n";
 
     sendToRawBT(printText);
-    showToast("Etichetta Cliente inviata alla stampante", "success");
+    showToast("Etichetta Cliente inviata!", "success");
 };
 
-// 2. STAMPA COMPLETA CAPO IN ARMADIO
 window.printItemLabel = function() {
     const clientId = document.getElementById('selectedClientIdInput') ? document.getElementById('selectedClientIdInput').value : "";
     const type = document.getElementById('itemType') ? document.getElementById('itemType').value.trim() : "";
@@ -209,11 +187,11 @@ window.printItemLabel = function() {
     const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
 
     if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente valido", "error");
+        showToast("Seleziona un cliente prima di stampare!", "error");
         return;
     }
     if (!type || !cabinet || !position) {
-        showToast("Inserisci Tipo Capo, Armadio e Posizione", "error");
+        showToast("Compila Tipo Capo, Armadio e Posizione", "error");
         return;
     }
 
@@ -232,18 +210,14 @@ window.printItemLabel = function() {
     printText += "ARMADIO:   " + cabinet + "\n";
     printText += "POSIZIONE: " + position + "\n";
     printText += "PREZZO:    € " + parseFloat(price || 0).toFixed(2) + "\n";
-    if (notes) {
-        printText += "NOTE:      " + notes + "\n";
-    }
+    if (notes) printText += "NOTE:      " + notes + "\n";
     printText += "================================\n\n\n\n";
 
     sendToRawBT(printText);
-    showToast("Ricevuta Capo inviata alla stampante!", "success");
+    showToast("Ricevuta Capo inviata a RawBT!", "success");
 };
 
-// ==========================================
-// SALVATAGGIO DATI
-// ==========================================
+// GESTIONE NUOVI DATI
 window.saveNewClient = function() {
     const name = document.getElementById('clientName').value.trim();
     const phone = document.getElementById('clientPhone').value.trim();
@@ -278,7 +252,7 @@ window.saveNewItem = function() {
     const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
 
     if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente valido dalla ricerca", "error");
+        showToast("Seleziona prima un cliente valido", "error");
         return;
     }
 
@@ -303,9 +277,7 @@ window.saveNewItem = function() {
     renderItems();
 };
 
-// ==========================================
-// RENDER TABELLE E CARICAMENTO
-// ==========================================
+// LETTURA DATI
 function loadClients() {
     const local = localStorage.getItem('laundry_clients');
     if (local) clientsData = JSON.parse(local);
@@ -459,9 +431,6 @@ function renderHistory() {
     if (document.getElementById('statTopItemType')) document.getElementById('statTopItemType').textContent = topType;
 }
 
-// ==========================================
-// MODALI E NAVIGAZIONE
-// ==========================================
 window.switchTab = function(tab) {
     const viewActive = document.getElementById('viewActive');
     const viewStats = document.getElementById('viewStats');
@@ -580,9 +549,6 @@ window.closeClientModal = function() {
     document.getElementById('clientModal').classList.add('hidden');
 };
 
-// ==========================================
-// AUTHENTICATION SYSTEM
-// ==========================================
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
     const licenseExpiry = localStorage.getItem('laundry_license_expiry');
