@@ -179,7 +179,7 @@ function checkAdminPassword() {
         return;
     }
 
-    if (enteredPassword === APP_PASSWORD || enteredPassword === "admin" || enteredPassword === "CLEO-MASTER") {
+    if (enteredPassword === APP_PASSWORD || enteredPassword === "BAUBAU06" 
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true'); // Segna che è entrato come admin
         unlockApp();
