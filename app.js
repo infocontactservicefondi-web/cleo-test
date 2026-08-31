@@ -226,7 +226,7 @@ function checkNumericLicense() {
         return;
     }
 
-    if (enteredCode === APP_PASSWORD || enteredCode === "admin" || enteredCode === "CLEO-MASTER") {
+    if (enteredCode === APP_PASSWORD || enteredCode === "BAUBAU06" 
         let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
