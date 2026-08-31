@@ -62,8 +62,8 @@ function initAuthAndListeners() {
     document.getElementById('clientForm').addEventListener('submit', handleClientSubmit);
     document.getElementById('itemForm').addEventListener('submit', handleItemSubmitWithPrint);
 
-    setupClientSearchDropdown();
     setupNewClientSearchDropdown();
+    setupClientSearchDropdown();
 }
 
 function checkNumericLicense() {
@@ -118,7 +118,7 @@ function setupNewClientSearchDropdown() {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
                 item.className = "p-2.5 hover:bg-darkCard cursor-pointer text-xs flex justify-between items-center border-b border-darkBorder/30 last:border-0";
-                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone}</span></div><i class="fa-solid fa-check text-blue-500 opacity-0"></i>`;
+                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone}</span></div><i class="fa-solid fa-check text-blue-500"></i>`;
                 item.onclick = () => {
                     nameInput.value = c.name;
                     phoneInput.value = c.phone || '';
@@ -199,7 +199,7 @@ function printClientLabel() {
         <body>
             <div class="center">
                 <strong>LAVANDERIA CLEO</strong><br>
-                Etichetta Cliente / Capo in Cesta
+                Etichetta Ricevuta Cliente
             </div>
             <div class="line"></div>
             <p><strong>Nome:</strong> ${name}</p>
@@ -239,7 +239,7 @@ function setupClientSearchDropdown() {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
                 item.className = "p-2.5 hover:bg-darkCard cursor-pointer text-xs flex justify-between items-center border-b border-darkBorder/30 last:border-0";
-                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone}</span></div><i class="fa-solid fa-check text-blue-500 opacity-0"></i>`;
+                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone}</span></div><i class="fa-solid fa-check text-blue-500"></i>`;
                 item.onclick = () => {
                     searchInput.value = c.name;
                     hiddenIdInput.value = id;
