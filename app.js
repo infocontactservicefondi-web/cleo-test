@@ -163,7 +163,6 @@ window.closeExpiredModalAndRelogin = function() {
     lockAppComplete();
 };
 
-// ACCESSO AMMINISTRATORE (Tramite Lucchetto / Password) -> Permette di rientrare
 function checkAdminPassword() {
     let enteredPassword = "";
 
@@ -178,7 +177,7 @@ function checkAdminPassword() {
 
     if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'true'); // Segna che è entrato come admin
+        sessionStorage.setItem('laundry_logged_as_admin', 'true');
         unlockApp();
         showToast("Accesso amministratore eseguito", "success");
     } else {
@@ -190,8 +189,7 @@ function checkAdminPassword() {
     }
 }
 
-// INSERIMENTO CODICE LICENZA (Una tantum) -> Blocca definitivamente il ritorno indietro
-function checkNumericLicense() {
+window.checkNumericLicense = function() {
     const inputField = document.getElementById('licensePhoneInput');
     let enteredCode = inputField ? inputField.value.trim() : "";
 
@@ -205,7 +203,7 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Non è admin, è licenza standard blindata
+        sessionStorage.setItem('laundry_logged_as_admin', 'false');
         hasShownTodayWarning = false;
         unlockApp();
         startLicenseCountdownMonitor();
@@ -264,7 +262,7 @@ function checkNumericLicense() {
                     localStorage.setItem('laundry_code_already_redeemed', enteredCode);
                     localStorage.setItem('laundry_license_expiry', expirationTimestamp);
                     sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Bloccato: niente ritorno indietro per gli operatori
+                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
                     hasShownTodayWarning = false;
                     
                     unlockApp();
@@ -292,7 +290,7 @@ function checkNumericLicense() {
                 }
             });
     });
-}
+};
 
 function initConnectionMonitor() {
     const statusDot = document.getElementById('statusDot');
@@ -655,6 +653,52 @@ window.printItemLabel = function() {
         showToast("Ricevute inviate in stampa!", "success");
     } catch (err) {
         showToast("Errore di stampa.", "error");
+    }
+};
+
+// Funzione per stampare l'etichetta adesiva da attaccare alla cesta/capo
+window.printBasketLabel = function() {
+    const clientId = selectedClientIdInput.value;
+    const type = document.getElementById('itemType').value.trim();
+    const cabinet = document.getElementById('itemCabinet').value.trim();
+    const position = document.getElementById('itemPosition').value.trim();
+    const price = document.getElementById('itemPrice').value;
+
+    if (!clientId || !clientsData[clientId]) {
+        showToast("Seleziona prima un cliente", "error");
+        return;
+    }
+    if (!type || !cabinet || !position) {
+        showToast("Compila tipo capo, armadio e posizione", "error");
+        return;
+    }
+
+    const client = clientsData[clientId];
+    const dateStr = new Date().toLocaleDateString('it-IT');
+
+    let labelText = "";
+    labelText += "\x1B\x40"; 
+    labelText += "\x1B\x61\x01"; 
+    labelText += "\x1B\x21\x10LAVANDERIA CLEO\n";
+    labelText += "\x1B\x21\x00--------------------------------\n";
+    labelText += "\x1B\x21\x08CLIENTE:\n";
+    labelText += "\x1B\x21\x20" + client.name + "\n";
+    labelText += "\x1B\x21\x00Tel: " + client.phone + "\n";
+    labelText += "--------------------------------\n";
+    labelText += "\x1B\x21\x08CAPO:\n";
+    labelText += "\x1B\x21\x10" + type + "\n";
+    labelText += "--------------------------------\n";
+    labelText += "\x1B\x21\x30ARM: " + cabinet + " | POS: " + position + "\n";
+    labelText += "\x1B\x21\x00--------------------------------\n";
+    labelText += "Data: " + dateStr + " - Tot: EUR " + parseFloat(price || 0).toFixed(2) + "\n";
+    labelText += "\n\n\x1D\x56\x41\x03"; 
+
+    try {
+        const base64Data = btoa(unescape(encodeURIComponent(labelText)));
+        window.location.href = `rawbt:base64,${base64Data}`;
+        showToast("Etichetta cesta inviata in stampa!", "success");
+    } catch (err) {
+        showToast("Errore durante la stampa dell'etichetta.", "error");
     }
 };
 
