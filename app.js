@@ -432,8 +432,8 @@ if (clientForm) {
         e.preventDefault();
         const name = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
-        const dob = document.getElementById('clientDob').value.trim();
-        const address = document.getElementById('clientAddress').value.trim();
+        const dob = document.getElementById('clientDob') ? document.getElementById('clientDob').value.trim() : "";
+        const address = document.getElementById('clientAddress') ? document.getElementById('clientAddress').value.trim() : "";
 
         if (!name || !phone) return;
 
@@ -446,6 +446,10 @@ if (clientForm) {
 
         clientForm.reset();
         showToast(`Cliente "${name}" registrato!`, "success");
+        
+        // Seleziona automaticamente il cliente appena creato nel form del capo
+        selectAssignClient(clientId, name, phone);
+        
         renderItems();
         const managerModal = document.getElementById('clientManagerModal');
         if (managerModal && !managerModal.classList.contains('hidden')) {
@@ -530,7 +534,7 @@ window.deleteClient = function(id, name) {
 };
 
 // ==========================================
-// RICERCA CLIENTE DROPDOWN (RIPRISTINATA)
+// RICERCA CLIENTE DROPDOWN (CORRETTA)
 // ==========================================
 function renderAssignClientDropdown(query = "") {
     if (!assignClientDropdown) return;
@@ -568,10 +572,11 @@ function renderAssignClientDropdown(query = "") {
             <span class="text-blue-400 font-mono font-bold">${phone}</span>
         `;
 
-        item.addEventListener('mousedown', (e) => {
+        item.onclick = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             selectAssignClient(id, name, phone);
-        });
+        };
 
         container.appendChild(item);
     }
@@ -600,12 +605,6 @@ if (assignClientSearch) {
     assignClientSearch.addEventListener('focus', () => {
         renderAssignClientDropdown(assignClientSearch.value);
     });
-
-    assignClientSearch.addEventListener('blur', () => {
-        setTimeout(() => {
-            if (assignClientDropdown) assignClientDropdown.classList.add('hidden');
-        }, 200);
-    });
 }
 
 if (assignClientToggleBtn) {
@@ -620,8 +619,14 @@ if (assignClientToggleBtn) {
     });
 }
 
+document.addEventListener('click', (e) => {
+    if (assignClientSearch && assignClientDropdown && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && assignClientToggleBtn && !assignClientToggleBtn.contains(e.target)) {
+        assignClientDropdown.classList.add('hidden');
+    }
+});
+
 // ==========================================
-// AGGIUNTA CAPO E STAMPA RAWBT (RIPRISTINATA)
+// AGGIUNTA CAPO E STAMPA RAWBT (RIPRISTINATA COMPLETA)
 // ==========================================
 if (itemForm) {
     itemForm.addEventListener('submit', (e) => {
@@ -634,7 +639,7 @@ if (itemForm) {
         const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
 
         if (!clientId || !clientsData[clientId]) {
-            showToast("Seleziona prima un cliente dalla ricerca", "error");
+            showToast("Seleziona prima un cliente valido dalla ricerca", "error");
             return;
         }
 
@@ -673,38 +678,31 @@ window.printItemLabel = function() {
     const client = clientsData[clientId];
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-    const createTicket = (tipoCopia) => {
-        let text = "";
-        text += "\x1B\x40";               // Reset
-        text += "\x1B\x61\x01";           // Centra
-        text += "\x1B\x21\x20LAVANDERIA CLEO\n";
-        text += "--- COPIA " + tipoCopia + " ---\n";
-        text += dateStr + "\n";
-        text += "--------------------------------\n";
-        text += "\x1B\x61\x00";           // Sinistra
-        text += "CLIENTE: " + client.name + "\n";
-        text += "TEL:     " + client.phone + "\n";
-        text += "CAPO:    " + type + "\n";
-        if (notes) text += "NOTE:    " + notes + "\n";
-        text += "--------------------------------\n";
-        text += "\x1B\x61\x01";           // Centra
-        text += "\x1B\x21\x30ARM: " + cabinet + " | POS: " + position + "\n";
-        text += "\x1B\x21\x00--------------------------------\n";
-        text += "\x1B\x61\x02";           // Destra
-        text += "PREZZO: EUR " + parseFloat(price || 0).toFixed(2) + "\n\n\n";
-        text += "\x1D\x56\x41";          // Taglio
-        return text;
-    };
-
-    const printableText = createTicket("ATTIVITA") + createTicket("CLIENTE");
+    let printText = "";
+    printText += "================================\n";
+    printText += "        LAVANDERIA CLEO         \n";
+    printText += "================================\n";
+    printText += "Data: " + dateStr + "\n";
+    printText += "Cliente: " + client.name + "\n";
+    printText += "Tel: " + client.phone + "\n";
+    printText += "Capo: " + type + "\n";
+    if (notes) printText += "Note: " + notes + "\n";
+    printText += "--------------------------------\n";
+    printText += "ARMADIO: " + cabinet + " | POS: " + position + "\n";
+    printText += "PREZZO: EUR " + parseFloat(price || 0).toFixed(2) + "\n";
+    printText += "================================\n\n\n\n";
 
     try {
-        // Encoders nativi standard RawBT
-        const b64 = btoa(unescape(encodeURIComponent(printableText)));
-        window.location.href = "rawbt:base64," + b64;
-        showToast("Stampa inviata!", "success");
+        const intentUrl = "intent:#Intent;scheme=rawbt;package=ru.a404m.rawbtprinter;S.text=" + encodeURIComponent(printText) + ";end;";
+        window.location.href = intentUrl;
+        showToast("Stampa inviata a RawBT!", "success");
     } catch (e) {
-        showToast("Errore durante l'invio alla stampante", "error");
+        try {
+            const b64 = btoa(unescape(encodeURIComponent(printText)));
+            window.location.href = "rawbt:base64," + b64;
+        } catch(err) {
+            showToast("Errore invio dati alla stampante", "error");
+        }
     }
 };
 
@@ -838,10 +836,6 @@ if (searchClearBtn) {
         searchClearBtn.classList.add('hidden');
     });
 }
-
-document.addEventListener('click', (e) => {
-    if (globalSearch && globalSearchDropdown && !globalSearch.contains(e.target) && !globalSearchDropdown.contains(e.target)) globalSearchDropdown.classList.add('hidden');
-});
 
 window.openClientModal = function(clientId) {
     const client = clientsData[clientId];
