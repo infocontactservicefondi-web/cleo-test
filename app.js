@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (LOCKED LICENSE & ADMIN TOGGLE)
+// LAVANDERIA CLEO - APP LOGIC
 // ==========================================
 
 const firebaseConfig = {
@@ -424,6 +424,9 @@ window.switchTab = function(tab) {
     }
 };
 
+// ==========================================
+// CLIENT MANAGEMENT
+// ==========================================
 if (clientForm) {
     clientForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -527,27 +530,22 @@ window.deleteClient = function(id, name) {
 };
 
 // ==========================================
-// DROPDOWN RICERCA CLIENTE INSERIMENTO CAPO
+// RICERCA CLIENTE DROPDOWN (RIPRISTINATA)
 // ==========================================
 function renderAssignClientDropdown(query = "") {
-    const dropdown = document.getElementById('assignClientDropdown');
-    const hiddenInput = document.getElementById('selectedClientIdInput');
-    if (!dropdown) return;
+    if (!assignClientDropdown) return;
+    assignClientDropdown.innerHTML = "";
 
-    dropdown.innerHTML = "";
-
-    let cleanQuery = query.includes('(') ? query.split('(')[0].trim() : query.trim();
-    const filter = cleanQuery.toLowerCase();
-
+    const cleanQuery = query.includes('(') ? query.split('(')[0].trim().toLowerCase() : query.trim().toLowerCase();
     const clientsList = Object.entries(clientsData);
 
     if (clientsList.length === 0) {
-        dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun cliente in anagrafica.</div>`;
-        dropdown.classList.remove('hidden');
+        assignClientDropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun cliente in anagrafica.</div>`;
+        assignClientDropdown.classList.remove('hidden');
         return;
     }
 
-    let matches = 0;
+    let count = 0;
     const container = document.createElement('div');
     container.className = "max-h-60 overflow-y-auto divide-y divide-darkBorder/40";
 
@@ -555,11 +553,11 @@ function renderAssignClientDropdown(query = "") {
         const name = client.name || "";
         const phone = client.phone || "";
         const address = client.address || "";
-        const textToSearch = `${name} ${phone} ${address}`.toLowerCase();
+        const textStr = `${name} ${phone} ${address}`.toLowerCase();
 
-        if (filter && !textToSearch.includes(filter)) continue;
+        if (cleanQuery && !textStr.includes(cleanQuery)) continue;
 
-        matches++;
+        count++;
         const item = document.createElement('div');
         item.className = "p-3 hover:bg-blue-600/30 cursor-pointer flex justify-between items-center text-xs transition-colors";
         item.innerHTML = `
@@ -572,21 +570,25 @@ function renderAssignClientDropdown(query = "") {
 
         item.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            if (assignClientSearch) assignClientSearch.value = `${name} (${phone})`;
-            if (hiddenInput) hiddenInput.value = id;
-            dropdown.classList.add('hidden');
+            selectAssignClient(id, name, phone);
         });
 
         container.appendChild(item);
     }
 
-    if (matches === 0) {
-        dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun risultato per "${cleanQuery}".</div>`;
+    if (count === 0) {
+        assignClientDropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun risultato trovato.</div>`;
     } else {
-        dropdown.appendChild(container);
+        assignClientDropdown.appendChild(container);
     }
 
-    dropdown.classList.remove('hidden');
+    assignClientDropdown.classList.remove('hidden');
+}
+
+function selectAssignClient(id, name, phone) {
+    if (assignClientSearch) assignClientSearch.value = `${name} (${phone})`;
+    if (selectedClientIdInput) selectedClientIdInput.value = id;
+    if (assignClientDropdown) assignClientDropdown.classList.add('hidden');
 }
 
 if (assignClientSearch) {
@@ -609,15 +611,18 @@ if (assignClientSearch) {
 if (assignClientToggleBtn) {
     assignClientToggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (assignClientDropdown.classList.contains('hidden')) {
-            renderAssignClientDropdown("");
+        if (assignClientDropdown && assignClientDropdown.classList.contains('hidden')) {
+            renderAssignClientDropdown(assignClientSearch ? assignClientSearch.value : "");
             if (assignClientSearch) assignClientSearch.focus();
-        } else {
+        } else if (assignClientDropdown) {
             assignClientDropdown.classList.add('hidden');
         }
     });
 }
 
+// ==========================================
+// AGGIUNTA CAPO E STAMPA RAWBT (RIPRISTINATA)
+// ==========================================
 if (itemForm) {
     itemForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -627,15 +632,14 @@ if (itemForm) {
         const position = document.getElementById('itemPosition').value.trim();
         const price = parseFloat(document.getElementById('itemPrice').value) || 0;
         const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-        const status = "In lavorazione";
 
         if (!clientId || !clientsData[clientId]) {
-            showToast("Seleziona un cliente valido dall'elenco", "error");
+            showToast("Seleziona prima un cliente dalla ricerca", "error");
             return;
         }
 
         const itemId = 'item_' + Date.now();
-        const newItem = { clientId, type, cabinet, position, price, notes, status, timestamp: Date.now() };
+        const newItem = { clientId, type, cabinet, position, price, notes, status: "In lavorazione", timestamp: Date.now() };
 
         itemsData[itemId] = newItem;
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
@@ -644,18 +648,13 @@ if (itemForm) {
         itemForm.reset();
         if(assignClientSearch) assignClientSearch.value = "";
         if(selectedClientIdInput) selectedClientIdInput.value = "";
-        showToast(`Capo (${type}) registrato in armadio ${cabinet}`, "success");
+        showToast(`Capo (${type}) salvato!`, "success");
         renderItems();
     });
 }
 
-// ==========================================
-// GESTIONE STAMPA TERMICA RAWBT
-// ==========================================
 window.printItemLabel = function() {
-    const hiddenInput = document.getElementById('selectedClientIdInput');
-    const clientId = hiddenInput ? hiddenInput.value : "";
-
+    const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
     const type = document.getElementById('itemType') ? document.getElementById('itemType').value.trim() : "";
     const cabinet = document.getElementById('itemCabinet') ? document.getElementById('itemCabinet').value.trim() : "";
     const position = document.getElementById('itemPosition') ? document.getElementById('itemPosition').value.trim() : "";
@@ -663,62 +662,55 @@ window.printItemLabel = function() {
     const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
 
     if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente dalla ricerca", "error");
+        showToast("Seleziona un cliente prima di stampare", "error");
         return;
     }
     if (!type || !cabinet || !position) {
-        showToast("Compila i campi: Capo, Armadio e Posizione", "error");
+        showToast("Compila Capo, Armadio e Posizione", "error");
         return;
     }
 
     const client = clientsData[clientId];
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-    const buildReceipt = (copia) => {
-        let cmd = "";
-        cmd += "\x1B\x40";               // Reset stampante
-        cmd += "\x1B\x61\x01";           // Centrato
-        cmd += "\x1B\x21\x20LAVANDERIA CLEO\n";
-        cmd += "\x1B\x21\x00--- COPIA " + copia + " ---\n";
-        cmd += dateStr + "\n";
-        cmd += "--------------------------------\n";
-        cmd += "\x1B\x61\x00";           // Allinea a sinistra
-        cmd += "CLIENTE: " + client.name + "\n";
-        cmd += "TEL:     " + client.phone + "\n";
-        cmd += "CAPO:    " + type + "\n";
-        if (notes) {
-            cmd += "NOTE:    " + notes + "\n";
-        }
-        cmd += "--------------------------------\n";
-        cmd += "\x1B\x61\x01";           // Centrato
-        cmd += "\x1B\x21\x30ARM: " + cabinet + " | POS: " + position + "\n";
-        cmd += "\x1B\x21\x00--------------------------------\n";
-        cmd += "\x1B\x61\x02";           // Allinea a destra
-        cmd += "\x1B\x21\x10PREZZO: EUR " + parseFloat(price || 0).toFixed(2) + "\n";
-        cmd += "\x1B\x21\x00\x1B\x61\x01\n\n\n";
-        cmd += "\x1D\x56\x41";          // Taglio carta
-        return cmd;
+    const createTicket = (tipoCopia) => {
+        let text = "";
+        text += "\x1B\x40";               // Reset
+        text += "\x1B\x61\x01";           // Centra
+        text += "\x1B\x21\x20LAVANDERIA CLEO\n";
+        text += "--- COPIA " + tipoCopia + " ---\n";
+        text += dateStr + "\n";
+        text += "--------------------------------\n";
+        text += "\x1B\x61\x00";           // Sinistra
+        text += "CLIENTE: " + client.name + "\n";
+        text += "TEL:     " + client.phone + "\n";
+        text += "CAPO:    " + type + "\n";
+        if (notes) text += "NOTE:    " + notes + "\n";
+        text += "--------------------------------\n";
+        text += "\x1B\x61\x01";           // Centra
+        text += "\x1B\x21\x30ARM: " + cabinet + " | POS: " + position + "\n";
+        text += "\x1B\x21\x00--------------------------------\n";
+        text += "\x1B\x61\x02";           // Destra
+        text += "PREZZO: EUR " + parseFloat(price || 0).toFixed(2) + "\n\n\n";
+        text += "\x1D\x56\x41";          // Taglio
+        return text;
     };
 
-    const fullPrintData = buildReceipt("ATTIVITA") + buildReceipt("CLIENTE");
+    const printableText = createTicket("ATTIVITA") + createTicket("CLIENTE");
 
     try {
-        const bytes = new TextEncoder().encode(fullPrintData);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        const base64Data = window.btoa(binary);
-
-        window.location.href = "rawbt:base64," + base64Data;
-        showToast("Stampa inviata a RawBT!", "success");
-    } catch (err) {
-        console.error("Errore generazione stampa:", err);
-        showToast("Errore durante la preparazione della stampa", "error");
+        // Encoders nativi standard RawBT
+        const b64 = btoa(unescape(encodeURIComponent(printableText)));
+        window.location.href = "rawbt:base64," + b64;
+        showToast("Stampa inviata!", "success");
+    } catch (e) {
+        showToast("Errore durante l'invio alla stampante", "error");
     }
 };
 
+// ==========================================
+// RENDER TABELLE E STORICO
+// ==========================================
 function loadItems() {
     const local = localStorage.getItem('laundry_items');
     if (local) itemsData = JSON.parse(local);
@@ -1008,7 +1000,7 @@ window.exportBackup = function() {
     const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
     if (endDate) endDate.setHours(23, 59, 59, 999);
 
-    let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
+    let totalItemsCount = 0, grandTotalRevenue = 0, filteredHistory = [];
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sortedHistory) {
@@ -1019,15 +1011,13 @@ window.exportBackup = function() {
         filteredHistory.push({ id, item, retDate });
         totalItemsCount++;
         grandTotalRevenue += (item.price || 0);
-        const tLower = (item.type || "Altro").trim().toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
     }
 
     let csvContent = "\uFEFF";
     csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
     csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
-    
     csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
+    
     for (let entry of filteredHistory) {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
