@@ -527,13 +527,20 @@ window.deleteClient = function(id, name) {
 };
 
 // ==========================================
-// DROPDOWN RICERCA CLIENTE FORM INSERIMENTO (Codice Originale Ripristinato)
+// DROPDOWN RICERCA CLIENTE FORM INSERIMENTO (CORRETTO E FUNZIONANTE)
 // ==========================================
 function renderAssignClientDropdown(filter = "") {
     if (!assignClientDropdown || !selectedClientIdInput) return;
     assignClientDropdown.innerHTML = "";
-    const lowerFilter = filter.toLowerCase();
-    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
+    
+    // Se la stringa contiene " (00000)", estraiamo solo la parte iniziale prima della parentesi
+    let cleanFilter = filter;
+    if (cleanFilter.includes('(')) {
+        cleanFilter = cleanFilter.split('(')[0].trim();
+    }
+    
+    const lowerFilter = cleanFilter.toLowerCase();
+    const sorted = Object.entries(clientsData).sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
     let matches = 0;
 
     const tableHeader = document.createElement('div');
@@ -542,22 +549,27 @@ function renderAssignClientDropdown(filter = "") {
     assignClientDropdown.appendChild(tableHeader);
 
     const rowsContainer = document.createElement('div');
-    rowsContainer.className = "divide-y divide-darkBorder/50";
+    rowsContainer.className = "divide-y divide-darkBorder/50 max-h-60 overflow-y-auto";
 
     for (let [id, client] of sorted) {
-        const str = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        if (filter && !str.includes(lowerFilter)) continue;
+        const clientName = client.name || "";
+        const clientPhone = client.phone || "";
+        const clientAddress = client.address || "";
+        const str = `${clientName} ${clientPhone} ${clientAddress}`.toLowerCase();
+
+        if (lowerFilter && !str.includes(lowerFilter)) continue;
 
         matches++;
         const rowDiv = document.createElement('div');
-        rowDiv.className = "grid grid-cols-3 px-4 py-2.5 hover:bg-blue-600/10 cursor-pointer text-xs items-center";
+        rowDiv.className = "grid grid-cols-3 px-4 py-2.5 hover:bg-blue-600/20 cursor-pointer text-xs items-center border-b border-darkBorder/30";
         rowDiv.innerHTML = `
-            <span class="font-bold text-white truncate pr-2">${client.name}</span>
-            <span class="text-slate-400 truncate pr-2">${client.phone}</span>
-            <span class="text-slate-400 truncate">${client.address || 'N/D'}</span>
+            <span class="font-bold text-white truncate pr-2">${clientName}</span>
+            <span class="text-slate-400 truncate pr-2">${clientPhone}</span>
+            <span class="text-slate-400 truncate">${clientAddress || 'N/D'}</span>
         `;
-        rowDiv.addEventListener('click', () => {
-            assignClientSearch.value = `${client.name} (${client.phone})`;
+        rowDiv.addEventListener('mousedown', (e) => {
+            e.preventDefault(); 
+            assignClientSearch.value = `${clientName} (${clientPhone})`;
             selectedClientIdInput.value = id;
             assignClientDropdown.classList.add('hidden');
         });
@@ -576,9 +588,11 @@ function renderAssignClientDropdown(filter = "") {
 }
 
 if (assignClientSearch) {
-    assignClientSearch.addEventListener('focus', () => renderAssignClientDropdown(assignClientSearch.value.trim()));
+    assignClientSearch.addEventListener('focus', () => {
+        renderAssignClientDropdown(assignClientSearch.value.trim());
+    });
     assignClientSearch.addEventListener('input', (e) => {
-        selectedClientIdInput.value = "";
+        if (selectedClientIdInput) selectedClientIdInput.value = "";
         renderAssignClientDropdown(e.target.value.trim());
     });
 }
@@ -598,7 +612,7 @@ if (assignClientToggleBtn) {
 if (itemForm) {
     itemForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const clientId = selectedClientIdInput.value;
+        const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
         const type = document.getElementById('itemType').value.trim();
         const cabinet = document.getElementById('itemCabinet').value.trim();
         const position = document.getElementById('itemPosition').value.trim();
@@ -607,7 +621,7 @@ if (itemForm) {
         const status = "In lavorazione";
 
         if (!clientId || !clientsData[clientId]) {
-            showToast("Seleziona un cliente valido", "error");
+            showToast("Seleziona un cliente valido dall'elenco", "error");
             return;
         }
 
@@ -627,18 +641,18 @@ if (itemForm) {
 }
 
 // ==========================================
-// GESTIONE STAMPA TERMICA RAWBT (Codice Originale Ripristinato per IP 192.168.1.200)
+// GESTIONE STAMPA TERMICA RAWBT (CORRETTA E RIPRISTINATA)
 // ==========================================
 window.printItemLabel = function() {
-    const clientId = selectedClientIdInput.value;
-    const type = document.getElementById('itemType').value.trim();
-    const cabinet = document.getElementById('itemCabinet').value.trim();
-    const position = document.getElementById('itemPosition').value.trim();
-    const price = document.getElementById('itemPrice').value;
+    const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
+    const type = document.getElementById('itemType') ? document.getElementById('itemType').value.trim() : "";
+    const cabinet = document.getElementById('itemCabinet') ? document.getElementById('itemCabinet').value.trim() : "";
+    const position = document.getElementById('itemPosition') ? document.getElementById('itemPosition').value.trim() : "";
+    const price = document.getElementById('itemPrice') ? document.getElementById('itemPrice').value : "0";
     const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
 
     if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente", "error");
+        showToast("Seleziona prima un cliente dal menu di ricerca", "error");
         return;
     }
     if (!type || !cabinet || !position) {
@@ -647,23 +661,43 @@ window.printItemLabel = function() {
     }
 
     const client = clientsData[clientId];
-    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
     const generateSingleReceipt = (copyType) => {
         let block = "";
-        block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCapo:    " + type + "\n";
-        if (notes) block += `Note:    ${notes}\n`;
-        block += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
+        block += "\x1B\x40"; // Inizializza stampante
+        block += "\x1B\x61\x01"; // Centrato
+        block += "\x1B\x21\x10LAVANDERIA CLEO\n";
+        block += "\x1B\x21\x08[COPIA " + copyType + "]\n";
+        block += dateStr + "\n";
+        block += "\x1B\x21\x00--------------------------------\n";
+        block += "\x1B\x61\x00"; // Allinea a sinistra
+        block += "Cliente: " + client.name + "\n";
+        block += "Tel:     " + client.phone + "\n";
+        block += "Capo:    " + type + "\n";
+        if (notes) {
+            block += "Note:    " + notes + "\n";
+        }
+        block += "--------------------------------\n";
+        block += "\x1B\x61\x01"; // Centrato
+        block += "\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n";
+        block += "\x1B\x21\x00--------------------------------\n";
+        block += "\x1B\x61\x02"; // Allinea a destra
+        block += "\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n";
+        block += "\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
         return block;
     };
 
     let printText = generateSingleReceipt("ATTIVITA") + "\x1D\x56\x41\x03" + generateSingleReceipt("CLIENTE") + "\x1D\x56\x41\x03";
+    
     try {
         const base64Data = btoa(unescape(encodeURIComponent(printText)));
         window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Ricevute inviate in stampa!", "success");
+        showToast("Stampa inviata a RawBT!", "success");
     } catch (err) {
-        showToast("Errore di stampa.", "error");
+        console.error(err);
+        showToast("Errore durante la preparazione della stampa", "error");
     }
 };
 
@@ -709,12 +743,12 @@ function renderItems() {
             <td class="py-4 px-4">
                 <span class="font-medium text-slate-200">${item.type}</span>
                 ${item.notes ? `<div class="text-[11px] text-amber-300/90 italic mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>${item.notes}</div>` : ''}
-                <div class="text-xs font-semibold text-emerald-400">€ ${item.price.toFixed(2)}</div>
+                <div class="text-xs font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</div>
             </td>
             <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
             <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
             <td class="py-4 px-4 text-right">
-                <button onclick="confirmAndReturn('${id}', '${item.type.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
+                <button onclick="confirmAndReturn('${id}', '${(item.type || '').replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
             </td>
         `;
         itemsTableBody.appendChild(tr);
