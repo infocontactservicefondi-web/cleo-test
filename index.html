@@ -41,7 +41,7 @@
 <body class="bg-darkBg text-slate-100 min-h-screen font-sans selection:bg-blue-500 selection:text-white pb-20">
 
     <!-- LOGIN SCREEN -->
-    <div id="loginScreen" class="fixed inset-0 z-50 bg-darkBg/90 backdrop-blur-xl flex items-center justify-center p-4 transition-opacity duration-500">
+    <div id="loginScreen" class="fixed inset-0 z-50 bg-darkBg/90 backdrop-blur-xl flex items-center justify-center p-4 opacity-100 transition-opacity duration-500">
         <div class="bg-darkSurface p-8 rounded-3xl shadow-2xl w-full max-w-md border border-darkBorder text-center space-y-6">
             <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg shadow-blue-500/10">
                 <i class="fa-solid fa-shirt"></i>
@@ -53,7 +53,7 @@
                     <span class="text-xs font-bold text-white uppercase tracking-wider">Licenza Dispositivo</span>
                     <span id="licenseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In attesa</span>
                 </div>
-                <p class="text-[11px] text-slate-400">Inserisci il codice licenza per abilitare questo tablet.</p>
+                <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
                 <div class="flex gap-2">
                     <input type="text" id="licensePhoneInput" placeholder="Es. CLEO-TEST-01" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                     <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
@@ -89,9 +89,21 @@
                 </div>
             </div>
 
+            <!-- Global Search -->
+            <div class="relative flex-1 max-w-md mx-auto w-full">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                    <input type="text" id="globalSearch" placeholder="Cerca cliente (nome, tel) o capo (tipo, armadio)..." class="w-full pl-9 pr-16 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="searchClearBtn" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs hidden cursor-pointer">
+                        <i class="fa-solid fa-xmark"></i> Pulisci
+                    </button>
+                </div>
+                <div id="globalSearchDropdown" class="absolute left-0 right-0 mt-2 bg-darkSurface border border-darkBorder rounded-2xl shadow-2xl max-h-96 overflow-y-auto z-40 hidden divide-y divide-darkBorder animate-modal"></div>
+            </div>
+
             <div class="flex items-center gap-2">
                 <button onclick="openClientManagerModal()" class="px-3.5 py-2 bg-darkCard hover:bg-zinc-800 text-xs font-semibold rounded-xl text-slate-200 cursor-pointer flex items-center gap-1.5 shadow-sm">
-                    <i class="fa-solid fa-address-book text-blue-400"></i> Gestione Clienti
+                    <i class="fa-solid fa-address-book text-blue-400"></i> Clienti
                 </button>
                 <button onclick="toggleTheme()" class="p-2.5 bg-darkCard hover:bg-zinc-800 rounded-xl text-xs text-slate-200 cursor-pointer" title="Cambia Tema">
                     <i id="themeIcon" class="fa-solid fa-moon"></i>
@@ -132,7 +144,7 @@
                                 <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome e Cognome (Cerca con lente) *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
-                                    <input type="text" id="clientName" placeholder="Cerca o inserisci nome..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="clientName" placeholder="Nome e Cognome (Cerca con lente)..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <input type="hidden" id="manageClientIdInput">
                                     <button type="button" id="clientSearchToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
                                         <i class="fa-solid fa-chevron-down"></i>
@@ -232,6 +244,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <span id="itemsCounterBadge" class="px-2.5 py-1 bg-blue-950 text-blue-400 border border-blue-900 rounded-lg text-xs font-semibold">0 capi</span>
+                            <input type="text" id="activeTableFilter" placeholder="Filtra tabella..." class="px-3 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
 
@@ -260,9 +273,9 @@
 
         <!-- VIEW STATS -->
         <div id="viewStats" class="space-y-6 hidden">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                    <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati</div>
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati (Periodo)</div>
                     <div id="statTotalCount" class="text-2xl font-bold text-white">0</div>
                 </div>
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
@@ -270,8 +283,12 @@
                     <div id="statTotalRevenue" class="text-2xl font-bold text-emerald-400">€ 0.00</div>
                 </div>
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                    <div class="text-slate-400 text-xs font-medium mb-1">Clienti Registrati</div>
+                    <div class="text-slate-400 text-xs font-medium mb-1">Clienti Unici Serviti</div>
                     <div id="statUniqueClients" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capo più frequente</div>
+                    <div id="statTopItemType" class="text-2xl font-bold text-white truncate">-</div>
                 </div>
             </div>
 
@@ -311,6 +328,10 @@
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="managerClientSearchInput" placeholder="Filtra clienti..." class="w-full pl-9 pr-3 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
             <div class="overflow-x-auto flex-1 max-h-96">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -330,11 +351,11 @@
         </div>
     </div>
 
-    <!-- TOAST NOTIFICATION -->
+    <!-- TOAST -->
     <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
         <div class="bg-darkSurface border border-darkBorder shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3">
             <div class="w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-xs">
-                <i class="fa-solid fa-info"></i>
+                <i class="fa-solid fa-check"></i>
             </div>
             <span id="toastMessage" class="text-xs font-semibold text-white">Operazione completata!</span>
         </div>
