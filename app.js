@@ -163,7 +163,6 @@ window.closeExpiredModalAndRelogin = function() {
     lockAppComplete();
 };
 
-// ACCESSO AMMINISTRATORE (Tramite Lucchetto / Password) -> Permette di rientrare
 function checkAdminPassword() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredPassword = "";
@@ -181,7 +180,7 @@ function checkAdminPassword() {
 
     if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'true'); // Segna che è entrato come admin
+        sessionStorage.setItem('laundry_logged_as_admin', 'true');
         unlockApp();
         showToast("Accesso amministratore eseguito", "success");
     } else {
@@ -193,7 +192,6 @@ function checkAdminPassword() {
     }
 }
 
-// INSERIMENTO CODICE LICENZA (Una tantum) -> Blocca definitivamente il ritorno indietro
 function checkNumericLicense() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredCode = "";
@@ -212,7 +210,7 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Non è admin, è licenza standard blindata
+        sessionStorage.setItem('laundry_logged_as_admin', 'false');
         hasShownTodayWarning = false;
         unlockApp();
         startLicenseCountdownMonitor();
@@ -271,7 +269,7 @@ function checkNumericLicense() {
                     localStorage.setItem('laundry_code_already_redeemed', enteredCode);
                     localStorage.setItem('laundry_license_expiry', expirationTimestamp);
                     sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Bloccato: niente ritorno indietro per gli operatori
+                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
                     hasShownTodayWarning = false;
                     
                     unlockApp();
@@ -603,7 +601,7 @@ if (itemForm) {
         const position = document.getElementById('itemPosition').value.trim();
         const price = parseFloat(document.getElementById('itemPrice').value) || 0;
         const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-        const status = "In lavorazione";
+        const status = "Pronto per il ritiro";
 
         if (!clientId || !clientsData[clientId]) {
             showToast("Seleziona un cliente valido", "error");
@@ -708,14 +706,14 @@ function renderItems() {
                 <div class="text-xs font-semibold text-emerald-400">€ ${item.price.toFixed(2)}</div>
             </td>
             <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
-            <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
+            <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-900">Pronto per il ritiro</span></td>
             <td class="py-4 px-4 text-right">
                 <button onclick="confirmAndReturn('${id}', '${item.type.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
             </td>
         `;
         itemsTableBody.appendChild(tr);
     }
-    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
+    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi pronti`;
     if(noItemsMessage) {
         noItemsMessage.classList.toggle('hidden', visibleCount > 0);
         noItemsMessage.classList.toggle('flex', visibleCount === 0);
