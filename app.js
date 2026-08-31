@@ -1,1007 +1,444 @@
-// ==========================================
-// LAVANDERIA CLEO - APP LOGIC (LOCKED LICENSE & ADMIN TOGGLE)
-// ==========================================
-
-const firebaseConfig = {
-    apiKey: "AIzaSyD-tuo-firebase-api-key-da-completare",
-    authDomain: "lavanderia-d9c29.firebaseapp.com",
-    databaseURL: "https://lavanderia-d9c29-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "lavanderia-d9c29",
-    storageBucket: "lavanderia-d9c29.appspot.com",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abcdef"
-};
-
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-
-const db = firebase.database();
-db.goOnline();
-
-const APP_PASSWORD = "BAUBAU06";
-
-const loginScreen = document.getElementById('loginScreen');
-const appContainer = document.getElementById('appContainer');
-const loginForm = document.getElementById('loginForm');
-const passwordInput = document.getElementById('passwordInput');
-const loginError = document.getElementById('loginError');
-
-const clientForm = document.getElementById('clientForm');
-const itemForm = document.getElementById('itemForm');
-const clientDobInput = document.getElementById('clientDob');
-
-const assignClientSearch = document.getElementById('assignClientSearch');
-const assignClientToggleBtn = document.getElementById('assignClientToggleBtn');
-const selectedClientIdInput = document.getElementById('selectedClientIdInput');
-const assignClientDropdown = document.getElementById('assignClientDropdown');
-
-const globalSearch = document.getElementById('globalSearch');
-const globalSearchDropdown = document.getElementById('globalSearchDropdown');
-const searchClearBtn = document.getElementById('searchClearBtn');
-
-const itemsTableBody = document.getElementById('itemsTableBody');
-const noItemsMessage = document.getElementById('noItemsMessage');
-const itemsCounterBadge = document.getElementById('itemsCounterBadge');
-const activeTableFilter = document.getElementById('activeTableFilter');
-
-let clientsData = {};
-let itemsData = {};
-let historyData = {};
-
-let currentStatPeriod = 'all';
-let licenseCheckInterval = null;
-let hasShownTodayWarning = false;
-
-document.addEventListener('DOMContentLoaded', () => {
-    initLicenseSystem();
-    initTheme();
-    initConnectionMonitor(); 
-    fixLoginPlaceholders();
-    startLicenseCountdownMonitor(); 
-
-    if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            checkAdminPassword();
-        });
-    }
-});
-
-function fixLoginPlaceholders() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    if (inputs.length > 0) {
-        inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
-    }
-}
-
-// ==========================================
-// SISTEMA LICENZA E LOGIN
-// ==========================================
-function initLicenseSystem() {
-    const deviceActivated = localStorage.getItem('laundry_device_activated');
-    const licenseExpiry = localStorage.getItem('laundry_license_expiry');
-
-    if (deviceActivated === 'true' && licenseExpiry) {
-        const now = Date.now();
-        const expiryTime = parseInt(licenseExpiry, 10);
-
-        if (now < expiryTime) {
-            checkDaysBeforeExpiry(now, expiryTime);
-            sessionStorage.setItem('laundry_auth', 'true');
-            unlockApp();
-            return;
-        } else {
-            lockAppComplete();
-            const expiredModal = document.getElementById('licenseExpiredModal');
-            if (expiredModal) expiredModal.classList.remove('hidden');
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lavanderia Cleo - Gestionale</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#121212',
+                        darkSurface: '#1E1E1E',
+                        darkCard: '#242424',
+                        darkBorder: '#2C2C2C'
+                    },
+                    transitionTimingFunction: {
+                        'smooth-spring': 'cubic-bezier(0.16, 1, 0.3, 1)',
+                    }
+                }
+            }
         }
-    }
-}
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    <style>
+        * {
+            transition-property: background-color, border-color, color, fill, stroke, opacity, transform, box-shadow;
+            transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+            transition-duration: 250ms;
+        }
+        @keyframes modalIn {
+            0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-modal {
+            animation: modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-slate-100 min-h-screen font-sans selection:bg-blue-500 selection:text-white pb-20">
 
-function startLicenseCountdownMonitor() {
-    if (licenseCheckInterval) clearInterval(licenseCheckInterval);
-
-    licenseCheckInterval = setInterval(() => {
-        const licenseExpiry = localStorage.getItem('laundry_license_expiry');
-        if (!licenseExpiry) return;
-
-        const now = Date.now();
-        const expiryTime = parseInt(licenseExpiry, 10);
-
-        if (now >= expiryTime) {
-            clearInterval(licenseCheckInterval);
-            localStorage.removeItem('laundry_device_activated');
-            localStorage.removeItem('laundry_license_expiry');
-            localStorage.removeItem('laundry_active_license');
-            sessionStorage.removeItem('laundry_auth');
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="fixed inset-0 z-50 bg-darkBg/90 backdrop-blur-xl flex items-center justify-center p-4 opacity-100 transition-opacity duration-500">
+        <div class="bg-darkSurface p-8 rounded-3xl shadow-2xl w-full max-w-md border border-darkBorder text-center space-y-6 transform hover:scale-[1.01] hover:border-blue-500/50 shadow-blue-500/5">
+            <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 hover:scale-110 hover:rotate-3 shadow-lg shadow-blue-500/10">
+                <i class="fa-solid fa-shirt"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Lavanderia Cleo</h1>
             
-            const warningModal = document.getElementById('licenseWarningModal');
-            if (warningModal) warningModal.classList.add('hidden');
+            <!-- SEZIONE ATTIVAZIONE LICENZA DISPOSITIVO -->
+            <div id="licenseRegisterArea" class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-left space-y-3 hover:border-zinc-700 hover:bg-darkCard/80">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white uppercase tracking-wider">Licenza Dispositivo</span>
+                    <span id="licenseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In attesa</span>
+                </div>
+                <p id="licenseInfoText" class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
+                <div class="flex gap-2">
+                    <input type="text" id="licensePhoneInput" placeholder="Es. CLEO-TEST-01" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-md shadow-blue-600/20 shrink-0 hover:shadow-blue-500/40">Attiva</button>
+                </div>
+            </div>
 
-            const expiredModal = document.getElementById('licenseExpiredModal');
-            if (expiredModal) expiredModal.classList.remove('hidden');
-            return;
-        }
+            <!-- SEZIONE PASSWORD AMMINISTRATORE -->
+            <div class="border-t border-darkBorder pt-4">
+                <p class="text-xs text-slate-400 mb-4">Inserisci la password amministratore per accedere</p>
+                <form id="loginForm" class="space-y-4">
+                    <input type="password" id="passwordInput" placeholder="Password amministratore" class="w-full px-4 py-3 bg-darkCard border border-darkBorder rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold rounded-xl text-sm cursor-pointer shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40 hover:-translate-y-0.5">Accedi al Gestionale</button>
+                </form>
+            </div>
+            
+            <p id="loginError" class="text-rose-500 text-xs mt-3 hidden font-medium animate-pulse"></p>
+        </div>
+    </div>
 
-        if (!hasShownTodayWarning) {
-            checkDaysBeforeExpiry(now, expiryTime);
-        }
-    }, 1000); 
-}
+    <!-- MAIN APP CONTAINER -->
+    <div id="appContainer" class="hidden max-w-7xl mx-auto p-4 sm:p-6 space-y-6 opacity-0 transition-opacity duration-500">
 
-function checkDaysBeforeExpiry(now, expiryTime) {
-    const diffMs = expiryTime - now;
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        <!-- HEADER / NAVBAR -->
+        <header class="flex flex-wrap items-center justify-between gap-4 bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm hover:scale-105 hover:rotate-3">
+                    <i class="fa-solid fa-shirt"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white leading-tight">Lavanderia Cleo</h1>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
+                        <span id="statusText" class="text-emerald-400 font-medium">Online</span>
+                    </div>
+                </div>
+            </div>
 
-    if (diffDays >= 1 && diffDays <= 5) {
-        const warningText = document.getElementById('licenseWarningText');
-        if (warningText) {
-            if (diffDays === 1) {
-                warningText.textContent = `⚠️ ATTENZIONE: La licenza scadrà domani! Rinnovala subito per evitare il blocco del gestionale.`;
-            } else {
-                warningText.textContent = `⚠️ La licenza di questo dispositivo scadrà tra ${diffDays} giorni. Contatta l'amministratore per il rinnovo.`;
-            }
-        }
-        const warningModal = document.getElementById('licenseWarningModal');
-        if (warningModal) {
-            warningModal.classList.remove('hidden');
-            hasShownTodayWarning = true;
-        }
-    }
-}
+            <!-- Global Search Bar -->
+            <div class="relative flex-1 max-w-md mx-auto w-full">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                    <input type="text" id="globalSearch" placeholder="Cerca cliente (nome, tel) o capo (tipo, armadio)..." class="w-full pl-9 pr-16 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="searchClearBtn" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs hidden cursor-pointer">
+                        <i class="fa-solid fa-xmark"></i> Pulisci
+                    </button>
+                </div>
+                <!-- Dropdown Risultati Ricerca Globale -->
+                <div id="globalSearchDropdown" class="absolute left-0 right-0 mt-2 bg-darkSurface border border-darkBorder rounded-2xl shadow-2xl max-h-96 overflow-y-auto z-40 hidden divide-y divide-darkBorder animate-modal"></div>
+            </div>
 
-window.closeWarningModal = function() {
-    const warningModal = document.getElementById('licenseWarningModal');
-    if (warningModal) warningModal.classList.add('hidden');
-};
-
-window.closeExpiredModalAndRelogin = function() {
-    const expiredModal = document.getElementById('licenseExpiredModal');
-    if (expiredModal) expiredModal.classList.add('hidden');
-    lockAppComplete();
-};
-
-function checkAdminPassword() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredPassword = "";
-
-    if (inputs.length > 1) {
-        enteredPassword = inputs[1].value.trim();
-    } else if (passwordInput) {
-        enteredPassword = passwordInput.value.trim();
-    }
-
-    if (!enteredPassword) {
-        showToast("Inserisci la password amministratore", "error");
-        return;
-    }
-
-    if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
-        sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'true');
-        unlockApp();
-        showToast("Accesso amministratore eseguito", "success");
-    } else {
-        showToast("Password amministratore errata", "error");
-        if (loginError) {
-            loginError.textContent = "Password errata. Riprova.";
-            loginError.classList.remove('hidden');
-        }
-    }
-}
-
-function checkNumericLicense() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredCode = "";
-
-    if (inputs.length > 0) {
-        enteredCode = inputs[0].value.trim();
-    }
-
-    if (!enteredCode) {
-        showToast("Inserisci il codice numerico della licenza", "error");
-        return;
-    }
-
-    if (enteredCode.toUpperCase() === "TEST1MIN") {
-        let expirationTimestamp = Date.now() + (60 * 1000); 
-        localStorage.setItem('laundry_device_activated', 'true');
-        localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-        sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'false');
-        hasShownTodayWarning = false;
-        unlockApp();
-        startLicenseCountdownMonitor();
-        showToast("TEST ATTIVO: Licenza di prova di 1 minuto avviata!", "success");
-        return;
-    }
-
-    const alreadyUsedCode = localStorage.getItem('laundry_code_already_redeemed');
-    if (alreadyUsedCode === enteredCode && enteredCode !== APP_PASSWORD && enteredCode !== "CLEO-MASTER") {
-        showToast("Questo dispositivo ha già utilizzato questo codice. Non puoi riusarlo.", "error");
-        return;
-    }
-
-    if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER") {
-        let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
-        localStorage.setItem('laundry_device_activated', 'true');
-        localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-        sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'true');
-        hasShownTodayWarning = false;
-        unlockApp();
-        showToast("Accesso Master illimitato eseguito!", "success");
-        return;
-    }
-
-    db.ref('used_licenses/' + enteredCode).once('value').then((usedSnap) => {
-        if (usedSnap.exists() && enteredCode === "2580") {
-            showToast("Questo codice 2580 è già stato utilizzato su un altro dispositivo!", "error");
-            return;
-        }
-
-        db.ref('licenses').once('value')
-            .then((snapshot) => {
-                const licenses = snapshot.val();
-                let matchedKey = null;
-
-                if (licenses) {
-                    for (let key in licenses) {
-                        if (String(key) === String(enteredCode) || String(licenses[key]) === String(enteredCode)) {
-                            matchedKey = key;
-                            break;
-                        }
-                    }
-                }
-
-                if (enteredCode === "2580" || matchedKey) {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
-                    
-                    db.ref('used_licenses/' + enteredCode).set(true);
-                    if (matchedKey) {
-                        db.ref('licenses').child(matchedKey).remove().catch(() => {});
-                    }
-
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    hasShownTodayWarning = false;
-                    
-                    unlockApp();
-                    startLicenseCountdownMonitor();
-                    showToast("Licenza attivata con successo fino al 7 Agosto 2027!", "success");
-                } else {
-                    showToast("Codice licenza non valido o già utilizzato.", "error");
-                }
-            })
-            .catch(() => {
-                if (enteredCode === "2580") {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
-                    db.ref('used_licenses/' + enteredCode).set(true);
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    hasShownTodayWarning = false;
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    unlockApp();
-                    showToast("Licenza attivata con successo!", "success");
-                } else {
-                    showToast("Errore di connessione e codice non riconosciuto offline.", "error");
-                }
-            });
-    });
-}
-
-function initConnectionMonitor() {
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-
-    db.ref('.info/connected').on('value', (snap) => {
-        if (snap.val() === true) {
-            if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]";
-            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400"; }
-        } else {
-            if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
-            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400"; }
-        }
-    });
-}
-
-window.toggleTheme = function() {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('laundry_theme', isDark ? 'dark' : 'light');
-    updateThemeUI(isDark);
-};
-
-function initTheme() {
-    const savedTheme = localStorage.getItem('laundry_theme');
-    const isDark = savedTheme ? savedTheme === 'dark' : true; 
-    if (isDark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    updateThemeUI(isDark);
-}
-
-function updateThemeUI(isDark) {
-    const icon = document.getElementById('themeIcon');
-    if (icon) icon.className = isDark ? "fa-solid fa-moon" : "fa-solid fa-sun";
-}
-
-if (clientDobInput) {
-    clientDobInput.addEventListener('input', (e) => {
-        let val = e.target.value.replace(/\D/g, '');
-        if (val.length > 2) val = val.substring(0, 2) + '/' + val.substring(2);
-        if (val.length > 5) val = val.substring(0, 5) + '/' + val.substring(5, 9);
-        e.target.value = val;
-    });
-}
-
-function unlockApp() {
-    if(loginScreen) {
-        loginScreen.style.opacity = '0';
-        setTimeout(() => loginScreen.classList.add('hidden'), 400);
-    }
-    if(appContainer) {
-        appContainer.classList.remove('hidden');
-        setTimeout(() => appContainer.style.opacity = '1', 50);
-    }
-    initApp();
-}
-
-window.lockApp = function() {
-    const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
-    
-    if (isLoggedAsAdmin !== 'true') {
-        showToast("Dispositivo con licenza attiva: impossibile uscire.", "error");
-        return;
-    }
-
-    sessionStorage.removeItem('laundry_auth');
-    sessionStorage.removeItem('laundry_logged_as_admin');
-    
-    if(appContainer) {
-        appContainer.style.opacity = '0';
-        setTimeout(() => appContainer.classList.add('hidden'), 400);
-    }
-    if(loginScreen) {
-        loginScreen.classList.remove('hidden');
-        setTimeout(() => loginScreen.style.opacity = '1', 50);
-    }
-    
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
-};
-
-function lockAppComplete() {
-    if (licenseCheckInterval) clearInterval(licenseCheckInterval);
-    sessionStorage.removeItem('laundry_auth');
-    sessionStorage.removeItem('laundry_logged_as_admin');
-    localStorage.removeItem('laundry_device_activated');
-    localStorage.removeItem('laundry_license_expiry');
-    
-    if(appContainer) {
-        appContainer.style.opacity = '0';
-        setTimeout(() => appContainer.classList.add('hidden'), 400);
-    }
-    if(loginScreen) {
-        loginScreen.classList.remove('hidden');
-        setTimeout(() => loginScreen.style.opacity = '1', 50);
-    }
-    
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
-}
-
-function initApp() {
-    loadClients();
-    loadItems();
-    loadHistory();
-}
-
-window.switchTab = function(tab) {
-    const viewActive = document.getElementById('viewActive');
-    const viewStats = document.getElementById('viewStats');
-    const navTabActive = document.getElementById('navTabActive');
-    const navTabStats = document.getElementById('navTabStats');
-
-    if (tab === 'active') {
-        if(viewStats) viewStats.classList.add('hidden');
-        if(viewActive) viewActive.classList.remove('hidden');
-        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95";
-        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95";
-    } else {
-        if(viewActive) viewActive.classList.add('hidden');
-        if(viewStats) viewStats.classList.remove('hidden');
-        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95";
-        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95";
-        renderHistory();
-    }
-};
-
-if (clientForm) {
-    clientForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('clientName').value.trim();
-        const phone = document.getElementById('clientPhone').value.trim();
-        const dob = document.getElementById('clientDob').value.trim();
-        const address = document.getElementById('clientAddress').value.trim();
-
-        if (!name || !phone) return;
-
-        const clientId = 'cli_' + Date.now();
-        const newClient = { name, phone, dob, address };
-
-        clientsData[clientId] = newClient;
-        localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
-        db.ref('clients').child(clientId).set(newClient).catch(() => {});
-
-        clientForm.reset();
-        showToast(`Cliente "${name}" registrato!`, "success");
-        renderItems();
-        const managerModal = document.getElementById('clientManagerModal');
-        if (managerModal && !managerModal.classList.contains('hidden')) {
-            renderClientManagerTable();
-        }
-    });
-}
-
-function loadClients() {
-    const local = localStorage.getItem('laundry_clients');
-    if (local) clientsData = JSON.parse(local);
-
-    db.ref('clients').on('value', (snapshot) => {
-        const val = snapshot.val();
-        if (val) {
-            clientsData = val;
-            localStorage.setItem('laundry_clients', JSON.stringify(val));
-        }
-        const managerModal = document.getElementById('clientManagerModal');
-        if (managerModal && !managerModal.classList.contains('hidden')) {
-            renderClientManagerTable();
-        }
-        renderItems();
-    });
-}
-
-window.openClientManagerModal = function() {
-    renderClientManagerTable();
-    const m = document.getElementById('clientManagerModal');
-    if(m) m.classList.remove('hidden');
-};
-
-window.closeClientManagerModal = function() {
-    const m = document.getElementById('clientManagerModal');
-    if(m) m.classList.add('hidden');
-};
-
-const managerClientSearchInput = document.getElementById('managerClientSearchInput');
-if (managerClientSearchInput) {
-    managerClientSearchInput.addEventListener('input', () => {
-        renderClientManagerTable(managerClientSearchInput.value.trim());
-    });
-}
-
-function renderClientManagerTable(filter = "") {
-    const tbody = document.getElementById('managerClientsTableBody');
-    if(!tbody) return;
-    tbody.innerHTML = "";
-    const lowerFilter = filter.toLowerCase();
-    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
-
-    for (let [id, client] of sorted) {
-        const str = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        if (filter && !str.includes(lowerFilter)) continue;
-
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard cursor-pointer";
-        tr.innerHTML = `
-            <td class="py-3 px-4 font-bold text-white" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.name}</td>
-            <td class="py-3 px-4 text-slate-400" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.phone}</td>
-            <td class="py-3 px-4 text-slate-400" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.address || 'N/D'} &bull; ${client.dob || ''}</td>
-            <td class="py-3 px-4 text-right">
-                <button onclick="event.stopPropagation(); deleteClient('${id}', '${client.name.replace(/'/g, "\\'")}')" 
-                    class="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 active:scale-95 text-rose-400 rounded-lg font-semibold cursor-pointer">
-                    <i class="fa-solid fa-trash-can mr-1"></i> Elimina
+            <!-- Actions Navbar -->
+            <div class="flex items-center gap-2">
+                <button onclick="openClientManagerModal()" class="px-3.5 py-2 bg-darkCard hover:bg-zinc-800 active:scale-95 text-xs font-semibold rounded-xl text-slate-200 cursor-pointer flex items-center gap-1.5 shadow-sm hover:-translate-y-0.5">
+                    <i class="fa-solid fa-address-book text-blue-400"></i> Clienti
                 </button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    }
-}
-
-window.deleteClient = function(id, name) {
-    if (confirm(`Sei sicuro di voler eliminare permanentemente il cliente "${name}"?`)) {
-        delete clientsData[id];
-        localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
-        db.ref('clients').child(id).remove();
-        showToast(`Cliente ${name} eliminato`, "success");
-        if (managerClientSearchInput) renderClientManagerTable(managerClientSearchInput.value.trim());
-        renderItems();
-    }
-};
-
-function renderAssignClientDropdown(filter = "") {
-    if (!assignClientDropdown || !selectedClientIdInput) return;
-    assignClientDropdown.innerHTML = "";
-    const lowerFilter = filter.toLowerCase();
-    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
-    let matches = 0;
-
-    const tableHeader = document.createElement('div');
-    tableHeader.className = "grid grid-cols-3 px-4 py-2.5 text-[11px] font-bold text-slate-400 uppercase bg-darkSurface border-b border-darkBorder sticky top-0 shadow-sm";
-    tableHeader.innerHTML = `<span>Cliente (Nome)</span><span>Telefono</span><span>Indirizzo</span>`;
-    assignClientDropdown.appendChild(tableHeader);
-
-    const rowsContainer = document.createElement('div');
-    rowsContainer.className = "divide-y divide-darkBorder/50";
-
-    for (let [id, client] of sorted) {
-        const str = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        if (filter && !str.includes(lowerFilter)) continue;
-
-        matches++;
-        const rowDiv = document.createElement('div');
-        rowDiv.className = "grid grid-cols-3 px-4 py-2.5 hover:bg-blue-600/10 cursor-pointer text-xs items-center";
-        rowDiv.innerHTML = `
-            <span class="font-bold text-white truncate pr-2">${client.name}</span>
-            <span class="text-slate-400 truncate pr-2">${client.phone}</span>
-            <span class="text-slate-400 truncate">${client.address || 'N/D'}</span>
-        `;
-        rowDiv.addEventListener('click', () => {
-            assignClientSearch.value = `${client.name} (${client.phone})`;
-            selectedClientIdInput.value = id;
-            assignClientDropdown.classList.add('hidden');
-        });
-        rowsContainer.appendChild(rowDiv);
-    }
-
-    if (matches === 0) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = "p-6 text-center text-xs text-slate-400 italic";
-        emptyDiv.textContent = "Nessun cliente trovato in anagrafica.";
-        rowsContainer.appendChild(emptyDiv);
-    }
-
-    assignClientDropdown.appendChild(rowsContainer);
-    assignClientDropdown.classList.remove('hidden');
-}
-
-if (assignClientSearch) {
-    assignClientSearch.addEventListener('focus', () => renderAssignClientDropdown(assignClientSearch.value.trim()));
-    assignClientSearch.addEventListener('input', (e) => {
-        selectedClientIdInput.value = "";
-        renderAssignClientDropdown(e.target.value.trim());
-    });
-}
-
-if (assignClientToggleBtn) {
-    assignClientToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (assignClientDropdown.classList.contains('hidden')) {
-            renderAssignClientDropdown("");
-            assignClientSearch.focus();
-        } else {
-            assignClientDropdown.classList.add('hidden');
-        }
-    });
-}
-
-if (itemForm) {
-    itemForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const clientId = selectedClientIdInput.value;
-        const type = document.getElementById('itemType').value.trim();
-        const cabinet = document.getElementById('itemCabinet').value.trim();
-        const position = document.getElementById('itemPosition').value.trim();
-        const price = parseFloat(document.getElementById('itemPrice').value) || 0;
-        const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-        const status = "In lavorazione";
-
-        if (!clientId || !clientsData[clientId]) {
-            showToast("Seleziona un cliente valido", "error");
-            return;
-        }
-
-        const itemId = 'item_' + Date.now();
-        const newItem = { clientId, type, cabinet, position, price, notes, status, timestamp: Date.now() };
-
-        itemsData[itemId] = newItem;
-        localStorage.setItem('laundry_items', JSON.stringify(itemsData));
-        db.ref('items').child(itemId).set(newItem).catch(() => {});
-
-        itemForm.reset();
-        if(assignClientSearch) assignClientSearch.value = "";
-        if(selectedClientIdInput) selectedClientIdInput.value = "";
-        showToast(`Capo (${type}) registrato in armadio ${cabinet}`, "success");
-        renderItems();
-    });
-}
-
-window.printItemLabel = function() {
-    const clientId = selectedClientIdInput.value;
-    const type = document.getElementById('itemType').value.trim();
-    const cabinet = document.getElementById('itemCabinet').value.trim();
-    const position = document.getElementById('itemPosition').value.trim();
-    const price = document.getElementById('itemPrice').value;
-    const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-
-    if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente", "error");
-        return;
-    }
-    if (!type || !cabinet || !position) {
-        showToast("Compila tipo capo, armadio e posizione", "error");
-        return;
-    }
-
-    const client = clientsData[clientId];
-    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-
-    const generateSingleReceipt = (copyType) => {
-        let block = "";
-        block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCapo:    " + type + "\n";
-        if (notes) block += `Note:    ${notes}\n`;
-        block += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
-        return block;
-    };
-
-    let printText = generateSingleReceipt("ATTIVITA") + "\x1D\x56\x41\x03" + generateSingleReceipt("CLIENTE") + "\x1D\x56\x41\x03";
-    try {
-        const base64Data = btoa(unescape(encodeURIComponent(printText)));
-        window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Ricevute inviate in stampa!", "success");
-    } catch (err) {
-        showToast("Errore di stampa.", "error");
-    }
-};
-
-function loadItems() {
-    const local = localStorage.getItem('laundry_items');
-    if (local) itemsData = JSON.parse(local);
-
-    db.ref('items').on('value', (snapshot) => {
-        const val = snapshot.val();
-        if (val) {
-            itemsData = val;
-            localStorage.setItem('laundry_items', JSON.stringify(val));
-        }
-        renderItems();
-    });
-}
-
-if (activeTableFilter) {
-    activeTableFilter.addEventListener('input', () => renderItems());
-}
-
-function renderItems() {
-    if(!itemsTableBody) return;
-    itemsTableBody.innerHTML = "";
-    let count = 0, visibleCount = 0;
-    const filterVal = activeTableFilter ? activeTableFilter.value.toLowerCase().trim() : "";
-    const sorted = Object.entries(itemsData).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
-
-    for (let [id, item] of sorted) {
-        count++;
-        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        const rowStr = `${client.name} ${client.phone} ${item.type} ${item.cabinet} ${item.position}`.toLowerCase();
-        if (filterVal && !rowStr.includes(filterVal)) continue;
-
-        visibleCount++;
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard";
-        tr.innerHTML = `
-            <td class="py-4 px-4">
-                <span class="font-semibold text-white cursor-pointer hover:underline" onclick="openClientModal('${item.clientId}')">${client.name}</span>
-                <div class="text-xs text-slate-400">${client.phone}</div>
-            </td>
-            <td class="py-4 px-4">
-                <span class="font-medium text-slate-200">${item.type}</span>
-                ${item.notes ? `<div class="text-[11px] text-amber-300/90 italic mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>${item.notes}</div>` : ''}
-                <div class="text-xs font-semibold text-emerald-400">€ ${item.price.toFixed(2)}</div>
-            </td>
-            <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
-            <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
-            <td class="py-4 px-4 text-right">
-                <button onclick="confirmAndReturn('${id}', '${item.type.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 active:scale-95 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
-            </td>
-        `;
-        itemsTableBody.appendChild(tr);
-    }
-    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
-    if(noItemsMessage) {
-        noItemsMessage.classList.toggle('hidden', visibleCount > 0);
-        noItemsMessage.classList.toggle('flex', visibleCount === 0);
-    }
-}
-
-window.confirmAndReturn = function(id, typeName) {
-    if (confirm(`Confermi il ritiro del capo "${typeName}"?`)) markAsReturned(id);
-};
-
-window.markAsReturned = function(id) {
-    const item = itemsData[id];
-    if (!item) return;
-    const historyId = 'hist_' + Date.now();
-    const historyItem = { ...item, returnedAt: Date.now() };
-
-    historyData[historyId] = historyItem;
-    localStorage.setItem('laundry_history', JSON.stringify(historyData));
-    delete itemsData[id];
-    localStorage.setItem('laundry_items', JSON.stringify(itemsData));
-
-    db.ref('history').child(historyId).set(historyItem);
-    db.ref('items').child(id).remove();
-    renderItems();
-    showToast("Capo archiviato", "success");
-};
-
-if (globalSearch) {
-    globalSearch.addEventListener('input', (e) => {
-        const val = e.target.value.toLowerCase().trim();
-        if(!globalSearchDropdown || !searchClearBtn) return;
-        globalSearchDropdown.innerHTML = "";
-        searchClearBtn.classList.toggle('hidden', !val);
-
-        if (!val) {
-            globalSearchDropdown.classList.add('hidden');
-            return;
-        }
-
-        let resultsFound = 0;
-        for (let [clientId, client] of Object.entries(clientsData)) {
-            let clientActiveItems = [];
-            for (let [itemId, item] of Object.entries(itemsData)) {
-                if (item.clientId === clientId) clientActiveItems.push(item);
-            }
-
-            const matchClient = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase().includes(val);
-            const matchItem = clientActiveItems.some(i => i.type.toLowerCase().includes(val) || i.cabinet.toLowerCase().includes(val));
-
-            if (matchClient || matchItem) {
-                resultsFound++;
-                const div = document.createElement('div');
-                div.className = "p-4 hover:bg-darkCard cursor-default";
-                let itemsHtml = clientActiveItems.length > 0 ? `<div class="mt-2.5 space-y-1.5 border-t border-darkBorder pt-2">` : `<div class="mt-2 text-xs text-slate-400 italic">Nessun capo attivo.</div>`;
-                clientActiveItems.forEach(item => {
-                    itemsHtml += `<div class="flex items-center justify-between text-xs bg-darkBg p-2 rounded-lg border border-darkBorder"><div><span class="font-bold text-white">${item.type}</span> <span class="text-slate-400 ml-1">&bull; Armadio: <strong class="text-blue-400">${item.cabinet}</strong></span></div><span class="font-bold text-emerald-400">€ ${item.price.toFixed(2)}</span></div>`;
-                });
-                if(clientActiveItems.length > 0) itemsHtml += `</div>`;
-
-                div.innerHTML = `<div class="flex justify-between items-start"><div><div class="font-bold text-white text-sm">${client.name}</div><div class="text-xs text-slate-400 mt-0.5">Tel: ${client.phone}</div></div><button type="button" onclick="openClientModal('${clientId}'); globalSearchDropdown.classList.add('hidden'); globalSearch.value='';" class="text-xs bg-blue-950 hover:bg-blue-900 text-blue-400 px-3 py-1.5 rounded-lg font-semibold cursor-pointer">Scheda</button></div>${itemsHtml}`;
-                globalSearchDropdown.appendChild(div);
-            }
-        }
-        globalSearchDropdown.classList.toggle('hidden', resultsFound === 0);
-    });
-}
-
-if (searchClearBtn) {
-    searchClearBtn.addEventListener('click', () => {
-        if(globalSearch) globalSearch.value = "";
-        if(globalSearchDropdown) globalSearchDropdown.classList.add('hidden');
-        searchClearBtn.classList.add('hidden');
-    });
-}
-
-document.addEventListener('click', (e) => {
-    if (globalSearch && globalSearchDropdown && !globalSearch.contains(e.target) && !globalSearchDropdown.contains(e.target)) globalSearchDropdown.classList.add('hidden');
-    if (assignClientSearch && assignClientDropdown && assignClientToggleBtn && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && !assignClientToggleBtn.contains(e.target)) assignClientDropdown.classList.add('hidden');
-});
-
-window.openClientModal = function(clientId) {
-    const client = clientsData[clientId];
-    if (!client) return;
-
-    document.getElementById('modalClientName').textContent = client.name;
-    document.getElementById('modalClientDetails').textContent = `Tel: ${client.phone} | Nascita: ${client.dob || 'N/D'} | Indirizzo: ${client.address || 'N/D'}`;
-
-    let totalItems = 0, totalSpent = 0;
-    const activeList = document.getElementById('modalClientActiveItemsList');
-    activeList.innerHTML = "";
-    let activeCount = 0;
-    for (let [id, item] of Object.entries(itemsData)) {
-        if (item.clientId === clientId) {
-            activeCount++; totalItems++; totalSpent += (item.price || 0);
-            const div = document.createElement('div');
-            div.className = "p-3 bg-darkCard rounded-xl border border-darkBorder flex justify-between items-center text-xs";
-            div.innerHTML = `<span class="font-bold text-slate-200">${item.type} (Armadio ${item.cabinet})</span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
-            activeList.appendChild(div);
-        }
-    }
-    if (activeCount === 0) activeList.innerHTML = `<p class="text-xs text-slate-400 italic">Nessun capo attivo.</p>`;
-
-    const historyList = document.getElementById('modalClientHistoryList');
-    historyList.innerHTML = "";
-    let histCount = 0;
-    for (let [id, item] of Object.entries(historyData)) {
-        if (item.clientId === clientId) {
-            histCount++; totalItems++; totalSpent += (item.price || 0);
-            const dateStr = new Date(item.returnedAt).toLocaleDateString('it-IT');
-            const div = document.createElement('div');
-            div.className = "p-3 bg-darkCard rounded-xl border border-darkBorder flex justify-between items-center text-xs";
-            div.innerHTML = `<span class="text-slate-400">${dateStr} &bull; <strong class="text-slate-200">${item.type}</strong></span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
-            historyList.appendChild(div);
-        }
-    }
-    if (histCount === 0) historyList.innerHTML = `<p class="text-xs text-slate-400 italic">Nessun capo nello storico.</p>`;
-
-    document.getElementById('modalClientTotalItems').textContent = totalItems;
-    document.getElementById('modalClientTotalSpent').textContent = `€ ${totalSpent.toFixed(2)}`;
-    document.getElementById('clientModal').classList.remove('hidden');
-};
-
-window.closeClientModal = function() {
-    document.getElementById('clientModal').classList.add('hidden');
-};
-
-function loadHistory() {
-    const local = localStorage.getItem('laundry_history');
-    if (local) historyData = JSON.parse(local);
-
-    db.ref('history').on('value', (snapshot) => {
-        const val = snapshot.val();
-        if (val) {
-            historyData = val;
-            localStorage.setItem('laundry_history', JSON.stringify(val));
-        }
-        const statsView = document.getElementById('viewStats');
-        if (statsView && !statsView.classList.contains('hidden')) renderHistory();
-    });
-}
-
-window.setStatPeriod = function(period) {
-    currentStatPeriod = period;
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-
-    ['Day', 'Month', 'Year', 'All'].forEach(p => {
-        const btn = document.getElementById(`btnPeriod${p}`);
-        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
-    });
-    
-    const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
-    if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95";
-
-    renderHistory();
-};
-
-window.clearCustomDateFilter = function() {
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-    renderHistory();
-};
-
-window.resetAllStatistics = function() {
-    if (confirm("Vuoi azzerare tutte le statistiche?")) {
-        historyData = {};
-        localStorage.removeItem('laundry_history');
-        db.ref('history').remove();
-        showToast("Statistiche azzerate", "success");
-        renderHistory();
-    }
-};
-
-function renderHistory() {
-    const historyTableBody = document.getElementById('historyTableBody');
-    if(!historyTableBody) return;
-    historyTableBody.innerHTML = "";
-    let count = 0, totalRevenue = 0;
-    let uniqueClients = new Set(), typeCounts = {};
-
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentMonth = now.getMonth(), currentYear = now.getFullYear();
-
-    const customStartEl = document.getElementById('statsCustomStartDate');
-    const customEndEl = document.getElementById('statsCustomEndDate');
-    let customStart = customStartEl && customStartEl.value ? new Date(customStartEl.value + "T00:00:00") : null;
-    let customEnd = customEndEl && customEndEl.value ? new Date(customEndEl.value + "T23:59:59") : null;
-
-    const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sorted) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        const retDateStr = retDate.toISOString().split('T')[0];
-
-        if (customStart || customEnd) {
-            if (customStart && retDate < customStart) continue;
-            if (customEnd && retDate > customEnd) continue;
-        } else {
-            if (currentStatPeriod === 'day' && retDateStr !== todayStr) continue;
-            if (currentStatPeriod === 'month' && (retDate.getMonth() !== currentMonth || retDate.getFullYear() !== currentYear)) continue;
-            if (currentStatPeriod === 'year' && retDate.getFullYear() !== currentYear) continue;
-        }
-
-        count++;
-        totalRevenue += (item.price || 0);
-        uniqueClients.add(item.clientId);
-        const tLower = (item.type || "Altro").toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
-
-        const client = clientsData[item.clientId] || { name: "Non trovato" };
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard text-sm";
-        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
-        historyTableBody.appendChild(tr);
-    }
-
-    document.getElementById('statTotalCount').textContent = count;
-    document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
-    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-    document.getElementById('historyCounter').textContent = `${count} elementi`;
-
-    let topType = "-", maxC = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxC) { maxC = c; topType = t.charAt(0).toUpperCase() + t.slice(1); }
-    }
-    document.getElementById('statTopItemType').textContent = topType;
-}
-
-window.exportBackup = function() {
-    const generationDate = new Date().toLocaleDateString('it-IT');
-    const startDateInput = document.getElementById('statsCustomStartDate');
-    const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDate) endDate.setHours(23, 59, 59, 999);
-
-    let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
-    const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sortedHistory) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        if (startDate && retDate < startDate) continue;
-        if (endDate && retDate > endDate) continue;
-
-        filteredHistory.push({ id, item, retDate });
-        totalItemsCount++;
-        grandTotalRevenue += (item.price || 0);
-        const tLower = (item.type || "Altro").trim().toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
-    }
-
-    let topProduct = "Nessuno", maxCount = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxCount) { maxCount = c; topProduct = t.charAt(0).toUpperCase() + t.slice(1); }
-    }
-
-    let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
-    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
-    
-    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
-    for (let entry of filteredHistory) {
-        const item = entry.item;
-        const retDateStr = entry.retDate.toLocaleDateString('it-IT');
-        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
-    }
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Report esportato!", "success");
-}
-
-function showToast(message, type = "success") {
-    const toast = document.getElementById('toastNotification');
-    const toastMsg = document.getElementById('toastMessage');
-    if(!toast || !toastMsg) return;
-    toastMsg.textContent = message;
-    toast.classList.remove('translate-y-20', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
-    setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
-    }, 3500);
-}
+                <button onclick="toggleTheme()" class="p-2.5 bg-darkCard hover:bg-zinc-800 active:scale-95 rounded-xl text-xs text-slate-200 cursor-pointer hover:rotate-45" title="Cambia Tema">
+                    <i id="themeIcon" class="fa-solid fa-moon"></i>
+                </button>
+                <button onclick="lockApp()" class="p-2.5 bg-rose-950/40 hover:bg-rose-900/60 active:scale-95 text-rose-400 rounded-xl text-xs cursor-pointer shadow-sm hover:scale-105" title="Esci / Blocca App">
+                    <i class="fa-solid fa-lock"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- NAVIGATION TABS -->
+        <div class="flex gap-2 border-b border-darkBorder pb-3">
+            <button onclick="switchTab('active')" id="navTabActive" class="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95 hover:bg-blue-500">
+                <i class="fa-solid fa-box-archive mr-1.5"></i> Capi in Lavorazione
+            </button>
+            <button onclick="switchTab('stats')" id="navTabStats" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95">
+                <i class="fa-solid fa-chart-pie mr-1.5"></i> Storico & Statistiche
+            </button>
+        </div>
+
+        <!-- VIEW ACTIVE -->
+        <div id="viewActive" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Colonna Sinistra -->
+                <div class="lg:col-span-1 space-y-6">
+                    
+                    <!-- Nuovo Cliente -->
+                    <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4 hover:border-zinc-700 hover:shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-user-plus text-blue-400"></i> Nuovo Cliente
+                            </h2>
+                        </div>
+                        <form id="clientForm" class="space-y-3">
+                            <input type="text" id="clientName" placeholder="Nome e Cognome *" required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="tel" id="clientPhone" placeholder="Telefono *" required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="clientDob" placeholder="Data Nascita (GG/MM/AAAA)" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="text" id="clientAddress" placeholder="Indirizzo" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm shadow-emerald-600/20 hover:-translate-y-0.5">
+                                <i class="fa-solid fa-check mr-1"></i> Registra Cliente
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Inserimento Capo -->
+                    <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4 hover:border-zinc-700 hover:shadow-lg">
+                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-shirt text-blue-400"></i> Accetta Capo in Armadio
+                        </h2>
+                        <form id="itemForm" class="space-y-3">
+                            <div class="relative">
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente *</label>
+                                <div class="relative flex items-center">
+                                    <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono cliente..." autocomplete="off" class="w-full pl-3 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="hidden" id="selectedClientIdInput" required>
+                                    <button type="button" id="assignClientToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
+                                        <i class="fa-solid fa-chevron-down"></i>
+                                    </button>
+                                </div>
+                                <div id="assignClientDropdown" class="absolute left-0 right-0 mt-1 bg-darkSurface border border-darkBorder rounded-xl shadow-xl max-h-60 overflow-y-auto z-30 hidden animate-modal"></div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tipologia Capo *</label>
+                                <input type="text" id="itemType" placeholder="Es. Giacca, Abito, Piumino..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Armadio *</label>
+                                    <input type="text" id="itemCabinet" placeholder="Es. A1, B2..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Posizione *</label>
+                                    <input type="text" id="itemPosition" placeholder="Es. 12, Gancio 4..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Prezzo (€)</label>
+                                <input type="number" step="0.05" id="itemPrice" placeholder="0.00" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Note opzionali</label>
+                                <textarea id="itemNotes" rows="2" placeholder="Es. Con cintura..." class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 pt-2">
+                                <button type="button" onclick="printItemLabel()" class="w-full py-2 bg-zinc-700 hover:bg-zinc-600 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:-translate-y-0.5">
+                                    <i class="fa-solid fa-print"></i> Stampa Etichetta
+                                </button>
+                                <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20 hover:-translate-y-0.5">
+                                    <i class="fa-solid fa-plus"></i> Inserisci
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+
+                <!-- Colonna Destra -->
+                <div class="lg:col-span-2 bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm flex flex-col hover:border-zinc-700 hover:shadow-lg">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h2 class="text-sm font-bold text-white">Capi Attivi in Deposito</h2>
+                            <p class="text-xs text-slate-400">Elenco completo dei capi attualmente in lavorazione</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="itemsCounterBadge" class="px-2.5 py-1 bg-blue-950 text-blue-400 border border-blue-900 rounded-lg text-xs font-semibold">0 capi</span>
+                            <input type="text" id="activeTableFilter" placeholder="Filtra tabella..." class="px-3 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto flex-1">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase">
+                                    <th class="py-3 px-4">Cliente</th>
+                                    <th class="py-3 px-4">Capo & Prezzo</th>
+                                    <th class="py-3 px-4">Armadio / Pos</th>
+                                    <th class="py-3 px-4">Stato</th>
+                                    <th class="py-3 px-4 text-right">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
+                        </table>
+                        <div id="noItemsMessage" class="hidden flex-col items-center justify-center py-16 text-slate-400 space-y-2">
+                            <i class="fa-solid fa-box-open text-3xl"></i>
+                            <p class="text-xs">Nessun capo attivo registrato al momento.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- VIEW STATS -->
+        <div id="viewStats" class="space-y-6 hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700 hover:-translate-y-1">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati (Periodo)</div>
+                    <div id="statTotalCount" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700 hover:-translate-y-1">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Incasso Totale</div>
+                    <div id="statTotalRevenue" class="text-2xl font-bold text-emerald-400">€ 0.00</div>
+                </div>
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700 hover:-translate-y-1">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Clienti Unici Serviti</div>
+                    <div id="statUniqueClients" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700 hover:-translate-y-1">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capo più frequente</div>
+                    <div id="statTopItemType" class="text-2xl font-bold text-white truncate">-</div>
+                </div>
+            </div>
+
+            <div class="bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm flex flex-wrap items-center justify-between gap-4 hover:border-zinc-700">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="setStatPeriod('day')" id="btnPeriodDay" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Oggi</button>
+                    <button onclick="setStatPeriod('month')" id="btnPeriodMonth" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Questo Mese</button>
+                    <button onclick="setStatPeriod('year')" id="btnPeriodYear" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Quest'Anno</button>
+                    <button onclick="setStatPeriod('all')" id="btnPeriodAll" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95">Tutti</button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 bg-darkSurface/50 p-2 rounded-xl border border-darkBorder">
+                    <span class="text-xs font-medium text-slate-400 pl-1">Da:</span>
+                    <input type="date" id="statsCustomStartDate" class="px-2.5 py-1.5 bg-darkCard border border-darkBorder rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <span class="text-xs font-medium text-slate-400">A:</span>
+                    <input type="date" id="statsCustomEndDate" class="px-2.5 py-1.5 bg-darkCard border border-darkBorder rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <button onclick="renderHistory()" title="Filtra per intervallo date" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-check"></i> Cerca
+                    </button>
+                    <button onclick="clearCustomDateFilter()" title="Azzera filtri" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-slate-300 rounded-lg text-xs cursor-pointer">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="exportBackup()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm hover:-translate-y-0.5">
+                        <i class="fa-solid fa-file-excel"></i> Esporta Excel
+                    </button>
+                    <button onclick="resetAllStatistics()" class="px-3 py-2 bg-rose-950/60 hover:bg-rose-900 active:scale-95 text-rose-400 text-xs font-semibold rounded-xl cursor-pointer" title="Azzera Storico">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-white">Storico Capi Ritirati</h2>
+                    <span id="historyCounter" class="text-xs text-slate-400">0 elementi</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase">
+                                <th class="py-3 px-4">Data Ritiro</th>
+                                <th class="py-3 px-4">Cliente</th>
+                                <th class="py-3 px-4">Capo</th>
+                                <th class="py-3 px-4">Prezzo</th>
+                                <th class="py-3 px-4">Armadio Origine</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODALE CLIENTE -->
+    <div id="clientModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-2xl border border-darkBorder space-y-5 max-h-[90vh] overflow-y-auto animate-modal">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 id="modalClientName" class="text-lg font-bold text-white">Nome Cliente</h2>
+                    <p id="modalClientDetails" class="text-xs text-slate-400 mt-0.5">Tel: - | Nascita: - | Indirizzo: -</p>
+                </div>
+                <button onclick="closeClientModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-darkCard p-3.5 rounded-2xl border border-darkBorder">
+                    <div class="text-[11px] font-semibold text-slate-400">Totale Capi</div>
+                    <div id="modalClientTotalItems" class="text-xl font-bold text-white mt-0.5">0</div>
+                </div>
+                <div class="bg-darkCard p-3.5 rounded-2xl border border-darkBorder">
+                    <div class="text-[11px] font-semibold text-slate-400">Spesa Totale</div>
+                    <div id="modalClientTotalSpent" class="text-xl font-bold text-emerald-400 mt-0.5">€ 0.00</div>
+                </div>
+            </div>
+            <div class="space-y-3">
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Capi Attualmente in Armadio</h3>
+                <div id="modalClientActiveItemsList" class="space-y-2"></div>
+            </div>
+            <div class="space-y-3 pt-2">
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Storico Capi Ritirati</h3>
+                <div id="modalClientHistoryList" class="space-y-2 max-h-40 overflow-y-auto"></div>
+            </div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeClientModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 text-white rounded-xl text-xs font-semibold cursor-pointer">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE GESTIONE ANAGRAFICA -->
+    <div id="clientManagerModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-4xl border border-darkBorder space-y-5 max-h-[90vh] overflow-y-auto flex flex-col animate-modal">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold text-white">Anagrafica Clienti</h2>
+                    <p class="text-xs text-slate-400">Visualizza o elimina i clienti registrati</p>
+                </div>
+                <button onclick="closeClientManagerModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="managerClientSearchInput" placeholder="Filtra clienti..." class="w-full pl-9 pr-3 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="overflow-x-auto flex-1 max-h-96">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase sticky top-0 bg-darkSurface">
+                            <th class="py-3 px-4">Nominativo</th>
+                            <th class="py-3 px-4">Telefono</th>
+                            <th class="py-3 px-4">Indirizzo & Nascita</th>
+                            <th class="py-3 px-4 text-right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="managerClientsTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
+                </table>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-darkBorder">
+                <button onclick="closeClientManagerModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 text-white rounded-xl text-xs font-semibold cursor-pointer">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALI LICENZA -->
+    <div id="licenseWarningModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="bg-darkSurface border border-amber-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4 animate-modal">
+            <div class="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-2xl animate-bounce">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white">La licenza sta per scadere!</h3>
+            <p id="licenseWarningText" class="text-sm text-slate-300 leading-relaxed">La licenza di questo dispositivo scadrà tra pochi giorni.</p>
+            <button onclick="closeWarningModal()" class="w-full py-3 bg-amber-600 hover:bg-amber-500 active:scale-[0.98] text-white font-bold rounded-xl cursor-pointer">Ho capito, continua</button>
+        </div>
+    </div>
+
+    <div id="licenseExpiredModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="bg-darkSurface border border-rose-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4 animate-modal">
+            <div class="w-16 h-16 bg-rose-500/20 text-rose-500 rounded-full flex items-center justify-center mx-auto text-2xl animate-pulse">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white">Periodo di Prova o Licenza Scaduto</h3>
+            <p class="text-sm text-slate-300 leading-relaxed">Il tempo di utilizzo è terminato.</p>
+            <button onclick="closeExpiredModalAndRelogin()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold rounded-xl cursor-pointer">OK, Inserisci Licenza</button>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-darkSurface border border-darkBorder shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3">
+            <div class="w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-xs">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <span id="toastMessage" class="text-xs font-semibold text-white">Operazione completata!</span>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
