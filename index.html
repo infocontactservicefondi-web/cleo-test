@@ -102,7 +102,7 @@
             <div class="relative flex-1 max-w-md mx-auto w-full">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
-                    <input type="text" id="globalSearch" placeholder="Cerca cliente (nome, tel) o capo (tipo, armadio)..." class="w-full pl-9 pr-16 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="globalSearch" placeholder="Cerca cliente (nome, tel) o capo (tipo, cesta)..." class="w-full pl-9 pr-16 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <button id="searchClearBtn" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs hidden cursor-pointer">
                         <i class="fa-solid fa-xmark"></i> Pulisci
                     </button>
@@ -165,7 +165,7 @@
                     <!-- Inserimento Capo -->
                     <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4 hover:border-zinc-700 hover:shadow-lg">
                         <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-shirt text-blue-400"></i> Accetta Capo in Armadio
+                            <i class="fa-solid fa-shirt text-blue-400"></i> Inserisci Capo Lavato
                         </h2>
                         <form id="itemForm" class="space-y-3">
                             <div class="relative">
@@ -180,9 +180,15 @@
                                 <div id="assignClientDropdown" class="absolute left-0 right-0 mt-1 bg-darkSurface border border-darkBorder rounded-xl shadow-xl max-h-60 overflow-y-auto z-30 hidden animate-modal"></div>
                             </div>
 
-                            <div>
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tipologia Capo *</label>
-                                <input type="text" id="itemType" placeholder="Es. Giacca, Abito, Piumino..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Cesta di Riferimento *</label>
+                                    <input type="text" id="itemBasket" placeholder="Es. Cesta 1, A..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tipologia Capo *</label>
+                                    <input type="text" id="itemType" placeholder="Es. Giacca, Abito..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-2">
@@ -224,7 +230,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                         <div>
                             <h2 class="text-sm font-bold text-white">Capi Attivi in Deposito</h2>
-                            <p class="text-xs text-slate-400">Elenco completo dei capi attualmente in lavorazione</p>
+                            <p class="text-xs text-slate-400">Elenco completo dei capi lavati e pronti al ritiro</p>
                         </div>
                         <div class="flex items-center gap-2">
                             <span id="itemsCounterBadge" class="px-2.5 py-1 bg-blue-950 text-blue-400 border border-blue-900 rounded-lg text-xs font-semibold">0 capi</span>
@@ -238,6 +244,7 @@
                                 <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase">
                                     <th class="py-3 px-4">Cliente</th>
                                     <th class="py-3 px-4">Capo & Prezzo</th>
+                                    <th class="py-3 px-4">Cesta</th>
                                     <th class="py-3 px-4">Armadio / Pos</th>
                                     <th class="py-3 px-4">Stato</th>
                                     <th class="py-3 px-4 text-right">Azioni</th>
@@ -320,7 +327,7 @@
                                 <th class="py-3 px-4">Cliente</th>
                                 <th class="py-3 px-4">Capo</th>
                                 <th class="py-3 px-4">Prezzo</th>
-                                <th class="py-3 px-4">Armadio Origine</th>
+                                <th class="py-3 px-4">Cesta / Armadio Origine</th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
