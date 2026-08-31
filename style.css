@@ -1,40 +1,28 @@
-/* AuraLaundry Pro - Stili Globali Personalizzati */
+/* Lavanderia Cleo - Stili Custom */
 body {
     font-family: 'Inter', sans-serif;
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Transizioni e animazioni custom */
 @keyframes fadeIn {
-    from { 
-        opacity: 0; 
-        transform: translateY(8px); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
-    }
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
     animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Personalizzazione barre di scorrimento sottili */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #3c4043;
     border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
 }
