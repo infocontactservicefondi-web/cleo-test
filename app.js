@@ -1,4 +1,3 @@
-// Configurazione Firebase (Sostituisci con i tuoi dati reali)
 const firebaseConfig = {
     apiKey: "TUA_API_KEY",
     authDomain: "tuo-progetto.firebaseapp.com",
@@ -9,24 +8,19 @@ const firebaseConfig = {
     appId: "1:123456789:web:abcdef"
 };
 
-// Inizializzazione Firebase
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.database();
 
-// Variabili di stato globali
 let allClients = {};
 let allItems = {};
-let currentStatPeriod = 'all';
 
-// Avvio applicazione al caricamento del DOM
 document.addEventListener('DOMContentLoaded', () => {
     initAuthAndListeners();
 });
 
 function initAuthAndListeners() {
-    // Gestione Login con password amministratore fissa o salvata
     const savedAuth = localStorage.getItem('cleo_auth_passed');
     const savedLicense = localStorage.getItem('cleo_license_valid');
 
@@ -49,7 +43,7 @@ function initAuthAndListeners() {
     document.getElementById('loginForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const pwd = document.getElementById('passwordInput').value.trim();
-        if (pwd === "admin123" || pwd === "cleo2026") { // Sostituisci o adatta la password admin
+        if (pwd === "admin123" || pwd === "cleo2026") {
             localStorage.setItem('cleo_auth_passed', 'true');
             document.getElementById('loginScreen').classList.add('opacity-0');
             setTimeout(() => {
@@ -65,14 +59,11 @@ function initAuthAndListeners() {
         }
     });
 
-    // Eventi form cliente
     document.getElementById('clientForm').addEventListener('submit', handleClientSubmit);
-
-    // Eventi form capo (Unito con stampa ricevuta automatica)
     document.getElementById('itemForm').addEventListener('submit', handleItemSubmitWithPrint);
 
-    // Gestione ricerca cliente con lente nel modulo accettazione capo
     setupClientSearchDropdown();
+    setupNewClientSearchDropdown();
 }
 
 function checkNumericLicense() {
@@ -93,13 +84,11 @@ function lockApp() {
 }
 
 function startAppListeners() {
-    // Sincronizzazione Clienti da Firebase
     db.ref('clients').on('value', (snapshot) => {
         allClients = snapshot.val() || {};
         renderManagerClientsTable();
     });
 
-    // Sincronizzazione Capi da Firebase
     db.ref('items').on('value', (snapshot) => {
         allItems = snapshot.val() || {};
         renderActiveItemsTable();
@@ -107,7 +96,62 @@ function startAppListeners() {
     });
 }
 
-// ================= GESTIONE CLIENTI & STAMPA ETICHETTA =================
+// ================= GESTIONE NUOVO CLIENTE CON LENTE =================
+function setupNewClientSearchDropdown() {
+    const nameInput = document.getElementById('clientName');
+    const phoneInput = document.getElementById('clientPhone');
+    const dobInput = document.getElementById('clientDob');
+    const addressInput = document.getElementById('clientAddress');
+    const dropdown = document.getElementById('clientSearchDropdown');
+    const toggleBtn = document.getElementById('clientToggleBtn');
+
+    function filterAndShow(query) {
+        dropdown.innerHTML = '';
+        const q = query.toLowerCase();
+        const matches = Object.entries(allClients).filter(([id, c]) => 
+            c.name.toLowerCase().includes(q) || c.phone.includes(q)
+        );
+
+        if (matches.length === 0) {
+            dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente esistente trovato. Compila per crearne uno nuovo.</div>`;
+        } else {
+            matches.forEach(([id, c]) => {
+                const item = document.createElement('div');
+                item.className = "p-2.5 hover:bg-darkCard cursor-pointer text-xs flex justify-between items-center border-b border-darkBorder/30 last:border-0";
+                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone}</span></div><i class="fa-solid fa-check text-blue-500 opacity-0"></i>`;
+                item.onclick = () => {
+                    nameInput.value = c.name;
+                    phoneInput.value = c.phone || '';
+                    dobInput.value = c.dob || '';
+                    addressInput.value = c.address || '';
+                    dropdown.classList.add('hidden');
+                    showToast("Cliente esistente richiamato!");
+                };
+                dropdown.appendChild(item);
+            });
+        }
+        dropdown.classList.remove('hidden');
+    }
+
+    nameInput.addEventListener('input', (e) => {
+        filterAndShow(e.target.value);
+    });
+
+    toggleBtn.addEventListener('click', () => {
+        if (dropdown.classList.contains('hidden')) {
+            filterAndShow('');
+        } else {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!nameInput.contains(e.target) && !dropdown.contains(e.target) && !toggleBtn.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
+
 function handleClientSubmit(e) {
     e.preventDefault();
     const name = document.getElementById('clientName').value.trim();
@@ -132,32 +176,39 @@ function handleClientSubmit(e) {
 function printClientLabel() {
     const name = document.getElementById('clientName').value.trim();
     const phone = document.getElementById('clientPhone').value.trim();
+    const dob = document.getElementById('clientDob').value.trim();
     const address = document.getElementById('clientAddress').value.trim();
 
     if (!name || !phone) {
-        showToast("Inserisci almeno Nome e Telefono per stampare l'etichetta cliente!", "error");
+        showToast("Inserisci almeno Nome e Telefono per stampare l'etichetta!", "error");
         return;
     }
 
-    const printWindow = window.open('', '_blank', 'width=400,height=400');
+    const printWindow = window.open('', '_blank', 'width=400,height=500');
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
         <head>
             <title>Etichetta Cliente - Lavanderia Cleo</title>
             <style>
-                body { font-family: sans-serif; text-align: center; padding: 20px; margin: 0; }
-                h2 { margin: 0 0 10px 0; font-size: 18px; }
-                p { margin: 4px 0; font-size: 14px; }
-                .box { border: 2px solid #000; padding: 15px; border-radius: 8px; }
+                body { font-family: monospace; padding: 15px; font-size: 12px; }
+                .center { text-align: center; }
+                .line { border-bottom: 1px dashed #000; margin: 10px 0; }
             </style>
         </head>
         <body>
-            <div class="box">
-                <h2>CLIENTE - LAVANDERIA CLEO</h2>
-                <p><strong>Nome:</strong> ${name}</p>
-                <p><strong>Tel:</strong> ${phone}</p>
-                ${address ? `<p><strong>Indirizzo:</strong> ${address}</p>` : ''}
+            <div class="center">
+                <strong>LAVANDERIA CLEO</strong><br>
+                Etichetta Cliente / Capo in Cesta
+            </div>
+            <div class="line"></div>
+            <p><strong>Nome:</strong> ${name}</p>
+            <p><strong>Tel:</strong> ${phone}</p>
+            ${dob ? `<p><strong>Nascita:</strong> ${dob}</p>` : ''}
+            ${address ? `<p><strong>Indirizzo:</strong> ${address}</p>` : ''}
+            <div class="line"></div>
+            <div class="center" style="font-size: 10px;">
+                ${new Date().toLocaleString()}
             </div>
             <script>
                 window.onload = function() { window.print(); window.close(); }
@@ -168,7 +219,7 @@ function printClientLabel() {
     printWindow.document.close();
 }
 
-// ================= RICERCA CON LENTE CLIENTE ESISTENTE =================
+// ================= RICERCA CON LENTE CAPO =================
 function setupClientSearchDropdown() {
     const searchInput = document.getElementById('assignClientSearch');
     const hiddenIdInput = document.getElementById('selectedClientIdInput');
@@ -183,7 +234,7 @@ function setupClientSearchDropdown() {
         );
 
         if (matches.length === 0) {
-            dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente trovato. Registralo a sinistra.</div>`;
+            dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente trovato. Registralo sopra.</div>`;
         } else {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
@@ -220,7 +271,7 @@ function setupClientSearchDropdown() {
     });
 }
 
-// ================= GESTIONE ETICHETTA CESTA =================
+// ================= ETICHETTA CESTA =================
 function printBasketLabel() {
     const clientNameVal = document.getElementById('assignClientSearch').value.trim();
     const itemTypeVal = document.getElementById('itemType').value.trim();
@@ -259,7 +310,7 @@ function printBasketLabel() {
     printWindow.document.close();
 }
 
-// ================= INSERIMENTO CAPO E STAMPA RICEVUTA UNITE =================
+// ================= INSERIMENTO CAPO E RICEVUTA =================
 function handleItemSubmitWithPrint(e) {
     e.preventDefault();
 
@@ -276,7 +327,6 @@ function handleItemSubmitWithPrint(e) {
         return;
     }
 
-    // 1. Stampa automatica ricevuta contestuale
     const printWindow = window.open('', '_blank', 'width=400,height=600');
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -313,7 +363,6 @@ function handleItemSubmitWithPrint(e) {
     `);
     printWindow.document.close();
 
-    // 2. Salvataggio in archivio Firebase
     const newItemData = {
         clientId: clientId,
         clientName: clientNameText,
@@ -335,7 +384,7 @@ function handleItemSubmitWithPrint(e) {
     });
 }
 
-// ================= RENDERIZZAZIONE TABELLE E UTILITIES =================
+// ================= TABELLE E UTILITIES =================
 function renderActiveItemsTable() {
     const tbody = document.getElementById('itemsTableBody');
     const noMsg = document.getElementById('noItemsMessage');
@@ -387,6 +436,7 @@ function markItemAsCompleted(itemId) {
 function renderHistory() {
     const tbody = document.getElementById('historyTableBody');
     const counter = document.getElementById('historyCounter');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     const completedItems = Object.entries(allItems).filter(([id, item]) => item.status === 'completed');
