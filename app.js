@@ -325,7 +325,7 @@ function setupAssignClientSearchDropdown() {
     });
 }
 
-// ================= INSERIMENTO CAPO E STAMPA RICEVUTA + ETICHETTA CESTA =================
+// ================= INSERIMENTO CAPO E STAMPA RICEVUTA =================
 function handleItemSubmitWithPrint(e) {
     e.preventDefault();
 
@@ -342,11 +342,7 @@ function handleItemSubmitWithPrint(e) {
         return;
     }
 
-    // Recupera i dati del cliente incluso il telefono per l'etichetta cesta
-    const clientObj = allClients[clientId] || {};
-    const clientPhoneText = clientObj.phone || '';
-
-    const printWindow = window.open('', '_blank', 'width=450,height=700');
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
     if (!printWindow) {
         showToast("Il browser ha bloccato il pop-up di stampa. Consenti i pop-up.", "error");
         return;
@@ -356,19 +352,14 @@ function handleItemSubmitWithPrint(e) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Ricevuta e Etichetta Cesta - Lavanderia Cleo</title>
+            <title>Ricevuta Capo - Lavanderia Cleo</title>
             <style>
-                body { font-family: monospace; padding: 10px; font-size: 12px; }
+                body { font-family: monospace; padding: 15px; font-size: 12px; }
                 .center { text-align: center; }
                 .line { border-bottom: 1px dashed #000; margin: 10px 0; }
-                .page-break { page-break-after: always; break-after: page; }
-                .basket-label { text-align: center; font-size: 14px; padding: 10px 0; }
-                .basket-label .name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-                .basket-label .phone { font-size: 16px; font-weight: bold; }
             </style>
         </head>
         <body>
-            <!-- PAGINA 1: RICEVUTA CLIENTE CAPO FINITO -->
             <div class="center">
                 <strong>LAVANDERIA CLEO</strong><br>
                 Ricevuta Accettazione Capo
@@ -384,19 +375,6 @@ function handleItemSubmitWithPrint(e) {
                 Conservare la ricevuta per il ritiro<br>
                 ${new Date().toLocaleString()}
             </div>
-
-            <div class="page-break"></div>
-
-            <!-- PAGINA 2: ETICHETTA CESTA -->
-            <div class="line"></div>
-            <div class="basket-label">
-                <div style="font-size: 10px; text-transform: uppercase;">ETICHETTA CESTA</div>
-                <div class="line"></div>
-                <div class="name">${clientNameText}</div>
-                <div class="phone">Tel: ${clientPhoneText}</div>
-            </div>
-            <div class="line"></div>
-
             <script>
                 window.onload = function() { window.print(); window.close(); }
             </script>
@@ -418,7 +396,7 @@ function handleItemSubmitWithPrint(e) {
     };
 
     db.ref('items').push(newItemData).then(() => {
-        showToast("Capo inserito, ricevuta ed etichetta stampate!");
+        showToast("Capo inserito e ricevuta stampata!");
         document.getElementById('itemForm').reset();
         document.getElementById('selectedClientIdInput').value = '';
     }).catch((error) => {
