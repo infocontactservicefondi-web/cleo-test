@@ -156,9 +156,14 @@
                                 <input type="text" id="clientDob" placeholder="Data Nascita (GG/MM/AAAA)" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <input type="text" id="clientAddress" placeholder="Indirizzo" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
-                            <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm shadow-emerald-600/20 hover:-translate-y-0.5">
-                                <i class="fa-solid fa-check mr-1"></i> Registra Cliente
-                            </button>
+                            <div class="grid grid-cols-2 gap-2 pt-1">
+                                <button type="button" onclick="printClientLabel()" class="w-full py-2 bg-purple-700 hover:bg-purple-600 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:-translate-y-0.5">
+                                    <i class="fa-solid fa-tag"></i> Stampa Etichetta
+                                </button>
+                                <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm shadow-emerald-600/20 hover:-translate-y-0.5 flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-check"></i> Registra
+                                </button>
+                            </div>
                         </form>
                     </div>
 
@@ -169,9 +174,10 @@
                         </h2>
                         <form id="itemForm" class="space-y-3">
                             <div class="relative">
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente (Cerca con lente) *</label>
                                 <div class="relative flex items-center">
-                                    <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono cliente..." autocomplete="off" class="w-full pl-3 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
+                                    <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono cliente esistente..." autocomplete="off" class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <input type="hidden" id="selectedClientIdInput" required>
                                     <button type="button" id="assignClientToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
                                         <i class="fa-solid fa-chevron-down"></i>
