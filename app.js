@@ -96,6 +96,44 @@ function startAppListeners() {
     });
 }
 
+// ================= FUNZIONE STAMPA SICURA (BYPASS POP-UP BLOCK) =================
+function triggerSecurePrint(htmlContent) {
+    let printFrame = document.getElementById('printFrameHidden');
+    if (!printFrame) {
+        printFrame = document.createElement('iframe');
+        printFrame.id = 'printFrameHidden';
+        printFrame.style.position = 'fixed';
+        printFrame.style.right = '0';
+        printFrame.style.bottom = '0';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = '0';
+        document.body.appendChild(printFrame);
+    }
+    
+    const frameDoc = printFrame.contentWindow || printFrame.contentDocument.document || printFrame.contentDocument;
+    frameDoc.document.open();
+    frameDoc.document.write(htmlContent);
+    frameDoc.document.close();
+
+    setTimeout(() => {
+        try {
+            printFrame.contentWindow.focus();
+            printFrame.contentWindow.print();
+        } catch (e) {
+            const win = window.open('', '_blank', 'width=400,height=600');
+            if (win) {
+                win.document.write(htmlContent);
+                win.document.close();
+                win.focus();
+                win.print();
+            } else {
+                showToast("Impossibile stampare: sblocca i pop-up nel browser", "error");
+            }
+        }
+    }, 500);
+}
+
 // ================= TABELLA DROPDOWN "NUOVO / CERCA CLIENTE" =================
 function setupManageClientSearchDropdown() {
     const searchInput = document.getElementById('clientName');
@@ -117,7 +155,7 @@ function setupManageClientSearchDropdown() {
         );
 
         if (matches.length === 0) {
-            dropdown.innerHTML += `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente esistente. Compila i dati per registrarlo.</div>`;
+            dropdown.innerHTML += `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente esistente. Compila i dati sotto per registrarlo.</div>`;
         } else {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
@@ -216,27 +254,21 @@ function printClientReceiptLabel() {
         return;
     }
 
-    const printWindow = window.open('', '_blank', 'width=400,height=500');
-    if (!printWindow) {
-        showToast("Il browser ha bloccato il pop-up di stampa. Consenti i pop-up.", "error");
-        return;
-    }
-
-    printWindow.document.write(`
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Ricevuta Cliente - Lavanderia Cleo</title>
+            <title>Etichetta Cliente - Lavanderia Cleo</title>
             <style>
-                body { font-family: monospace; padding: 15px; font-size: 12px; }
+                body { font-family: monospace; padding: 10px; font-size: 11px; width: 280px; }
                 .center { text-align: center; }
-                .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+                .line { border-bottom: 1px dashed #000; margin: 8px 0; }
             </style>
         </head>
         <body>
             <div class="center">
                 <strong>LAVANDERIA CLEO</strong><br>
-                Scheda / Ricevuta Cliente
+                Scheda Anagrafica Cliente
             </div>
             <div class="line"></div>
             <p><strong>Nome:</strong> ${name}</p>
@@ -244,17 +276,13 @@ function printClientReceiptLabel() {
             ${dob ? `<p><strong>Data Nascita:</strong> ${dob}</p>` : ''}
             ${address ? `<p><strong>Indirizzo:</strong> ${address}</p>` : ''}
             <div class="line"></div>
-            <div class="center" style="font-size: 10px;">
-                Registrazione Anagrafica Cliente<br>
+            <div class="center" style="font-size: 9px;">
                 ${new Date().toLocaleString()}
             </div>
-            <script>
-                window.onload = function() { window.print(); window.close(); }
-            </script>
         </body>
         </html>
-    `);
-    printWindow.document.close();
+    `;
+    triggerSecurePrint(html);
 }
 
 // ================= TABELLA DROPDOWN "ACCETTA CAPO" =================
@@ -342,21 +370,15 @@ function handleItemSubmitWithPrint(e) {
         return;
     }
 
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) {
-        showToast("Il browser ha bloccato il pop-up di stampa. Consenti i pop-up.", "error");
-        return;
-    }
-
-    printWindow.document.write(`
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
             <title>Ricevuta Capo - Lavanderia Cleo</title>
             <style>
-                body { font-family: monospace; padding: 15px; font-size: 12px; }
+                body { font-family: monospace; padding: 10px; font-size: 11px; width: 280px; }
                 .center { text-align: center; }
-                .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+                .line { border-bottom: 1px dashed #000; margin: 8px 0; }
             </style>
         </head>
         <body>
@@ -371,17 +393,14 @@ function handleItemSubmitWithPrint(e) {
             <p><strong>Prezzo:</strong> EUR ${Number(itemPrice).toFixed(2)}</p>
             ${itemNotes ? `<p><strong>Note:</strong> ${itemNotes}</p>` : ''}
             <div class="line"></div>
-            <div class="center" style="font-size: 10px;">
-                Conservare la ricevuta per il ritiro<br>
+            <div class="center" style="font-size: 9px;">
+                Conservare per il ritiro<br>
                 ${new Date().toLocaleString()}
             </div>
-            <script>
-                window.onload = function() { window.print(); window.close(); }
-            </script>
         </body>
         </html>
-    `);
-    printWindow.document.close();
+    `;
+    triggerSecurePrint(html);
 
     const newItemData = {
         clientId: clientId,
