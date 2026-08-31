@@ -163,7 +163,6 @@ window.closeExpiredModalAndRelogin = function() {
     lockAppComplete();
 };
 
-// ACCESSO AMMINISTRATORE (Tramite Lucchetto / Password) -> Permette di rientrare
 function checkAdminPassword() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredPassword = "";
@@ -181,7 +180,7 @@ function checkAdminPassword() {
 
     if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'true'); // Segna che è entrato come admin
+        sessionStorage.setItem('laundry_logged_as_admin', 'true');
         unlockApp();
         showToast("Accesso amministratore eseguito", "success");
     } else {
@@ -193,8 +192,7 @@ function checkAdminPassword() {
     }
 }
 
-// INSERIMENTO CODICE LICENZA (Una tantum) -> Blocca definitivamente il ritorno indietro
-function checkNumericLicense() {
+window.checkNumericLicense = function() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredCode = "";
 
@@ -212,7 +210,7 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Non è admin, è licenza standard blindata
+        sessionStorage.setItem('laundry_logged_as_admin', 'false');
         hasShownTodayWarning = false;
         unlockApp();
         startLicenseCountdownMonitor();
@@ -271,7 +269,7 @@ function checkNumericLicense() {
                     localStorage.setItem('laundry_code_already_redeemed', enteredCode);
                     localStorage.setItem('laundry_license_expiry', expirationTimestamp);
                     sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Bloccato: niente ritorno indietro per gli operatori
+                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
                     hasShownTodayWarning = false;
                     
                     unlockApp();
@@ -594,6 +592,7 @@ if (assignClientToggleBtn) {
     });
 }
 
+// INSERIMENTO CAPO PRONTO POST-LAVAGGIO + STAMPA AUTOMATICA ETICHETTA
 if (itemForm) {
     itemForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -610,6 +609,32 @@ if (itemForm) {
             return;
         }
 
+        if (!type || !cabinet || !position) {
+            showToast("Compila tipo capo, armadio e posizione", "error");
+            return;
+        }
+
+        // 1. Generazione e invio della stampa termica (RawBT)
+        const client = clientsData[clientId];
+        const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+
+        const generateSingleReceipt = (copyType) => {
+            let block = "";
+            block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCapo:    " + type + "\n";
+            if (notes) block += `Note:    ${notes}\n`;
+            block += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
+            return block;
+        };
+
+        let printText = generateSingleReceipt("ATTIVITA") + "\x1D\x56\x41\x03" + generateSingleReceipt("CLIENTE") + "\x1D\x56\x41\x03";
+        try {
+            const base64Data = btoa(unescape(encodeURIComponent(printText)));
+            window.location.href = `rawbt:base64,${base64Data}`;
+        } catch (err) {
+            console.error("Errore di stampa:", err);
+        }
+
+        // 2. Salvataggio del capo nel database
         const itemId = 'item_' + Date.now();
         const newItem = { clientId, type, cabinet, position, price, notes, status, timestamp: Date.now() };
 
@@ -617,51 +642,14 @@ if (itemForm) {
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
 
+        // 3. Reset form e notifiche
         itemForm.reset();
         if(assignClientSearch) assignClientSearch.value = "";
         if(selectedClientIdInput) selectedClientIdInput.value = "";
-        showToast(`Capo (${type}) registrato in armadio ${cabinet}`, "success");
+        showToast(`Etichetta stampata e capo (${type}) inserito in armadio ${cabinet}!`, "success");
         renderItems();
     });
 }
-
-window.printItemLabel = function() {
-    const clientId = selectedClientIdInput.value;
-    const type = document.getElementById('itemType').value.trim();
-    const cabinet = document.getElementById('itemCabinet').value.trim();
-    const position = document.getElementById('itemPosition').value.trim();
-    const price = document.getElementById('itemPrice').value;
-    const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-
-    if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente", "error");
-        return;
-    }
-    if (!type || !cabinet || !position) {
-        showToast("Compila tipo capo, armadio e posizione", "error");
-        return;
-    }
-
-    const client = clientsData[clientId];
-    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-
-    const generateSingleReceipt = (copyType) => {
-        let block = "";
-        block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCapo:    " + type + "\n";
-        if (notes) block += `Note:    ${notes}\n`;
-        block += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
-        return block;
-    };
-
-    let printText = generateSingleReceipt("ATTIVITA") + "\x1D\x56\x41\x03" + generateSingleReceipt("CLIENTE") + "\x1D\x56\x41\x03";
-    try {
-        const base64Data = btoa(unescape(encodeURIComponent(printText)));
-        window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Ricevute inviate in stampa!", "success");
-    } catch (err) {
-        showToast("Errore di stampa.", "error");
-    }
-};
 
 function loadItems() {
     const local = localStorage.getItem('laundry_items');
@@ -966,11 +954,6 @@ window.exportBackup = function() {
         grandTotalRevenue += (item.price || 0);
         const tLower = (item.type || "Altro").trim().toLowerCase();
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
-    }
-
-    let topProduct = "Nessuno", maxCount = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxCount) { maxCount = c; topProduct = t.charAt(0).toUpperCase() + t.slice(1); }
     }
 
     let csvContent = "\uFEFF";
