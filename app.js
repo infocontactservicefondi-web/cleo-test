@@ -527,73 +527,82 @@ window.deleteClient = function(id, name) {
 };
 
 // ==========================================
-// DROPDOWN RICERCA CLIENTE FORM INSERIMENTO (CORRETTO E FUNZIONANTE)
+// DROPDOWN RICERCA CLIENTE INSERIMENTO CAPO
 // ==========================================
-function renderAssignClientDropdown(filter = "") {
-    if (!assignClientDropdown || !selectedClientIdInput) return;
-    assignClientDropdown.innerHTML = "";
-    
-    // Se la stringa contiene " (00000)", estraiamo solo la parte iniziale prima della parentesi
-    let cleanFilter = filter;
-    if (cleanFilter.includes('(')) {
-        cleanFilter = cleanFilter.split('(')[0].trim();
+function renderAssignClientDropdown(query = "") {
+    const dropdown = document.getElementById('assignClientDropdown');
+    const hiddenInput = document.getElementById('selectedClientIdInput');
+    if (!dropdown) return;
+
+    dropdown.innerHTML = "";
+
+    let cleanQuery = query.includes('(') ? query.split('(')[0].trim() : query.trim();
+    const filter = cleanQuery.toLowerCase();
+
+    const clientsList = Object.entries(clientsData);
+
+    if (clientsList.length === 0) {
+        dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun cliente in anagrafica.</div>`;
+        dropdown.classList.remove('hidden');
+        return;
     }
-    
-    const lowerFilter = cleanFilter.toLowerCase();
-    const sorted = Object.entries(clientsData).sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
+
     let matches = 0;
+    const container = document.createElement('div');
+    container.className = "max-h-60 overflow-y-auto divide-y divide-darkBorder/40";
 
-    const tableHeader = document.createElement('div');
-    tableHeader.className = "grid grid-cols-3 px-4 py-2.5 text-[11px] font-bold text-slate-400 uppercase bg-darkSurface border-b border-darkBorder sticky top-0 shadow-sm";
-    tableHeader.innerHTML = `<span>Cliente (Nome)</span><span>Telefono</span><span>Indirizzo</span>`;
-    assignClientDropdown.appendChild(tableHeader);
+    for (let [id, client] of clientsList) {
+        const name = client.name || "";
+        const phone = client.phone || "";
+        const address = client.address || "";
+        const textToSearch = `${name} ${phone} ${address}`.toLowerCase();
 
-    const rowsContainer = document.createElement('div');
-    rowsContainer.className = "divide-y divide-darkBorder/50 max-h-60 overflow-y-auto";
-
-    for (let [id, client] of sorted) {
-        const clientName = client.name || "";
-        const clientPhone = client.phone || "";
-        const clientAddress = client.address || "";
-        const str = `${clientName} ${clientPhone} ${clientAddress}`.toLowerCase();
-
-        if (lowerFilter && !str.includes(lowerFilter)) continue;
+        if (filter && !textToSearch.includes(filter)) continue;
 
         matches++;
-        const rowDiv = document.createElement('div');
-        rowDiv.className = "grid grid-cols-3 px-4 py-2.5 hover:bg-blue-600/20 cursor-pointer text-xs items-center border-b border-darkBorder/30";
-        rowDiv.innerHTML = `
-            <span class="font-bold text-white truncate pr-2">${clientName}</span>
-            <span class="text-slate-400 truncate pr-2">${clientPhone}</span>
-            <span class="text-slate-400 truncate">${clientAddress || 'N/D'}</span>
+        const item = document.createElement('div');
+        item.className = "p-3 hover:bg-blue-600/30 cursor-pointer flex justify-between items-center text-xs transition-colors";
+        item.innerHTML = `
+            <div>
+                <strong class="text-white block">${name}</strong>
+                <span class="text-slate-400 text-[11px]">${address || 'Nessun indirizzo'}</span>
+            </div>
+            <span class="text-blue-400 font-mono font-bold">${phone}</span>
         `;
-        rowDiv.addEventListener('mousedown', (e) => {
-            e.preventDefault(); 
-            assignClientSearch.value = `${clientName} (${clientPhone})`;
-            selectedClientIdInput.value = id;
-            assignClientDropdown.classList.add('hidden');
+
+        item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            if (assignClientSearch) assignClientSearch.value = `${name} (${phone})`;
+            if (hiddenInput) hiddenInput.value = id;
+            dropdown.classList.add('hidden');
         });
-        rowsContainer.appendChild(rowDiv);
+
+        container.appendChild(item);
     }
 
     if (matches === 0) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = "p-6 text-center text-xs text-slate-400 italic";
-        emptyDiv.textContent = "Nessun cliente trovato in anagrafica.";
-        rowsContainer.appendChild(emptyDiv);
+        dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Nessun risultato per "${cleanQuery}".</div>`;
+    } else {
+        dropdown.appendChild(container);
     }
 
-    assignClientDropdown.appendChild(rowsContainer);
-    assignClientDropdown.classList.remove('hidden');
+    dropdown.classList.remove('hidden');
 }
 
 if (assignClientSearch) {
-    assignClientSearch.addEventListener('focus', () => {
-        renderAssignClientDropdown(assignClientSearch.value.trim());
-    });
     assignClientSearch.addEventListener('input', (e) => {
         if (selectedClientIdInput) selectedClientIdInput.value = "";
-        renderAssignClientDropdown(e.target.value.trim());
+        renderAssignClientDropdown(e.target.value);
+    });
+
+    assignClientSearch.addEventListener('focus', () => {
+        renderAssignClientDropdown(assignClientSearch.value);
+    });
+
+    assignClientSearch.addEventListener('blur', () => {
+        setTimeout(() => {
+            if (assignClientDropdown) assignClientDropdown.classList.add('hidden');
+        }, 200);
     });
 }
 
@@ -602,7 +611,7 @@ if (assignClientToggleBtn) {
         e.stopPropagation();
         if (assignClientDropdown.classList.contains('hidden')) {
             renderAssignClientDropdown("");
-            assignClientSearch.focus();
+            if (assignClientSearch) assignClientSearch.focus();
         } else {
             assignClientDropdown.classList.add('hidden');
         }
@@ -641,10 +650,12 @@ if (itemForm) {
 }
 
 // ==========================================
-// GESTIONE STAMPA TERMICA RAWBT (CORRETTA E RIPRISTINATA)
+// GESTIONE STAMPA TERMICA RAWBT
 // ==========================================
 window.printItemLabel = function() {
-    const clientId = selectedClientIdInput ? selectedClientIdInput.value : "";
+    const hiddenInput = document.getElementById('selectedClientIdInput');
+    const clientId = hiddenInput ? hiddenInput.value : "";
+
     const type = document.getElementById('itemType') ? document.getElementById('itemType').value.trim() : "";
     const cabinet = document.getElementById('itemCabinet') ? document.getElementById('itemCabinet').value.trim() : "";
     const position = document.getElementById('itemPosition') ? document.getElementById('itemPosition').value.trim() : "";
@@ -652,51 +663,58 @@ window.printItemLabel = function() {
     const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
 
     if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente dal menu di ricerca", "error");
+        showToast("Seleziona prima un cliente dalla ricerca", "error");
         return;
     }
     if (!type || !cabinet || !position) {
-        showToast("Compila tipo capo, armadio e posizione", "error");
+        showToast("Compila i campi: Capo, Armadio e Posizione", "error");
         return;
     }
 
     const client = clientsData[clientId];
     const now = new Date();
-    const dateStr = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+    const dateStr = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-    const generateSingleReceipt = (copyType) => {
-        let block = "";
-        block += "\x1B\x40"; // Inizializza stampante
-        block += "\x1B\x61\x01"; // Centrato
-        block += "\x1B\x21\x10LAVANDERIA CLEO\n";
-        block += "\x1B\x21\x08[COPIA " + copyType + "]\n";
-        block += dateStr + "\n";
-        block += "\x1B\x21\x00--------------------------------\n";
-        block += "\x1B\x61\x00"; // Allinea a sinistra
-        block += "Cliente: " + client.name + "\n";
-        block += "Tel:     " + client.phone + "\n";
-        block += "Capo:    " + type + "\n";
+    const buildReceipt = (copia) => {
+        let cmd = "";
+        cmd += "\x1B\x40";               // Reset stampante
+        cmd += "\x1B\x61\x01";           // Centrato
+        cmd += "\x1B\x21\x20LAVANDERIA CLEO\n";
+        cmd += "\x1B\x21\x00--- COPIA " + copia + " ---\n";
+        cmd += dateStr + "\n";
+        cmd += "--------------------------------\n";
+        cmd += "\x1B\x61\x00";           // Allinea a sinistra
+        cmd += "CLIENTE: " + client.name + "\n";
+        cmd += "TEL:     " + client.phone + "\n";
+        cmd += "CAPO:    " + type + "\n";
         if (notes) {
-            block += "Note:    " + notes + "\n";
+            cmd += "NOTE:    " + notes + "\n";
         }
-        block += "--------------------------------\n";
-        block += "\x1B\x61\x01"; // Centrato
-        block += "\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n";
-        block += "\x1B\x21\x00--------------------------------\n";
-        block += "\x1B\x61\x02"; // Allinea a destra
-        block += "\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n";
-        block += "\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
-        return block;
+        cmd += "--------------------------------\n";
+        cmd += "\x1B\x61\x01";           // Centrato
+        cmd += "\x1B\x21\x30ARM: " + cabinet + " | POS: " + position + "\n";
+        cmd += "\x1B\x21\x00--------------------------------\n";
+        cmd += "\x1B\x61\x02";           // Allinea a destra
+        cmd += "\x1B\x21\x10PREZZO: EUR " + parseFloat(price || 0).toFixed(2) + "\n";
+        cmd += "\x1B\x21\x00\x1B\x61\x01\n\n\n";
+        cmd += "\x1D\x56\x41";          // Taglio carta
+        return cmd;
     };
 
-    let printText = generateSingleReceipt("ATTIVITA") + "\x1D\x56\x41\x03" + generateSingleReceipt("CLIENTE") + "\x1D\x56\x41\x03";
-    
+    const fullPrintData = buildReceipt("ATTIVITA") + buildReceipt("CLIENTE");
+
     try {
-        const base64Data = btoa(unescape(encodeURIComponent(printText)));
-        window.location.href = `rawbt:base64,${base64Data}`;
+        const bytes = new TextEncoder().encode(fullPrintData);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        const base64Data = window.btoa(binary);
+
+        window.location.href = "rawbt:base64," + base64Data;
         showToast("Stampa inviata a RawBT!", "success");
     } catch (err) {
-        console.error(err);
+        console.error("Errore generazione stampa:", err);
         showToast("Errore durante la preparazione della stampa", "error");
     }
 };
@@ -831,7 +849,6 @@ if (searchClearBtn) {
 
 document.addEventListener('click', (e) => {
     if (globalSearch && globalSearchDropdown && !globalSearch.contains(e.target) && !globalSearchDropdown.contains(e.target)) globalSearchDropdown.classList.add('hidden');
-    if (assignClientSearch && assignClientDropdown && assignClientToggleBtn && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && !assignClientToggleBtn.contains(e.target)) assignClientDropdown.classList.add('hidden');
 });
 
 window.openClientModal = function(clientId) {
@@ -1006,11 +1023,6 @@ window.exportBackup = function() {
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
     }
 
-    let topProduct = "Nessuno", maxCount = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxCount) { maxCount = c; topProduct = t.charAt(0).toUpperCase() + t.slice(1); }
-    }
-
     let csvContent = "\uFEFF";
     csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
     csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
@@ -1031,7 +1043,7 @@ window.exportBackup = function() {
     link.click();
     document.body.removeChild(link);
     showToast("Report esportato!", "success");
-}
+};
 
 function showToast(message, type = "success") {
     const toast = document.getElementById('toastNotification');
