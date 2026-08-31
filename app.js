@@ -64,6 +64,7 @@ function initAuthAndListeners() {
 
     setupManageClientSearchDropdown();
     setupAssignClientSearchDropdown();
+    setupGlobalSearch();
 }
 
 function checkNumericLicense() {
@@ -113,7 +114,8 @@ function setupManageClientSearchDropdown() {
         `;
         const q = query.toLowerCase();
         const matches = Object.entries(allClients).filter(([id, c]) => 
-            c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
+            (c.name && c.name.toLowerCase().includes(q)) || 
+            (c.phone && c.phone.includes(q))
         );
 
         if (matches.length === 0) {
@@ -155,7 +157,7 @@ function setupManageClientSearchDropdown() {
     toggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (dropdown.classList.contains('hidden')) {
-            filterAndShow('');
+            filterAndShow(searchInput.value);
         } else {
             dropdown.classList.add('hidden');
         }
@@ -226,27 +228,29 @@ function printClientReceiptLabel() {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Ricevuta Cliente - Lavanderia Cleo</title>
+            <title>Stampa Etichetta Anagrafica Cliente - Lavanderia Cleo</title>
             <style>
                 body { font-family: monospace; padding: 15px; font-size: 12px; }
                 .center { text-align: center; }
                 .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+                .box { border: 1px solid #000; padding: 10px; border-radius: 5px; }
             </style>
         </head>
         <body>
             <div class="center">
                 <strong>LAVANDERIA CLEO</strong><br>
-                Scheda / Ricevuta Cliente
+                ETICHETTA ANAGRAFICA CLIENTE
             </div>
             <div class="line"></div>
-            <p><strong>Nome:</strong> ${name}</p>
-            <p><strong>Telefono:</strong> ${phone}</p>
-            ${dob ? `<p><strong>Data Nascita:</strong> ${dob}</p>` : ''}
-            ${address ? `<p><strong>Indirizzo:</strong> ${address}</p>` : ''}
+            <div class="box">
+                <p style="margin: 4px 0;"><strong>CLIENTE:</strong> ${name}</p>
+                <p style="margin: 4px 0;"><strong>TEL:</strong> ${phone}</p>
+                ${dob ? `<p style="margin: 4px 0;"><strong>D.NASCITA:</strong> ${dob}</p>` : ''}
+                ${address ? `<p style="margin: 4px 0;"><strong>INDIRIZZO:</strong> ${address}</p>` : ''}
+            </div>
             <div class="line"></div>
             <div class="center" style="font-size: 10px;">
-                Registrazione Anagrafica Cliente<br>
-                ${new Date().toLocaleString()}
+                Registrato il: ${new Date().toLocaleString('it-IT')}
             </div>
             <script>
                 window.onload = function() { window.print(); window.close(); }
@@ -274,7 +278,8 @@ function setupAssignClientSearchDropdown() {
         `;
         const q = query.toLowerCase();
         const matches = Object.entries(allClients).filter(([id, c]) => 
-            c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
+            (c.name && c.name.toLowerCase().includes(q)) || 
+            (c.phone && c.phone.includes(q))
         );
 
         if (matches.length === 0) {
@@ -312,7 +317,7 @@ function setupAssignClientSearchDropdown() {
     toggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (dropdown.classList.contains('hidden')) {
-            filterAndShow('');
+            filterAndShow(searchInput.value);
         } else {
             dropdown.classList.add('hidden');
         }
@@ -325,7 +330,7 @@ function setupAssignClientSearchDropdown() {
     });
 }
 
-// ================= INSERIMENTO CAPO E STAMPA RICEVUTA =================
+// ================= INSERIMENTO CAPO E STAMPA ETICHETTA CAPO FINITO =================
 function handleItemSubmitWithPrint(e) {
     e.preventDefault();
 
@@ -338,7 +343,7 @@ function handleItemSubmitWithPrint(e) {
     const itemNotes = document.getElementById('itemNotes').value;
 
     if (!clientId) {
-        showToast("Seleziona un cliente valido tramite la ricerca con lente!", "error");
+        showToast("Seleziona un cliente valido prima di salvare!", "error");
         return;
     }
 
@@ -352,28 +357,38 @@ function handleItemSubmitWithPrint(e) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Ricevuta Capo - Lavanderia Cleo</title>
+            <title>Etichetta Capo Finito - Lavanderia Cleo</title>
             <style>
                 body { font-family: monospace; padding: 15px; font-size: 12px; }
                 .center { text-align: center; }
                 .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+                .big-box { border: 2px solid #000; padding: 8px; margin: 5px 0; text-align: center; background-color: #f9f9f9; }
+                .price { font-size: 16px; font-weight: bold; }
+                .loc { font-size: 15px; font-weight: bold; }
             </style>
         </head>
         <body>
             <div class="center">
                 <strong>LAVANDERIA CLEO</strong><br>
-                Ricevuta Accettazione Capo
+                ETICHETTA CAPO / RICEVUTA
             </div>
             <div class="line"></div>
-            <p><strong>Cliente:</strong> ${clientNameText}</p>
-            <p><strong>Capo:</strong> ${itemType}</p>
-            <p><strong>Armadio/Pos:</strong> ${itemCabinet} - ${itemPosition}</p>
-            <p><strong>Prezzo:</strong> EUR ${Number(itemPrice).toFixed(2)}</p>
-            ${itemNotes ? `<p><strong>Note:</strong> ${itemNotes}</p>` : ''}
+            <p style="margin: 4px 0;"><strong>CLIENTE:</strong> ${clientNameText}</p>
+            <p style="margin: 4px 0;"><strong>CAPO:</strong> ${itemType}</p>
+            
+            <div class="big-box loc">
+                ARMADIO: ${itemCabinet} | POS: ${itemPosition}
+            </div>
+            
+            <div class="big-box price">
+                PREZZO: € ${Number(itemPrice).toFixed(2)}
+            </div>
+
+            ${itemNotes ? `<p style="margin: 4px 0;"><strong>NOTE:</strong> ${itemNotes}</p>` : ''}
             <div class="line"></div>
             <div class="center" style="font-size: 10px;">
-                Conservare la ricevuta per il ritiro<br>
-                ${new Date().toLocaleString()}
+                Conservare per il ritiro del capo<br>
+                Data: ${new Date().toLocaleString('it-IT')}
             </div>
             <script>
                 window.onload = function() { window.print(); window.close(); }
@@ -396,11 +411,65 @@ function handleItemSubmitWithPrint(e) {
     };
 
     db.ref('items').push(newItemData).then(() => {
-        showToast("Capo inserito e ricevuta stampata!");
+        showToast("Capo inserito e etichetta stampata!");
         document.getElementById('itemForm').reset();
         document.getElementById('selectedClientIdInput').value = '';
     }).catch((error) => {
         showToast("Errore durante il salvataggio: " + error.message, "error");
+    });
+}
+
+// ================= RICERCA GLOBALE HEADER =================
+function setupGlobalSearch() {
+    const input = document.getElementById('globalSearch');
+    const dropdown = document.getElementById('globalSearchDropdown');
+    const clearBtn = document.getElementById('searchClearBtn');
+
+    if (!input || !dropdown) return;
+
+    input.addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase().trim();
+        if (q.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        dropdown.innerHTML = '';
+        let found = false;
+
+        Object.entries(allItems).forEach(([id, item]) => {
+            if ((item.clientName && item.clientName.toLowerCase().includes(q)) ||
+                (item.type && item.type.toLowerCase().includes(q)) ||
+                (item.cabinet && item.cabinet.toLowerCase().includes(q))) {
+                found = true;
+                const div = document.createElement('div');
+                div.className = "p-3 hover:bg-darkCard cursor-pointer text-xs flex justify-between items-center";
+                div.innerHTML = `
+                    <div>
+                        <div class="font-bold text-white">${item.clientName} - <span class="text-blue-400">${item.type}</span></div>
+                        <div class="text-[11px] text-slate-400">Armadio: ${item.cabinet} (${item.position})</div>
+                    </div>
+                    <div class="font-bold text-emerald-400">€ ${Number(item.price || 0).toFixed(2)}</div>
+                `;
+                dropdown.appendChild(div);
+            }
+        });
+
+        if (found) {
+            dropdown.classList.remove('hidden');
+        } else {
+            dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">Nessun risultato trovato</div>`;
+            dropdown.classList.remove('hidden');
+        }
+    });
+
+    clearBtn.addEventListener('click', () => {
+        input.value = '';
+        clearBtn.classList.add('hidden');
+        dropdown.classList.add('hidden');
     });
 }
 
@@ -409,16 +478,19 @@ function renderActiveItemsTable() {
     const tbody = document.getElementById('itemsTableBody');
     const noMsg = document.getElementById('noItemsMessage');
     const counter = document.getElementById('itemsCounterBadge');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     const activeItems = Object.entries(allItems).filter(([id, item]) => item.status === 'active');
-    counter.innerText = `${activeItems.length} capi`;
+    if (counter) counter.innerText = `${activeItems.length} capi`;
 
     if (activeItems.length === 0) {
-        noMsg.classList.remove('hidden');
-        noMsg.classList.add('flex');
+        if (noMsg) {
+            noMsg.classList.remove('hidden');
+            noMsg.classList.add('flex');
+        }
         return;
-    } else {
+    } else if (noMsg) {
         noMsg.classList.remove('flex');
         noMsg.classList.add('hidden');
     }
@@ -460,14 +532,14 @@ function renderHistory() {
     tbody.innerHTML = '';
 
     const completedItems = Object.entries(allItems).filter(([id, item]) => item.status === 'completed');
-    counter.innerText = `${completedItems.length} elementi`;
+    if (counter) counter.innerText = `${completedItems.length} elementi`;
 
     let totalRev = 0;
     completedItems.forEach(([id, item]) => {
         totalRev += Number(item.price || 0);
         const tr = document.createElement('tr');
         tr.className = "border-b border-darkBorder/40 hover:bg-darkSurface/50";
-        const dateStr = item.completedAt ? new Date(item.completedAt).toLocaleDateString() : '-';
+        const dateStr = item.completedAt ? new Date(item.completedAt).toLocaleDateString('it-IT') : '-';
         tr.innerHTML = `
             <td class="py-3 px-4 text-slate-300">${dateStr}</td>
             <td class="py-3 px-4 font-semibold text-white">${item.clientName}</td>
@@ -478,9 +550,9 @@ function renderHistory() {
         tbody.appendChild(tr);
     });
 
-    document.getElementById('statTotalCount').innerText = completedItems.length;
-    document.getElementById('statTotalRevenue').innerText = `€ ${totalRev.toFixed(2)}`;
-    document.getElementById('statUniqueClients').innerText = Object.keys(allClients).length;
+    if (document.getElementById('statTotalCount')) document.getElementById('statTotalCount').innerText = completedItems.length;
+    if (document.getElementById('statTotalRevenue')) document.getElementById('statTotalRevenue').innerText = `€ ${totalRev.toFixed(2)}`;
+    if (document.getElementById('statUniqueClients')) document.getElementById('statUniqueClients').innerText = Object.keys(allClients).length;
 }
 
 function renderManagerClientsTable() {
