@@ -8,6 +8,7 @@ const firebaseConfig = {
     appId: "1:123456789:web:abcdef"
 };
 
+// Inizializzazione Firebase sicura
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -20,58 +21,90 @@ document.addEventListener('DOMContentLoaded', () => {
     initAuthAndListeners();
 });
 
+// ================= GESTIONE ACCESSO (LOGIN) E ASCOLTATORI =================
 function initAuthAndListeners() {
     const savedAuth = localStorage.getItem('cleo_auth_passed');
     const savedLicense = localStorage.getItem('cleo_license_valid');
 
+    // Controllo se l'utente aveva già fatto login
     if (savedAuth === 'true') {
-        document.getElementById('loginScreen').classList.add('opacity-0');
-        setTimeout(() => {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('appContainer').classList.remove('hidden');
-            document.getElementById('appContainer').classList.add('opacity-100');
-            startAppListeners();
-        }, 300);
+        const loginScreen = document.getElementById('loginScreen');
+        const appContainer = document.getElementById('appContainer');
+        if (loginScreen && appContainer) {
+            loginScreen.classList.add('opacity-0');
+            setTimeout(() => {
+                loginScreen.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                appContainer.classList.add('opacity-100');
+                startAppListeners(); // Avvia Firebase solo se autenticato
+            }, 300);
+        }
     }
 
     if (savedLicense) {
-        document.getElementById('licenseBadge').className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900";
-        document.getElementById('licenseBadge').innerText = "Attiva";
-        document.getElementById('licensePhoneInput').value = savedLicense;
+        const badge = document.getElementById('licenseBadge');
+        const input = document.getElementById('licensePhoneInput');
+        if (badge && input) {
+            badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900";
+            badge.innerText = "Attiva";
+            input.value = savedLicense;
+        }
     }
 
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const pwd = document.getElementById('passwordInput').value.trim();
-        if (pwd === "admin123" || pwd === "cleo2026") {
-            localStorage.setItem('cleo_auth_passed', 'true');
-            document.getElementById('loginScreen').classList.add('opacity-0');
-            setTimeout(() => {
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('appContainer').classList.remove('hidden');
-                document.getElementById('appContainer').classList.add('opacity-100');
-                startAppListeners();
-            }, 300);
-        } else {
-            const err = document.getElementById('loginError');
-            err.innerText = "Password amministratore errata.";
-            err.classList.remove('hidden');
-        }
-    });
+    // Gestione Evento Modulo di Accesso
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const passwordInput = document.getElementById('passwordInput');
+            const pwd = passwordInput ? passwordInput.value.trim() : "";
+            
+            // Le password per accedere
+            if (pwd === "admin123" || pwd === "cleo2026") {
+                localStorage.setItem('cleo_auth_passed', 'true');
+                const loginScreen = document.getElementById('loginScreen');
+                const appContainer = document.getElementById('appContainer');
+                if (loginScreen && appContainer) {
+                    loginScreen.classList.add('opacity-0');
+                    setTimeout(() => {
+                        loginScreen.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
+                        appContainer.classList.add('opacity-100');
+                        startAppListeners(); // Avvia Firebase dopo il login
+                    }, 300);
+                }
+            } else {
+                const err = document.getElementById('loginError');
+                if (err) {
+                    err.innerText = "Password amministratore errata.";
+                    err.classList.remove('hidden');
+                }
+            }
+        });
+    }
 
-    document.getElementById('clientForm').addEventListener('submit', handleClientSubmit);
-    document.getElementById('itemForm').addEventListener('submit', handleItemSubmitWithPrint);
+    // Assegna gli ascoltatori dei form (Clienti e Capi)
+    const clientForm = document.getElementById('clientForm');
+    if (clientForm) clientForm.addEventListener('submit', handleClientSubmit);
 
+    const itemForm = document.getElementById('itemForm');
+    if (itemForm) itemForm.addEventListener('submit', handleItemSubmitWithPrint);
+
+    // Inizializza i due menu a tendina (ricerca clienti)
     setupManageClientSearchDropdown();
     setupAssignClientSearchDropdown();
 }
 
 function checkNumericLicense() {
-    const val = document.getElementById('licensePhoneInput').value.trim().toUpperCase();
+    const input = document.getElementById('licensePhoneInput');
+    const val = input ? input.value.trim().toUpperCase() : "";
     if (val.length > 3) {
         localStorage.setItem('cleo_license_valid', val);
-        document.getElementById('licenseBadge').className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900";
-        document.getElementById('licenseBadge').innerText = "Attiva";
+        const badge = document.getElementById('licenseBadge');
+        if (badge) {
+            badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900";
+            badge.innerText = "Attiva";
+        }
         showToast("Licenza attivata con successo!");
     } else {
         showToast("Codice licenza non valido", "error");
@@ -83,6 +116,7 @@ function lockApp() {
     location.reload();
 }
 
+// Avvia i caricamenti dei dati in tempo reale da Firebase
 function startAppListeners() {
     db.ref('clients').on('value', (snapshot) => {
         allClients = snapshot.val() || {};
@@ -96,50 +130,33 @@ function startAppListeners() {
     });
 }
 
-// ================= FUNZIONE STAMPA SICURA (BYPASS POP-UP BLOCK) =================
+// ================= STAMPA SICURA (PER TABLET E DISPOSITIVI MOBILI) =================
 function triggerSecurePrint(htmlContent) {
-    let printFrame = document.getElementById('printFrameHidden');
-    if (!printFrame) {
-        printFrame = document.createElement('iframe');
-        printFrame.id = 'printFrameHidden';
-        printFrame.style.position = 'fixed';
-        printFrame.style.right = '0';
-        printFrame.style.bottom = '0';
-        printFrame.style.width = '0';
-        printFrame.style.height = '0';
-        printFrame.style.border = '0';
-        document.body.appendChild(printFrame);
+    // Apriamo una nuova finestra per la stampa (è il metodo più affidabile su browser per tablet)
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        // Diamo un breve ritardo per assicurarci che il contenuto HTML sia stato renderizzato
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+    } else {
+        showToast("Impossibile stampare: sblocca i pop-up nel browser!", "error");
     }
-    
-    const frameDoc = printFrame.contentWindow || printFrame.contentDocument.document || printFrame.contentDocument;
-    frameDoc.document.open();
-    frameDoc.document.write(htmlContent);
-    frameDoc.document.close();
-
-    setTimeout(() => {
-        try {
-            printFrame.contentWindow.focus();
-            printFrame.contentWindow.print();
-        } catch (e) {
-            const win = window.open('', '_blank', 'width=400,height=600');
-            if (win) {
-                win.document.write(htmlContent);
-                win.document.close();
-                win.focus();
-                win.print();
-            } else {
-                showToast("Impossibile stampare: sblocca i pop-up nel browser", "error");
-            }
-        }
-    }, 500);
 }
 
-// ================= TABELLA DROPDOWN "NUOVO / CERCA CLIENTE" =================
+// ================= MENU A TENDINA: "NUOVO / CERCA CLIENTE" =================
 function setupManageClientSearchDropdown() {
     const searchInput = document.getElementById('clientName');
     const hiddenIdInput = document.getElementById('manageClientIdInput');
     const dropdown = document.getElementById('clientSearchDropdown');
     const toggleBtn = document.getElementById('clientSearchToggleBtn');
+
+    if (!searchInput || !dropdown) return;
 
     function filterAndShow(query) {
         dropdown.innerHTML = `
@@ -155,7 +172,7 @@ function setupManageClientSearchDropdown() {
         );
 
         if (matches.length === 0) {
-            dropdown.innerHTML += `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente esistente. Compila i dati sotto per registrarlo.</div>`;
+            dropdown.innerHTML += `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente esistente. Compila i campi per registrarlo.</div>`;
         } else {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
@@ -173,7 +190,7 @@ function setupManageClientSearchDropdown() {
                     document.getElementById('clientDob').value = c.dob || '';
                     document.getElementById('clientAddress').value = c.address || '';
                     dropdown.classList.add('hidden');
-                    showToast("Cliente caricato con successo!");
+                    showToast("Cliente caricato. Puoi modificare o stampare.");
                 };
                 dropdown.appendChild(item);
             });
@@ -190,29 +207,32 @@ function setupManageClientSearchDropdown() {
         filterAndShow(e.target.value);
     });
 
-    toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (dropdown.classList.contains('hidden')) {
-            filterAndShow('');
-        } else {
-            dropdown.classList.add('hidden');
-        }
-    });
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (dropdown.classList.contains('hidden')) {
+                filterAndShow(searchInput.value);
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        });
+    }
 
     document.addEventListener('click', (e) => {
-        if (!searchInput.contains(e.target) && !dropdown.contains(e.target) && !toggleBtn.contains(e.target)) {
+        if (!searchInput.contains(e.target) && !dropdown.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target))) {
             dropdown.classList.add('hidden');
         }
     });
 }
 
 function resetClientForm() {
-    document.getElementById('clientForm').reset();
-    document.getElementById('manageClientIdInput').value = '';
-    showToast("Modulo cliente pulito per inserimento nuovo.");
+    const form = document.getElementById('clientForm');
+    const hiddenId = document.getElementById('manageClientIdInput');
+    if (form) form.reset();
+    if (hiddenId) hiddenId.value = '';
+    showToast("Modulo pulito per un nuovo cliente.");
 }
 
-// ================= REGISTRAZIONE E STAMPA ETICHETTA CLIENTE =================
 function handleClientSubmit(e) {
     e.preventDefault();
     const name = document.getElementById('clientName').value.trim();
@@ -230,15 +250,14 @@ function handleClientSubmit(e) {
 
     if (existingId) {
         db.ref(`clients/${existingId}`).update(clientData).then(() => {
-            showToast("Cliente aggiornato con successo!");
-            document.getElementById('clientForm').reset();
-            document.getElementById('manageClientIdInput').value = '';
+            showToast("Dati cliente aggiornati correttamente!");
+            resetClientForm();
         }).catch(err => showToast("Errore: " + err.message, "error"));
     } else {
         clientData.createdAt = firebase.database.ServerValue.TIMESTAMP;
         db.ref('clients').push(clientData).then(() => {
-            showToast("Cliente registrato con successo!");
-            document.getElementById('clientForm').reset();
+            showToast("Nuovo cliente registrato con successo!");
+            resetClientForm();
         }).catch(err => showToast("Errore: " + err.message, "error"));
     }
 }
@@ -250,7 +269,7 @@ function printClientReceiptLabel() {
     const address = document.getElementById('clientAddress').value.trim();
 
     if (!name || !phone) {
-        showToast("Inserisci almeno Nome e Telefono obbligatori!", "error");
+        showToast("Devi compilare Nome e Telefono per stampare l'etichetta!", "error");
         return;
     }
 
@@ -258,11 +277,12 @@ function printClientReceiptLabel() {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Etichetta Cliente - Lavanderia Cleo</title>
+            <title>Etichetta Cliente - Cleo</title>
             <style>
-                body { font-family: monospace; padding: 10px; font-size: 11px; width: 280px; }
+                body { font-family: monospace; padding: 10px; font-size: 12px; width: 280px; }
                 .center { text-align: center; }
                 .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+                p { margin: 4px 0; }
             </style>
         </head>
         <body>
@@ -272,8 +292,8 @@ function printClientReceiptLabel() {
             </div>
             <div class="line"></div>
             <p><strong>Nome:</strong> ${name}</p>
-            <p><strong>Telefono:</strong> ${phone}</p>
-            ${dob ? `<p><strong>Data Nascita:</strong> ${dob}</p>` : ''}
+            <p><strong>Tel:</strong> ${phone}</p>
+            ${dob ? `<p><strong>Nato il:</strong> ${dob}</p>` : ''}
             ${address ? `<p><strong>Indirizzo:</strong> ${address}</p>` : ''}
             <div class="line"></div>
             <div class="center" style="font-size: 9px;">
@@ -285,12 +305,14 @@ function printClientReceiptLabel() {
     triggerSecurePrint(html);
 }
 
-// ================= TABELLA DROPDOWN "ACCETTA CAPO" =================
+// ================= MENU A TENDINA: "ACCETTA CAPO" =================
 function setupAssignClientSearchDropdown() {
     const searchInput = document.getElementById('assignClientSearch');
     const hiddenIdInput = document.getElementById('selectedClientIdInput');
     const dropdown = document.getElementById('assignClientDropdown');
     const toggleBtn = document.getElementById('assignClientToggleBtn');
+
+    if (!searchInput || !dropdown) return;
 
     function filterAndShow(query) {
         dropdown.innerHTML = `
@@ -306,7 +328,7 @@ function setupAssignClientSearchDropdown() {
         );
 
         if (matches.length === 0) {
-            dropdown.innerHTML += `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente trovato. Registralo nel box sopra.</div>`;
+            dropdown.innerHTML += `<div class="p-3 text-xs text-slate-400 text-center">Nessun cliente trovato. Registralo prima nel box di sinistra.</div>`;
         } else {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
@@ -337,23 +359,25 @@ function setupAssignClientSearchDropdown() {
         filterAndShow(e.target.value);
     });
 
-    toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (dropdown.classList.contains('hidden')) {
-            filterAndShow('');
-        } else {
-            dropdown.classList.add('hidden');
-        }
-    });
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (dropdown.classList.contains('hidden')) {
+                filterAndShow(searchInput.value);
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        });
+    }
 
     document.addEventListener('click', (e) => {
-        if (!searchInput.contains(e.target) && !dropdown.contains(e.target) && !toggleBtn.contains(e.target)) {
+        if (!searchInput.contains(e.target) && !dropdown.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target))) {
             dropdown.classList.add('hidden');
         }
     });
 }
 
-// ================= INSERIMENTO CAPO E STAMPA RICEVUTA =================
+// ================= INSERISCI CAPO E STAMPA RICEVUTA =================
 function handleItemSubmitWithPrint(e) {
     e.preventDefault();
 
@@ -366,7 +390,7 @@ function handleItemSubmitWithPrint(e) {
     const itemNotes = document.getElementById('itemNotes').value;
 
     if (!clientId) {
-        showToast("Seleziona un cliente valido tramite la ricerca con lente!", "error");
+        showToast("Errore: devi prima cercare e selezionare un cliente dall'elenco a tendina!", "error");
         return;
     }
 
@@ -374,11 +398,12 @@ function handleItemSubmitWithPrint(e) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Ricevuta Capo - Lavanderia Cleo</title>
+            <title>Ricevuta Capo - Cleo</title>
             <style>
-                body { font-family: monospace; padding: 10px; font-size: 11px; width: 280px; }
+                body { font-family: monospace; padding: 10px; font-size: 12px; width: 280px; }
                 .center { text-align: center; }
                 .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+                p { margin: 4px 0; }
             </style>
         </head>
         <body>
@@ -390,18 +415,21 @@ function handleItemSubmitWithPrint(e) {
             <p><strong>Cliente:</strong> ${clientNameText}</p>
             <p><strong>Capo:</strong> ${itemType}</p>
             <p><strong>Armadio/Pos:</strong> ${itemCabinet} - ${itemPosition}</p>
-            <p><strong>Prezzo:</strong> EUR ${Number(itemPrice).toFixed(2)}</p>
+            <p><strong>Costo Previsto:</strong> EUR ${Number(itemPrice).toFixed(2)}</p>
             ${itemNotes ? `<p><strong>Note:</strong> ${itemNotes}</p>` : ''}
             <div class="line"></div>
             <div class="center" style="font-size: 9px;">
-                Conservare per il ritiro<br>
+                Mostrare questa ricevuta al ritiro.<br>
                 ${new Date().toLocaleString()}
             </div>
         </body>
         </html>
     `;
+    
+    // Mostriamo la schermata di stampa
     triggerSecurePrint(html);
 
+    // Dati da salvare
     const newItemData = {
         clientId: clientId,
         clientName: clientNameText,
@@ -414,37 +442,43 @@ function handleItemSubmitWithPrint(e) {
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
+    // Salviamo su DB
     db.ref('items').push(newItemData).then(() => {
-        showToast("Capo inserito e ricevuta stampata!");
+        showToast("Capo registrato con successo!");
         document.getElementById('itemForm').reset();
         document.getElementById('selectedClientIdInput').value = '';
     }).catch((error) => {
-        showToast("Errore durante il salvataggio: " + error.message, "error");
+        showToast("Errore salvataggio: " + error.message, "error");
     });
 }
 
-// ================= RENDER E GESTIONE TABELLE =================
+// ================= GESTIONE VISTE E TABELLE =================
 function renderActiveItemsTable() {
     const tbody = document.getElementById('itemsTableBody');
     const noMsg = document.getElementById('noItemsMessage');
     const counter = document.getElementById('itemsCounterBadge');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     const activeItems = Object.entries(allItems).filter(([id, item]) => item.status === 'active');
-    counter.innerText = `${activeItems.length} capi`;
+    if (counter) counter.innerText = `${activeItems.length} capi`;
 
     if (activeItems.length === 0) {
-        noMsg.classList.remove('hidden');
-        noMsg.classList.add('flex');
+        if (noMsg) {
+            noMsg.classList.remove('hidden');
+            noMsg.classList.add('flex');
+        }
         return;
     } else {
-        noMsg.classList.remove('flex');
-        noMsg.classList.add('hidden');
+        if (noMsg) {
+            noMsg.classList.remove('flex');
+            noMsg.classList.add('hidden');
+        }
     }
 
     activeItems.reverse().forEach(([id, item]) => {
         const tr = document.createElement('tr');
-        tr.className = "border-b border-darkBorder/40 hover:bg-darkSurface/50";
+        tr.className = "border-b border-darkBorder/40 hover:bg-darkSurface/50 transition-colors";
         tr.innerHTML = `
             <td class="py-3 px-4 font-semibold text-white">${item.clientName || 'Sconosciuto'}</td>
             <td class="py-3 px-4">
@@ -452,7 +486,7 @@ function renderActiveItemsTable() {
                 <div class="text-[11px] text-emerald-400 font-semibold">€ ${Number(item.price || 0).toFixed(2)}</div>
             </td>
             <td class="py-3 px-4"><span class="px-2 py-1 bg-darkCard border border-darkBorder rounded font-mono text-xs text-slate-300">${item.cabinet} - ${item.position}</span></td>
-            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In Lavorazione</span></td>
+            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In Deposito</span></td>
             <td class="py-3 px-4 text-right">
                 <button onclick="markItemAsCompleted('${id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm">
                     <i class="fa-solid fa-check mr-1"></i> Ritirato
@@ -464,12 +498,14 @@ function renderActiveItemsTable() {
 }
 
 function markItemAsCompleted(itemId) {
-    db.ref(`items/${itemId}`).update({
-        status: 'completed',
-        completedAt: firebase.database.ServerValue.TIMESTAMP
-    }).then(() => {
-        showToast("Capo segnato come ritirato!");
-    });
+    if(confirm("Confermi di segnare questo capo come RITIRATO?")) {
+        db.ref(`items/${itemId}`).update({
+            status: 'completed',
+            completedAt: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+            showToast("Capo spostato nello storico completati!");
+        });
+    }
 }
 
 function renderHistory() {
@@ -479,7 +515,7 @@ function renderHistory() {
     tbody.innerHTML = '';
 
     const completedItems = Object.entries(allItems).filter(([id, item]) => item.status === 'completed');
-    counter.innerText = `${completedItems.length} elementi`;
+    if (counter) counter.innerText = `${completedItems.length} elementi`;
 
     let totalRev = 0;
     completedItems.forEach(([id, item]) => {
@@ -497,9 +533,13 @@ function renderHistory() {
         tbody.appendChild(tr);
     });
 
-    document.getElementById('statTotalCount').innerText = completedItems.length;
-    document.getElementById('statTotalRevenue').innerText = `€ ${totalRev.toFixed(2)}`;
-    document.getElementById('statUniqueClients').innerText = Object.keys(allClients).length;
+    const statCount = document.getElementById('statTotalCount');
+    const statRev = document.getElementById('statTotalRevenue');
+    const statClients = document.getElementById('statUniqueClients');
+
+    if (statCount) statCount.innerText = completedItems.length;
+    if (statRev) statRev.innerText = `€ ${totalRev.toFixed(2)}`;
+    if (statClients) statClients.innerText = Object.keys(allClients).length;
 }
 
 function renderManagerClientsTable() {
@@ -513,7 +553,7 @@ function renderManagerClientsTable() {
         tr.innerHTML = `
             <td class="py-3 px-4 font-semibold text-white">${c.name}</td>
             <td class="py-3 px-4 text-slate-300">${c.phone}</td>
-            <td class="py-3 px-4 text-slate-400 text-[11px]">${c.address || '-'} / ${c.dob || '-'}</td>
+            <td class="py-3 px-4 text-slate-400 text-[11px]">${c.address || '-'} <br> ${c.dob || '-'}</td>
             <td class="py-3 px-4 text-right">
                 <button onclick="deleteClient('${id}')" class="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 text-rose-400 rounded-lg text-xs cursor-pointer"><i class="fa-solid fa-trash-can"></i></button>
             </td>
@@ -523,30 +563,40 @@ function renderManagerClientsTable() {
 }
 
 function deleteClient(id) {
-    if (confirm("Vuoi davvero eliminare questo cliente?")) {
-        db.ref(`clients/${id}`).remove().then(() => showToast("Cliente eliminato"));
+    if (confirm("Attenzione: Vuoi davvero eliminare questo cliente dal database?")) {
+        db.ref(`clients/${id}`).remove().then(() => showToast("Cliente eliminato."));
     }
 }
 
+// ================= MODALI E UI =================
 function openClientManagerModal() {
-    document.getElementById('clientManagerModal').classList.remove('hidden');
+    const modal = document.getElementById('clientManagerModal');
+    if (modal) modal.classList.remove('hidden');
 }
 
 function closeClientManagerModal() {
-    document.getElementById('clientManagerModal').classList.add('hidden');
+    const modal = document.getElementById('clientManagerModal');
+    if (modal) modal.classList.add('hidden');
 }
 
 function switchTab(tab) {
+    const viewActive = document.getElementById('viewActive');
+    const viewStats = document.getElementById('viewStats');
+    const navTabActive = document.getElementById('navTabActive');
+    const navTabStats = document.getElementById('navTabStats');
+
+    if (!viewActive || !viewStats) return;
+
     if (tab === 'active') {
-        document.getElementById('viewActive').classList.remove('hidden');
-        document.getElementById('viewStats').classList.add('hidden');
-        document.getElementById('navTabActive').className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
-        document.getElementById('navTabStats').className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
+        viewActive.classList.remove('hidden');
+        viewStats.classList.add('hidden');
+        if (navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
+        if (navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer transition-colors";
     } else {
-        document.getElementById('viewActive').classList.add('hidden');
-        document.getElementById('viewStats').classList.remove('hidden');
-        document.getElementById('navTabStats').className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
-        document.getElementById('navTabActive').className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
+        viewActive.classList.add('hidden');
+        viewStats.classList.remove('hidden');
+        if (navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
+        if (navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer transition-colors";
     }
 }
 
@@ -556,9 +606,21 @@ function toggleTheme() {
 
 function showToast(msg, type = 'success') {
     const toast = document.getElementById('toastNotification');
-    document.getElementById('toastMessage').innerText = msg;
+    const msgEl = document.getElementById('toastMessage');
+    if (!toast || !msgEl) return;
+    
+    msgEl.innerText = msg;
+    
+    // Cambia colore base per errori
+    if(type === 'error') {
+        toast.querySelector('.bg-emerald-500\\/20').className = "w-7 h-7 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center text-xs";
+    } else {
+        toast.querySelector('.w-7').className = "w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-xs";
+    }
+
     toast.classList.remove('translate-y-20', 'opacity-0');
+    
     setTimeout(() => {
         toast.classList.add('translate-y-20', 'opacity-0');
-    }, 3000);
+    }, 3500);
 }
