@@ -519,7 +519,7 @@ if (clientSearchToggleBtn) {
     });
 }
 
-// STAMPA ETICHETTA CLIENTE (SENZA SCRITTA "DA LAVARE - SIGNORA CLEO")
+// STAMPA ETICHETTA CLIENTE
 window.printClientReceiptLabel = function() {
     const name = document.getElementById('clientName').value.trim();
     const phone = document.getElementById('clientPhone').value.trim();
@@ -533,12 +533,12 @@ window.printClientReceiptLabel = function() {
 
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
-    let printText = "\x1B\x40" + // Initialize printer
-        "\x1B\x61\x01" + // Center alignment
+    let printText = "\x1B\x40" + 
+        "\x1B\x61\x01" + 
         "\x1B\x21\x10LAVANDERIA CLEO\n" +
         "\x1B\x21\x00" + dateStr + "\n" +
         "--------------------------------\n" +
-        "\x1B\x61\x00" + // Left alignment
+        "\x1B\x61\x00" + 
         "\x1B\x21\x08Cliente: " + name + "\n" +
         "Tel:     " + phone + "\n";
     
@@ -546,7 +546,7 @@ window.printClientReceiptLabel = function() {
     if (address) printText += "Indirizzo: " + address + "\n";
 
     printText += "--------------------------------\n\n\n\n" +
-        "\x1D\x56\x41\x03"; // Cut paper
+        "\x1D\x56\x41\x03"; 
 
     try {
         const base64Data = btoa(unescape(encodeURIComponent(printText)));
@@ -753,7 +753,7 @@ if (itemForm) {
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
 
-        // Stampa dell'etichetta al momento dell'accettazione del capo
+        // Stampa una sola copia
         printItemLabel();
 
         itemForm.reset();
@@ -764,7 +764,7 @@ if (itemForm) {
     });
 }
 
-// STAMPA CAPO (SINGOLA COPIA - SENZA DICITURA "* Conservare per il ritiro *")
+// STAMPA CAPO (SINGOLA COPIA)
 window.printItemLabel = function() {
     const clientId = selectedClientIdInput.value;
     const type = document.getElementById('itemType').value.trim();
@@ -805,7 +805,6 @@ window.printItemLabel = function() {
     try {
         const base64Data = btoa(unescape(encodeURIComponent(printText)));
         window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Ricevuta inviata in stampa!", "success");
     } catch (err) {
         showToast("Errore di stampa.", "error");
     }
