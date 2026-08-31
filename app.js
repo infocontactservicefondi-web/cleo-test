@@ -1,4 +1,3 @@
-// Configurazione Firebase (Sostituisci con i tuoi dati reali)
 const firebaseConfig = {
     apiKey: "TUA_API_KEY",
     authDomain: "tuo-progetto.firebaseapp.com",
@@ -9,18 +8,14 @@ const firebaseConfig = {
     appId: "1:123456789:web:abcdef"
 };
 
-// Inizializzazione Firebase
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.database();
 
-// Variabili di stato globali
 let allClients = {};
 let allItems = {};
-let currentStatPeriod = 'all';
 
-// Avvio applicazione al caricamento del DOM
 document.addEventListener('DOMContentLoaded', () => {
     initAuthAndListeners();
 });
@@ -64,11 +59,9 @@ function initAuthAndListeners() {
         }
     });
 
-    // Eventi form cliente e capo
     document.getElementById('clientForm').addEventListener('submit', handleClientSubmit);
     document.getElementById('itemForm').addEventListener('submit', handleItemSubmitWithPrint);
 
-    // Setup delle lenti di ricerca clienti
     setupManageClientSearchDropdown();
     setupAssignClientSearchDropdown();
 }
@@ -114,7 +107,7 @@ function setupManageClientSearchDropdown() {
         dropdown.innerHTML = '';
         const q = query.toLowerCase();
         const matches = Object.entries(allClients).filter(([id, c]) => 
-            c.name.toLowerCase().includes(q) || c.phone.includes(q)
+            c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
         );
 
         if (matches.length === 0) {
@@ -123,8 +116,9 @@ function setupManageClientSearchDropdown() {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
                 item.className = "p-2.5 hover:bg-darkCard cursor-pointer text-xs flex justify-between items-center border-b border-darkBorder/30 last:border-0";
-                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone}</span></div><span class="text-[10px] text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-900">Selezionato</span>`;
-                item.onclick = () => {
+                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone || ''}</span></div><span class="text-[10px] text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-900">Seleziona</span>`;
+                item.onclick = (e) => {
+                    e.stopPropagation();
                     searchInput.value = c.name;
                     hiddenIdInput.value = id;
                     document.getElementById('clientPhone').value = c.phone || '';
@@ -144,7 +138,12 @@ function setupManageClientSearchDropdown() {
         filterAndShow(e.target.value);
     });
 
-    toggleBtn.addEventListener('click', () => {
+    searchInput.addEventListener('focus', (e) => {
+        filterAndShow(e.target.value);
+    });
+
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (dropdown.classList.contains('hidden')) {
             filterAndShow('');
         } else {
@@ -165,7 +164,7 @@ function resetClientForm() {
     showToast("Modulo cliente pulito per inserimento nuovo.");
 }
 
-// ================= REGISTRAZIONE CLIENTE E STAMPA ETICHETTA =================
+// ================= REGISTRAZIONE E STAMPA RICEVUTA CLIENTE =================
 function handleClientSubmit(e) {
     e.preventDefault();
     const name = document.getElementById('clientName').value.trim();
@@ -182,14 +181,12 @@ function handleClientSubmit(e) {
     const clientData = { name, phone, dob, address };
 
     if (existingId) {
-        // Aggiorna cliente esistente
         db.ref(`clients/${existingId}`).update(clientData).then(() => {
             showToast("Cliente aggiornato con successo!");
             document.getElementById('clientForm').reset();
             document.getElementById('manageClientIdInput').value = '';
         }).catch(err => showToast("Errore: " + err.message, "error"));
     } else {
-        // Crea nuovo cliente
         clientData.createdAt = firebase.database.ServerValue.TIMESTAMP;
         db.ref('clients').push(clientData).then(() => {
             showToast("Cliente registrato con successo!");
@@ -198,14 +195,14 @@ function handleClientSubmit(e) {
     }
 }
 
-function printClientLabel() {
+function printClientReceiptLabel() {
     const name = document.getElementById('clientName').value.trim();
     const phone = document.getElementById('clientPhone').value.trim();
     const dob = document.getElementById('clientDob').value.trim();
     const address = document.getElementById('clientAddress').value.trim();
 
     if (!name || !phone) {
-        showToast("Inserisci almeno Nome e Telefono per stampare l'etichetta!", "error");
+        showToast("Inserisci almeno Nome e Telefono obbligatori!", "error");
         return;
     }
 
@@ -214,29 +211,27 @@ function printClientLabel() {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Etichetta Cliente - Lavanderia Cleo</title>
+            <title>Ricevuta Cliente - Lavanderia Cleo</title>
             <style>
-                body { font-family: monospace; padding: 15px; font-size: 13px; }
+                body { font-family: monospace; padding: 15px; font-size: 12px; }
                 .center { text-align: center; }
                 .line { border-bottom: 1px dashed #000; margin: 10px 0; }
-                .box { border: 2px solid #000; padding: 12px; border-radius: 6px; }
             </style>
         </head>
         <body>
-            <div class="box">
-                <div class="center">
-                    <strong>LAVANDERIA CLEO</strong><br>
-                    <span>Etichetta Identificativa Cliente</span>
-                </div>
-                <div class="line"></div>
-                <p><strong>Nome:</strong> ${name}</p>
-                <p><strong>Tel:</strong> ${phone}</p>
-                ${dob ? `<p><strong>Data Nascita:</strong> ${dob}</p>` : ''}
-                ${address ? `<p><strong>Indirizzo:</strong> ${address}</p>` : ''}
-                <div class="line"></div>
-                <div class="center" style="font-size: 11px;">
-                    ${new Date().toLocaleString()}
-                </div>
+            <div class="center">
+                <strong>LAVANDERIA CLEO</strong><br>
+                Scheda / Ricevuta Cliente
+            </div>
+            <div class="line"></div>
+            <p><strong>Nome:</strong> ${name}</p>
+            <p><strong>Telefono:</strong> ${phone}</p>
+            ${dob ? `<p><strong>Data Nascita:</strong> ${dob}</p>` : ''}
+            ${address ? `<p><strong>Indirizzo:</strong> ${address}</p>` : ''}
+            <div class="line"></div>
+            <div class="center" style="font-size: 10px;">
+                Registrazione Anagrafica Cliente<br>
+                ${new Date().toLocaleString()}
             </div>
             <script>
                 window.onload = function() { window.print(); window.close(); }
@@ -247,7 +242,7 @@ function printClientLabel() {
     printWindow.document.close();
 }
 
-// ================= LENTE DI RICERCA NEL MODULO ACCETTAZIONE CAPO =================
+// ================= LENTE DI RICERCA ACCETTAZIONE CAPO =================
 function setupAssignClientSearchDropdown() {
     const searchInput = document.getElementById('assignClientSearch');
     const hiddenIdInput = document.getElementById('selectedClientIdInput');
@@ -258,7 +253,7 @@ function setupAssignClientSearchDropdown() {
         dropdown.innerHTML = '';
         const q = query.toLowerCase();
         const matches = Object.entries(allClients).filter(([id, c]) => 
-            c.name.toLowerCase().includes(q) || c.phone.includes(q)
+            c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
         );
 
         if (matches.length === 0) {
@@ -267,8 +262,9 @@ function setupAssignClientSearchDropdown() {
             matches.forEach(([id, c]) => {
                 const item = document.createElement('div');
                 item.className = "p-2.5 hover:bg-darkCard cursor-pointer text-xs flex justify-between items-center border-b border-darkBorder/30 last:border-0";
-                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone}</span></div><i class="fa-solid fa-check text-blue-500"></i>`;
-                item.onclick = () => {
+                item.innerHTML = `<div><strong class="text-white">${c.name}</strong><br><span class="text-slate-400">${c.phone || ''}</span></div><i class="fa-solid fa-check text-blue-500"></i>`;
+                item.onclick = (e) => {
+                    e.stopPropagation();
                     searchInput.value = c.name;
                     hiddenIdInput.value = id;
                     dropdown.classList.add('hidden');
@@ -284,7 +280,12 @@ function setupAssignClientSearchDropdown() {
         filterAndShow(e.target.value);
     });
 
-    toggleBtn.addEventListener('click', () => {
+    searchInput.addEventListener('focus', (e) => {
+        filterAndShow(e.target.value);
+    });
+
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (dropdown.classList.contains('hidden')) {
             filterAndShow('');
         } else {
@@ -299,46 +300,7 @@ function setupAssignClientSearchDropdown() {
     });
 }
 
-// ================= GESTIONE ETICHETTA CESTA =================
-function printBasketLabel() {
-    const clientNameVal = document.getElementById('assignClientSearch').value.trim();
-    const itemTypeVal = document.getElementById('itemType').value.trim();
-
-    if (!clientNameVal || !itemTypeVal) {
-        showToast("Inserisci il cliente e il tipo di capo per l'etichetta cesta!", "error");
-        return;
-    }
-
-    const printWindow = window.open('', '_blank', 'width=400,height=400');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Etichetta Cesta - Lavanderia Cleo</title>
-            <style>
-                body { font-family: sans-serif; text-align: center; padding: 20px; margin: 0; }
-                h2 { margin: 0 0 10px 0; font-size: 20px; }
-                p { margin: 5px 0; font-size: 16px; }
-                .box { border: 2px dashed #000; padding: 15px; border-radius: 10px; }
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <h2>LAVANDERIA CLEO</h2>
-                <p><strong>Cliente:</strong> ${clientNameVal}</p>
-                <p><strong>Capo:</strong> ${itemTypeVal}</p>
-                <p style="font-size: 12px; margin-top: 15px;">Data: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-            </div>
-            <script>
-                window.onload = function() { window.print(); window.close(); }
-            </script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-}
-
-// ================= INSERIMENTO CAPO E STAMPA RICEVUTA UNITE =================
+// ================= INSERIMENTO CAPO E STAMPA RICEVUTA =================
 function handleItemSubmitWithPrint(e) {
     e.preventDefault();
 
@@ -412,7 +374,7 @@ function handleItemSubmitWithPrint(e) {
     });
 }
 
-// ================= RENDERIZZAZIONE TABELLE E UTILITIES =================
+// ================= RENDER E GESTIONE TABELLE =================
 function renderActiveItemsTable() {
     const tbody = document.getElementById('itemsTableBody');
     const noMsg = document.getElementById('noItemsMessage');
@@ -464,6 +426,7 @@ function markItemAsCompleted(itemId) {
 function renderHistory() {
     const tbody = document.getElementById('historyTableBody');
     const counter = document.getElementById('historyCounter');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     const completedItems = Object.entries(allItems).filter(([id, item]) => item.status === 'completed');
