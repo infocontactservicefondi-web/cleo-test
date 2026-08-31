@@ -19,7 +19,7 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 db.goOnline();
 
-const APP_PASSWORD = "admin";
+const APP_PASSWORD = "BAUBAU06";
 
 const loginScreen = document.getElementById('loginScreen');
 const appContainer = document.getElementById('appContainer');
