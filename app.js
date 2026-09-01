@@ -753,7 +753,6 @@ if (itemForm) {
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
 
-        // Stampa una sola copia
         printItemLabel();
 
         itemForm.reset();
@@ -1116,11 +1115,6 @@ window.exportBackup = function() {
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
     }
 
-    let topProduct = "Nessuno", maxCount = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxCount) { maxCount = c; topProduct = t.charAt(0).toUpperCase() + t.slice(1); }
-    }
-
     let csvContent = "\uFEFF";
     csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
     csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
@@ -1148,10 +1142,10 @@ function showToast(message, type = "success") {
     const toastMsg = document.getElementById('toastMessage');
     if(!toast || !toastMsg) return;
     toastMsg.textContent = message;
-    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.remove('translate-y-25', 'opacity-0');
     toast.classList.add('translate-y-0', 'opacity-100');
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-25', 'opacity-0');
     }, 3500);
 }
