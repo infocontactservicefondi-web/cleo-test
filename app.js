@@ -36,10 +36,6 @@ const assignClientToggleBtn = document.getElementById('assignClientToggleBtn');
 const selectedClientIdInput = document.getElementById('selectedClientIdInput');
 const assignClientDropdown = document.getElementById('assignClientDropdown');
 
-const clientNameInput = document.getElementById('clientName');
-const clientSearchToggleBtn = document.getElementById('clientSearchToggleBtn');
-const clientSearchDropdown = document.getElementById('clientSearchDropdown');
-
 const globalSearch = document.getElementById('globalSearch');
 const globalSearchDropdown = document.getElementById('globalSearchDropdown');
 const searchClearBtn = document.getElementById('searchClearBtn');
@@ -250,15 +246,10 @@ function checkNumericLicense() {
             .then((snapshot) => {
                 const licenses = snapshot.val();
                 let matchedKey = null;
-                let customExpiryVal = null;
 
                 if (licenses) {
                     for (let key in licenses) {
-                        if (String(key) === String(enteredCode)) {
-                            matchedKey = key;
-                            customExpiryVal = licenses[key];
-                            break;
-                        } else if (String(licenses[key]) === String(enteredCode)) {
+                        if (String(key) === String(enteredCode) || String(licenses[key]) === String(enteredCode)) {
                             matchedKey = key;
                             break;
                         }
@@ -267,13 +258,6 @@ function checkNumericLicense() {
 
                 if (enteredCode === "2580" || matchedKey) {
                     let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
-
-                    if (customExpiryVal) {
-                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
-                        if (!isNaN(parsedTime)) {
-                            expirationTimestamp = parsedTime;
-                        }
-                    }
                     
                     db.ref('used_licenses/' + enteredCode).set(true);
                     if (matchedKey) {
@@ -290,8 +274,7 @@ function checkNumericLicense() {
                     
                     unlockApp();
                     startLicenseCountdownMonitor();
-                    const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-                    showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+                    showToast("Licenza attivata con successo fino al 7 Agosto 2027!", "success");
                 } else {
                     showToast("Codice licenza non valido o già utilizzato.", "error");
                 }
@@ -441,125 +424,6 @@ window.switchTab = function(tab) {
     }
 };
 
-window.resetClientForm = function() {
-    if (clientForm) clientForm.reset();
-    const manageInput = document.getElementById('manageClientIdInput');
-    if (manageInput) manageInput.value = "";
-    if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
-};
-
-// RICERCA CLIENTE SEZIONE NUOVO CLIENTE
-function renderClientSearchDropdown(filter = "") {
-    if (!clientSearchDropdown) return;
-    clientSearchDropdown.innerHTML = "";
-    
-    const searchTerms = filter.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
-    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
-    let matches = 0;
-
-    const rowsContainer = document.createElement('div');
-    rowsContainer.className = "divide-y divide-darkBorder/50";
-
-    for (let [id, client] of sorted) {
-        const fullString = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        const isMatch = searchTerms.every(term => fullString.includes(term));
-        if (searchTerms.length > 0 && !isMatch) continue;
-
-        matches++;
-        const rowDiv = document.createElement('div');
-        rowDiv.className = "p-2.5 hover:bg-blue-600/10 cursor-pointer text-xs";
-        rowDiv.innerHTML = `
-            <div class="font-bold text-white">${client.name}</div>
-            <div class="text-slate-400 text-[11px]">Tel: ${client.phone} ${client.address ? '&bull; ' + client.address : ''}</div>
-        `;
-        rowDiv.addEventListener('click', () => {
-            if (clientNameInput) clientNameInput.value = client.name;
-            const phoneEl = document.getElementById('clientPhone');
-            const dobEl = document.getElementById('clientDob');
-            const addrEl = document.getElementById('clientAddress');
-            const manageInput = document.getElementById('manageClientIdInput');
-
-            if (phoneEl) phoneEl.value = client.phone || "";
-            if (dobEl) dobEl.value = client.dob || "";
-            if (addrEl) addrEl.value = client.address || "";
-            if (manageInput) manageInput.value = id;
-
-            clientSearchDropdown.classList.add('hidden');
-        });
-        rowsContainer.appendChild(rowDiv);
-    }
-
-    if (matches === 0) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = "p-4 text-center text-xs text-slate-400 italic";
-        emptyDiv.textContent = "Nessun cliente trovato.";
-        rowsContainer.appendChild(emptyDiv);
-    }
-
-    clientSearchDropdown.appendChild(rowsContainer);
-    clientSearchDropdown.classList.remove('hidden');
-}
-
-if (clientNameInput) {
-    clientNameInput.addEventListener('focus', () => renderClientSearchDropdown(clientNameInput.value.trim()));
-    clientNameInput.addEventListener('input', (e) => {
-        renderClientSearchDropdown(e.target.value.trim());
-    });
-}
-
-if (clientSearchToggleBtn) {
-    clientSearchToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (clientSearchDropdown.classList.contains('hidden')) {
-            renderClientSearchDropdown(clientNameInput ? clientNameInput.value.trim() : "");
-            if (clientNameInput) clientNameInput.focus();
-        } else {
-            clientSearchDropdown.classList.add('hidden');
-        }
-    });
-}
-
-// STAMPA ETICHETTA CLIENTE (PER SIG.RA CLEO - SENZA ARMADIO)
-window.printClientReceiptLabel = function() {
-    const name = document.getElementById('clientName').value.trim();
-    const phone = document.getElementById('clientPhone').value.trim();
-    const dob = document.getElementById('clientDob').value.trim();
-    const address = document.getElementById('clientAddress').value.trim();
-
-    if (!name || !phone) {
-        showToast("Inserisci almeno Nome e Telefono per la stampa", "error");
-        return;
-    }
-
-    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-
-    let printText = "\x1B\x40" + // Initialize printer
-        "\x1B\x61\x01" + // Center alignment
-        "\x1B\x21\x10LAVANDERIA CLEO\n" +
-        "\x1B\x21\x00" + dateStr + "\n" +
-        "--------------------------------\n" +
-        "\x1B\x61\x00" + // Left alignment
-        "\x1B\x21\x08Cliente: " + name + "\n" +
-        "Tel:     " + phone + "\n";
-    
-    if (dob) printText += "Nascita: " + dob + "\n";
-    if (address) printText += "Indirizzo: " + address + "\n";
-
-    printText += "--------------------------------\n" +
-        "\x1B\x61\x01" + // Center alignment
-        "DA LAVARE - SIGNORA CLEO\n" +
-        "\x1B\x21\x00--------------------------------\n\n\n\n" +
-        "\x1D\x56\x41\x03"; // Cut paper
-
-    try {
-        const base64Data = btoa(unescape(encodeURIComponent(printText)));
-        window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Etichetta cliente inviata in stampa!", "success");
-    } catch (err) {
-        showToast("Errore di stampa.", "error");
-    }
-};
-
 if (clientForm) {
     clientForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -567,11 +431,10 @@ if (clientForm) {
         const phone = document.getElementById('clientPhone').value.trim();
         const dob = document.getElementById('clientDob').value.trim();
         const address = document.getElementById('clientAddress').value.trim();
-        const manageId = document.getElementById('manageClientIdInput') ? document.getElementById('manageClientIdInput').value : "";
 
         if (!name || !phone) return;
 
-        const clientId = manageId || ('cli_' + Date.now());
+        const clientId = 'cli_' + Date.now();
         const newClient = { name, phone, dob, address };
 
         clientsData[clientId] = newClient;
@@ -579,7 +442,6 @@ if (clientForm) {
         db.ref('clients').child(clientId).set(newClient).catch(() => {});
 
         clientForm.reset();
-        if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
         showToast(`Cliente "${name}" registrato!`, "success");
         renderItems();
         const managerModal = document.getElementById('clientManagerModal');
@@ -667,8 +529,7 @@ window.deleteClient = function(id, name) {
 function renderAssignClientDropdown(filter = "") {
     if (!assignClientDropdown || !selectedClientIdInput) return;
     assignClientDropdown.innerHTML = "";
-    
-    const searchTerms = filter.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+    const lowerFilter = filter.toLowerCase();
     const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
     let matches = 0;
 
@@ -681,10 +542,8 @@ function renderAssignClientDropdown(filter = "") {
     rowsContainer.className = "divide-y divide-darkBorder/50";
 
     for (let [id, client] of sorted) {
-        const fullString = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        
-        const isMatch = searchTerms.every(term => fullString.includes(term));
-        if (searchTerms.length > 0 && !isMatch) continue;
+        const str = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
+        if (filter && !str.includes(lowerFilter)) continue;
 
         matches++;
         const rowDiv = document.createElement('div');
@@ -755,9 +614,6 @@ if (itemForm) {
         itemsData[itemId] = newItem;
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
-
-        // Stampa dell'etichetta al momento dell'accettazione del capo
-        printItemLabel();
 
         itemForm.reset();
         if(assignClientSearch) assignClientSearch.value = "";
@@ -936,7 +792,6 @@ if (searchClearBtn) {
 document.addEventListener('click', (e) => {
     if (globalSearch && globalSearchDropdown && !globalSearch.contains(e.target) && !globalSearchDropdown.contains(e.target)) globalSearchDropdown.classList.add('hidden');
     if (assignClientSearch && assignClientDropdown && assignClientToggleBtn && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && !assignClientToggleBtn.contains(e.target)) assignClientDropdown.classList.add('hidden');
-    if (clientNameInput && clientSearchDropdown && clientSearchToggleBtn && !clientNameInput.contains(e.target) && !clientSearchDropdown.contains(e.target) && !clientSearchToggleBtn.contains(e.target)) clientSearchDropdown.classList.add('hidden');
 });
 
 window.openClientModal = function(clientId) {
@@ -1002,8 +857,10 @@ function loadHistory() {
 
 window.setStatPeriod = function(period) {
     currentStatPeriod = period;
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
+    const startInput = document.getElementById('statsCustomStartDate');
+    const endInput = document.getElementById('statsCustomEndDate');
+    if (startInput) startInput.value = "";
+    if (endInput) endInput.value = "";
 
     ['Day', 'Month', 'Year', 'All'].forEach(p => {
         const btn = document.getElementById(`btnPeriod${p}`);
@@ -1017,8 +874,10 @@ window.setStatPeriod = function(period) {
 };
 
 window.clearCustomDateFilter = function() {
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
+    const startInput = document.getElementById('statsCustomStartDate');
+    const endInput = document.getElementById('statsCustomEndDate');
+    if (startInput) startInput.value = "";
+    if (endInput) endInput.value = "";
     renderHistory();
 };
 
@@ -1034,14 +893,17 @@ window.resetAllStatistics = function() {
 
 function renderHistory() {
     const historyTableBody = document.getElementById('historyTableBody');
-    if(!historyTableBody) return;
+    if (!historyTableBody) return;
     historyTableBody.innerHTML = "";
+
     let count = 0, totalRevenue = 0;
-    let uniqueClients = new Set(), typeCounts = {};
+    let uniqueClients = new Set();
+    let typeCounts = {};
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-    const currentMonth = now.getMonth(), currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
     const customStartEl = document.getElementById('statsCustomStartDate');
     const customEndEl = document.getElementById('statsCustomEndDate');
@@ -1065,36 +927,51 @@ function renderHistory() {
 
         count++;
         totalRevenue += (item.price || 0);
-        uniqueClients.add(item.clientId);
-        const tLower = (item.type || "Altro").toLowerCase();
+        if (item.clientId) uniqueClients.add(item.clientId);
+
+        const tLower = (item.type || "Altro").trim().toLowerCase();
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
 
         const client = clientsData[item.clientId] || { name: "Non trovato" };
         const tr = document.createElement('tr');
         tr.className = "hover:bg-darkCard text-sm";
-        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
+        tr.innerHTML = `
+            <td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td>
+            <td class="py-3 px-4 font-semibold text-white">${client.name}</td>
+            <td class="py-3 px-4">${item.type}</td>
+            <td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td>
+            <td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet || 'N/D'}</td>
+        `;
         historyTableBody.appendChild(tr);
     }
 
-    document.getElementById('statTotalCount').textContent = count;
-    document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
-    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-    document.getElementById('historyCounter').textContent = `${count} elementi`;
+    const statCountEl = document.getElementById('statTotalCount');
+    const statRevenueEl = document.getElementById('statTotalRevenue');
+    const statClientsEl = document.getElementById('statUniqueClients');
+    const historyCounterEl = document.getElementById('historyCounter');
+    const statTopItemEl = document.getElementById('statTopItemType');
+
+    if (statCountEl) statCountEl.textContent = count;
+    if (statRevenueEl) statRevenueEl.textContent = `€ ${totalRevenue.toFixed(2)}`;
+    if (statClientsEl) statClientsEl.textContent = uniqueClients.size;
+    if (historyCounterEl) historyCounterEl.textContent = `${count} elementi`;
 
     let topType = "-", maxC = 0;
     for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxC) { maxC = c; topType = t.charAt(0).toUpperCase() + t.slice(1); }
+        if (c > maxC) {
+            maxC = c;
+            topType = t.charAt(0).toUpperCase() + t.slice(1);
+        }
     }
-    document.getElementById('statTopItemType').textContent = topType;
+    if (statTopItemEl) statTopItemEl.textContent = topType;
 }
 
 window.exportBackup = function() {
     const generationDate = new Date().toLocaleDateString('it-IT');
     const startDateInput = document.getElementById('statsCustomStartDate');
     const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDate) endDate.setHours(23, 59, 59, 999);
+    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value + "T00:00:00") : null;
+    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value + "T23:59:59") : null;
 
     let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
@@ -1136,7 +1013,7 @@ window.exportBackup = function() {
     link.click();
     document.body.removeChild(link);
     showToast("Report esportato!", "success");
-}
+};
 
 function showToast(message, type = "success") {
     const toast = document.getElementById('toastNotification');
