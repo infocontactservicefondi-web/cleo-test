@@ -573,6 +573,7 @@ if (clientForm) {
         localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
         db.ref('clients').child(clientId).set(newClient).catch(() => {});
 
+        // Pulisce e resetta il form e chiude la tendina di ricerca cliente
         clientForm.reset();
         if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
         if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
@@ -1095,8 +1096,9 @@ window.exportBackup = function() {
     const generationDate = new Date().toLocaleDateString('it-IT');
     const startDateInput = document.getElementById('statsCustomStartDate');
     const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value + "T00:00:00") : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value + "T23:59:59") : null;
+    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
+    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
+    if (endDate) endDate.setHours(23, 59, 59, 999);
 
     let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
@@ -1140,10 +1142,10 @@ function showToast(message, type = "success") {
     const toastMsg = document.getElementById('toastMessage');
     if(!toast || !toastMsg) return;
     toastMsg.textContent = message;
-    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.remove('translate-y-25', 'opacity-0');
     toast.classList.add('translate-y-0', 'opacity-100');
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-25', 'opacity-0');
     }, 3500);
 }
