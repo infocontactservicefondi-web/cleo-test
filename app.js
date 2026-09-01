@@ -36,6 +36,10 @@ const assignClientToggleBtn = document.getElementById('assignClientToggleBtn');
 const selectedClientIdInput = document.getElementById('selectedClientIdInput');
 const assignClientDropdown = document.getElementById('assignClientDropdown');
 
+const clientNameInput = document.getElementById('clientName');
+const clientSearchToggleBtn = document.getElementById('clientSearchToggleBtn');
+const clientSearchDropdown = document.getElementById('clientSearchDropdown');
+
 const globalSearch = document.getElementById('globalSearch');
 const globalSearchDropdown = document.getElementById('globalSearchDropdown');
 const searchClearBtn = document.getElementById('searchClearBtn');
@@ -69,10 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function fixLoginPlaceholders() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    if (inputs.length > 0) {
-        inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+    const licenseInput = document.getElementById('licensePhoneInput');
+    if (licenseInput) {
+        licenseInput.value = "";
+        licenseInput.placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
     }
 }
 
@@ -164,14 +168,7 @@ window.closeExpiredModalAndRelogin = function() {
 };
 
 function checkAdminPassword() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredPassword = "";
-
-    if (inputs.length > 1) {
-        enteredPassword = inputs[1].value.trim();
-    } else if (passwordInput) {
-        enteredPassword = passwordInput.value.trim();
-    }
+    let enteredPassword = passwordInput ? passwordInput.value.trim() : "";
 
     if (!enteredPassword) {
         showToast("Inserisci la password amministratore", "error");
@@ -193,12 +190,8 @@ function checkAdminPassword() {
 }
 
 function checkNumericLicense() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredCode = "";
-
-    if (inputs.length > 0) {
-        enteredCode = inputs[0].value.trim();
-    }
+    const licenseInput = document.getElementById('licensePhoneInput');
+    let enteredCode = licenseInput ? licenseInput.value.trim() : "";
 
     if (!enteredCode) {
         showToast("Inserisci il codice numerico della licenza", "error");
@@ -246,10 +239,15 @@ function checkNumericLicense() {
             .then((snapshot) => {
                 const licenses = snapshot.val();
                 let matchedKey = null;
+                let customExpiryVal = null;
 
                 if (licenses) {
                     for (let key in licenses) {
-                        if (String(key) === String(enteredCode) || String(licenses[key]) === String(enteredCode)) {
+                        if (String(key) === String(enteredCode)) {
+                            matchedKey = key;
+                            customExpiryVal = licenses[key];
+                            break;
+                        } else if (String(licenses[key]) === String(enteredCode)) {
                             matchedKey = key;
                             break;
                         }
@@ -258,6 +256,13 @@ function checkNumericLicense() {
 
                 if (enteredCode === "2580" || matchedKey) {
                     let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
+
+                    if (customExpiryVal) {
+                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
+                        if (!isNaN(parsedTime)) {
+                            expirationTimestamp = parsedTime;
+                        }
+                    }
                     
                     db.ref('used_licenses/' + enteredCode).set(true);
                     if (matchedKey) {
@@ -274,7 +279,8 @@ function checkNumericLicense() {
                     
                     unlockApp();
                     startLicenseCountdownMonitor();
-                    showToast("Licenza attivata con successo fino al 7 Agosto 2027!", "success");
+                    const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
+                    showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
                 } else {
                     showToast("Codice licenza non valido o già utilizzato.", "error");
                 }
@@ -306,10 +312,10 @@ function initConnectionMonitor() {
     db.ref('.info/connected').on('value', (snap) => {
         if (snap.val() === true) {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]";
-            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400"; }
+            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400 font-medium"; }
         } else {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
-            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400"; }
+            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400 font-medium"; }
         }
     });
 }
@@ -374,8 +380,7 @@ window.lockApp = function() {
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
     
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
+    if (passwordInput) passwordInput.value = '';
 };
 
 function lockAppComplete() {
@@ -394,8 +399,7 @@ function lockAppComplete() {
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
     
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
+    if (passwordInput) passwordInput.value = '';
 }
 
 function initApp() {
@@ -424,9 +428,120 @@ window.switchTab = function(tab) {
     }
 };
 
-// ==========================================
-// GESTIONE CLIENTE E CAPI
-// ==========================================
+window.resetClientForm = function() {
+    if (clientForm) clientForm.reset();
+    const manageInput = document.getElementById('manageClientIdInput');
+    if (manageInput) manageInput.value = "";
+    if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
+};
+
+function renderClientSearchDropdown(filter = "") {
+    if (!clientSearchDropdown) return;
+    clientSearchDropdown.innerHTML = "";
+    
+    const searchTerms = filter.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
+    let matches = 0;
+
+    const rowsContainer = document.createElement('div');
+    rowsContainer.className = "divide-y divide-darkBorder/50";
+
+    for (let [id, client] of sorted) {
+        const fullString = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
+        const isMatch = searchTerms.every(term => fullString.includes(term));
+        if (searchTerms.length > 0 && !isMatch) continue;
+
+        matches++;
+        const rowDiv = document.createElement('div');
+        rowDiv.className = "p-2.5 hover:bg-blue-600/10 cursor-pointer text-xs";
+        rowDiv.innerHTML = `
+            <div class="font-bold text-white">${client.name}</div>
+            <div class="text-slate-400 text-[11px]">Tel: ${client.phone} ${client.address ? '&bull; ' + client.address : ''}</div>
+        `;
+        rowDiv.addEventListener('click', () => {
+            if (clientNameInput) clientNameInput.value = client.name;
+            const phoneEl = document.getElementById('clientPhone');
+            const dobEl = document.getElementById('clientDob');
+            const addrEl = document.getElementById('clientAddress');
+            const manageInput = document.getElementById('manageClientIdInput');
+
+            if (phoneEl) phoneEl.value = client.phone || "";
+            if (dobEl) dobEl.value = client.dob || "";
+            if (addrEl) addrEl.value = client.address || "";
+            if (manageInput) manageInput.value = id;
+
+            clientSearchDropdown.classList.add('hidden');
+        });
+        rowsContainer.appendChild(rowDiv);
+    }
+
+    if (matches === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = "p-4 text-center text-xs text-slate-400 italic";
+        emptyDiv.textContent = "Nessun cliente trovato.";
+        rowsContainer.appendChild(emptyDiv);
+    }
+
+    clientSearchDropdown.appendChild(rowsContainer);
+    clientSearchDropdown.classList.remove('hidden');
+}
+
+if (clientNameInput) {
+    clientNameInput.addEventListener('focus', () => renderClientSearchDropdown(clientNameInput.value.trim()));
+    clientNameInput.addEventListener('input', (e) => {
+        renderClientSearchDropdown(e.target.value.trim());
+    });
+}
+
+if (clientSearchToggleBtn) {
+    clientSearchToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (clientSearchDropdown.classList.contains('hidden')) {
+            renderClientSearchDropdown(clientNameInput ? clientNameInput.value.trim() : "");
+            if (clientNameInput) clientNameInput.focus();
+        } else {
+            clientSearchDropdown.classList.add('hidden');
+        }
+    });
+}
+
+window.printClientReceiptLabel = function() {
+    const name = document.getElementById('clientName').value.trim();
+    const phone = document.getElementById('clientPhone').value.trim();
+    const dob = document.getElementById('clientDob').value.trim();
+    const address = document.getElementById('clientAddress').value.trim();
+
+    if (!name || !phone) {
+        showToast("Inserisci almeno Nome e Telefono per la stampa", "error");
+        return;
+    }
+
+    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+
+    let printText = "\x1B\x40" + 
+        "\x1B\x61\x01" + 
+        "\x1B\x21\x10LAVANDERIA CLEO\n" +
+        "\x1B\x21\x00" + dateStr + "\n" +
+        "--------------------------------\n" +
+        "\x1B\x61\x00" + 
+        "\x1B\x21\x08Cliente: " + name + "\n" +
+        "Tel:     " + phone + "\n";
+    
+    if (dob) printText += "Nascita: " + dob + "\n";
+    if (address) printText += "Indirizzo: " + address + "\n";
+
+    printText += "--------------------------------\n\n\n\n" +
+        "\x1D\x56\x41\x03"; 
+
+    try {
+        const base64Data = btoa(unescape(encodeURIComponent(printText)));
+        window.location.href = `rawbt:base64,${base64Data}`;
+        showToast("Etichetta cliente inviata in stampa!", "success");
+    } catch (err) {
+        showToast("Errore di stampa.", "error");
+    }
+};
+
 if (clientForm) {
     clientForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -434,10 +549,11 @@ if (clientForm) {
         const phone = document.getElementById('clientPhone').value.trim();
         const dob = document.getElementById('clientDob').value.trim();
         const address = document.getElementById('clientAddress').value.trim();
+        const manageId = document.getElementById('manageClientIdInput') ? document.getElementById('manageClientIdInput').value : "";
 
         if (!name || !phone) return;
 
-        const clientId = 'cli_' + Date.now();
+        const clientId = manageId || ('cli_' + Date.now());
         const newClient = { name, phone, dob, address };
 
         clientsData[clientId] = newClient;
@@ -445,6 +561,7 @@ if (clientForm) {
         db.ref('clients').child(clientId).set(newClient).catch(() => {});
 
         clientForm.reset();
+        if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
         showToast(`Cliente "${name}" registrato!`, "success");
         renderItems();
         const managerModal = document.getElementById('clientManagerModal');
@@ -532,7 +649,8 @@ window.deleteClient = function(id, name) {
 function renderAssignClientDropdown(filter = "") {
     if (!assignClientDropdown || !selectedClientIdInput) return;
     assignClientDropdown.innerHTML = "";
-    const lowerFilter = filter.toLowerCase();
+    
+    const searchTerms = filter.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
     const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
     let matches = 0;
 
@@ -545,8 +663,10 @@ function renderAssignClientDropdown(filter = "") {
     rowsContainer.className = "divide-y divide-darkBorder/50";
 
     for (let [id, client] of sorted) {
-        const str = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        if (filter && !str.includes(lowerFilter)) continue;
+        const fullString = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
+        
+        const isMatch = searchTerms.every(term => fullString.includes(term));
+        if (searchTerms.length > 0 && !isMatch) continue;
 
         matches++;
         const rowDiv = document.createElement('div');
@@ -618,6 +738,8 @@ if (itemForm) {
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
 
+        printItemLabel();
+
         itemForm.reset();
         if(assignClientSearch) assignClientSearch.value = "";
         if(selectedClientIdInput) selectedClientIdInput.value = "";
@@ -646,19 +768,26 @@ window.printItemLabel = function() {
     const client = clientsData[clientId];
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
-    const generateSingleReceipt = (copyType) => {
-        let block = "";
-        block += "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x08[COPIA " + copyType + "]\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel: " + client.phone + "\nCapo:    " + type + "\n";
-        if (notes) block += `Note:    ${notes}\n`;
-        block += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n* Conservare per il ritiro *\n\n\n";
-        return block;
-    };
+    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n" +
+        dateStr + "\n" +
+        "\x1B\x21\x00--------------------------------\n" +
+        "\x1B\x61\x00Cliente: " + client.name + "\n" +
+        "Tel:     " + client.phone + "\n" +
+        "Capo:    " + type + "\n";
+    
+    if (notes) printText += "Note:    " + notes + "\n";
+    
+    printText += "--------------------------------\n" +
+        "\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\n" +
+        "POS: " + position + "\n" +
+        "\x1B\x21\x00--------------------------------\n" +
+        "\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n" +
+        "\x1B\x21\x00\x1B\x61\x01\n\n\n\n" +
+        "\x1D\x56\x41\x03";
 
-    let printText = generateSingleReceipt("ATTIVITA") + "\x1D\x56\x41\x03" + generateSingleReceipt("CLIENTE") + "\x1D\x56\x41\x03";
     try {
         const base64Data = btoa(unescape(encodeURIComponent(printText)));
         window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Ricevute inviate in stampa!", "success");
     } catch (err) {
         showToast("Errore di stampa.", "error");
     }
@@ -795,6 +924,7 @@ if (searchClearBtn) {
 document.addEventListener('click', (e) => {
     if (globalSearch && globalSearchDropdown && !globalSearch.contains(e.target) && !globalSearchDropdown.contains(e.target)) globalSearchDropdown.classList.add('hidden');
     if (assignClientSearch && assignClientDropdown && assignClientToggleBtn && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && !assignClientToggleBtn.contains(e.target)) assignClientDropdown.classList.add('hidden');
+    if (clientNameInput && clientSearchDropdown && clientSearchToggleBtn && !clientNameInput.contains(e.target) && !clientSearchDropdown.contains(e.target) && !clientSearchToggleBtn.contains(e.target)) clientSearchDropdown.classList.add('hidden');
 });
 
 window.openClientModal = function(clientId) {
@@ -843,9 +973,6 @@ window.closeClientModal = function() {
     document.getElementById('clientModal').classList.add('hidden');
 };
 
-// ==========================================
-// GESTIONE STATISTICHE E STORICO
-// ==========================================
 function loadHistory() {
     const local = localStorage.getItem('laundry_history');
     if (local) historyData = JSON.parse(local);
@@ -868,7 +995,7 @@ window.setStatPeriod = function(period) {
 
     ['Day', 'Month', 'Year', 'All'].forEach(p => {
         const btn = document.getElementById(`btnPeriod${p}`);
-        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
+        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-800 cursor-pointer active:scale-95";
     });
     
     const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
@@ -970,11 +1097,6 @@ window.exportBackup = function() {
         grandTotalRevenue += (item.price || 0);
         const tLower = (item.type || "Altro").trim().toLowerCase();
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
-    }
-
-    let topProduct = "Nessuno", maxCount = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxCount) { maxCount = c; topProduct = t.charAt(0).toUpperCase() + t.slice(1); }
     }
 
     let csvContent = "\uFEFF";
