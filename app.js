@@ -448,7 +448,6 @@ window.resetClientForm = function() {
     if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
 };
 
-// RICERCA CLIENTE SEZIONE NUOVO CLIENTE
 function renderClientSearchDropdown(filter = "") {
     if (!clientSearchDropdown) return;
     clientSearchDropdown.innerHTML = "";
@@ -519,7 +518,6 @@ if (clientSearchToggleBtn) {
     });
 }
 
-// STAMPA ETICHETTA CLIENTE
 window.printClientReceiptLabel = function() {
     const name = document.getElementById('clientName').value.trim();
     const phone = document.getElementById('clientPhone').value.trim();
@@ -763,7 +761,6 @@ if (itemForm) {
     });
 }
 
-// STAMPA CAPO (SINGOLA COPIA)
 window.printItemLabel = function() {
     const clientId = selectedClientIdInput.value;
     const type = document.getElementById('itemType').value.trim();
