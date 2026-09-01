@@ -1097,7 +1097,7 @@ window.exportBackup = function() {
     const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
     if (endDate) endDate.setHours(23, 59, 59, 999);
 
-    let totalItemsCount = 0, grandTotalRevenue = 0, filteredHistory = [];
+    let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sortedHistory) {
@@ -1105,60 +1105,33 @@ window.exportBackup = function() {
         if (startDate && retDate < startDate) continue;
         if (endDate && retDate > endDate) continue;
 
-        filteredHistory.push({ item, retDate });
+        filteredHistory.push({ id, item, retDate });
         totalItemsCount++;
         grandTotalRevenue += (item.price || 0);
+        const tLower = (item.type || "Altro").trim().toLowerCase();
+        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
     }
 
-    // Costruzione matrice di dati per SheetJS (Generazione file .xlsx reale)
-    let excelData = [
-        ["LAVANDERIA CLEO - REPORT"],
-        ["Data generazione:", generationDate],
-        [],
-        ["=== STATISTICHE ==="],
-        ["Totale Capi:", totalItemsCount],
-        ["Incasso:", grandTotalRevenue],
-        [],
-        ["=== STORICO ==="],
-        ["Data Ritiro", "Cliente", "Tel", "Capo", "Prezzo", "Armadio", "Posizione"]
-    ];
-
+    let csvContent = "\uFEFF";
+    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
+    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
+    
+    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
     for (let entry of filteredHistory) {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
         const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        
-        excelData.push([
-            retDateStr,
-            client.name,
-            String(client.phone), // Gestito come stringa per preservare formati e zeri iniziali
-            item.type,
-            Number((item.price || 0).toFixed(2)), // Numero puro per i totali di Excel
-            item.cabinet,
-            item.position
-        ]);
+        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
     }
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(excelData);
-
-    // Calcolo automatico della larghezza delle colonne (inclusa colonna C dei telefoni)
-    const colWidths = [];
-    excelData.forEach(row => {
-        row.forEach((cell, colIndex) => {
-            const cellLength = cell ? cell.toString().length : 10;
-            if (!colWidths[colIndex] || cellLength > colWidths[colIndex]) {
-                colWidths[colIndex] = Math.max(cellLength + 4, 12);
-            }
-        });
-    });
-    
-    ws['!cols'] = colWidths.map(w => ({ wch: w }));
-
-    XLSX.utils.book_append_sheet(wb, ws, "Report Storico");
-    XLSX.writeFile(wb, `Report_${new Date().toISOString().split('T')[0]}.xlsx`);
-    
-    showToast("Report Excel esportato con successo!", "success");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Report esportato!", "success");
 }
 
 function showToast(message, type = "success") {
