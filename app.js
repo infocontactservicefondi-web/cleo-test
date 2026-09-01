@@ -332,7 +332,7 @@ function initConnectionMonitor() {
 }
 
 // ==========================================
-// GESTIONE TEMA (CHIARO / SCURO) CORRETTA
+// GESTIONE TEMA (CHIARO / SCURO)
 // ==========================================
 window.toggleTheme = function() {
     const htmlEl = document.documentElement;
