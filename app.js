@@ -441,6 +441,13 @@ window.switchTab = function(tab) {
     }
 };
 
+window.resetClientForm = function() {
+    if (clientForm) clientForm.reset();
+    const manageInput = document.getElementById('manageClientIdInput');
+    if (manageInput) manageInput.value = "";
+    if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
+};
+
 // RICERCA CLIENTE SEZIONE NUOVO CLIENTE
 function renderClientSearchDropdown(filter = "") {
     if (!clientSearchDropdown) return;
