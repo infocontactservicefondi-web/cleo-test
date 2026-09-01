@@ -303,20 +303,21 @@
                         <button id="btnPeriodAll" onclick="setStatPeriod('all')" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95">Tutti</button>
                     </div>
                     
-                    <!-- Selettore Da - A esatto come nella foto -->
-                    <div class="flex items-center gap-2">
-                        <div class="flex items-center gap-1.5 bg-darkCard border border-darkBorder rounded-xl px-3 py-1.5">
-                            <span class="text-[11px] font-bold text-slate-400">Da:</span>
+                    <!-- Blocco Da / A perfettamente allineato come nella foto -->
+                    <div class="flex items-center gap-2 bg-darkCard border border-darkBorder rounded-2xl p-1.5">
+                        <div class="flex items-center gap-1.5 px-2">
+                            <span class="text-xs font-bold text-slate-400">Da:</span>
                             <input type="date" id="statsCustomStartDate" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
                         </div>
-                        <div class="flex items-center gap-1.5 bg-darkCard border border-darkBorder rounded-xl px-3 py-1.5">
-                            <span class="text-[11px] font-bold text-slate-400">A:</span>
+                        <div class="w-[1px] h-5 bg-darkBorder"></div>
+                        <div class="flex items-center gap-1.5 px-2">
+                            <span class="text-xs font-bold text-slate-400">A:</span>
                             <input type="date" id="statsCustomEndDate" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
                         </div>
-                        <button onclick="renderHistory()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-sm">
+                        <button onclick="renderHistory()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-sm">
                             <i class="fa-solid fa-check"></i> Cerca
                         </button>
-                        <button onclick="clearCustomDateFilter()" class="p-2 bg-darkCard hover:bg-zinc-800 rounded-xl text-xs text-slate-300 border border-darkBorder cursor-pointer" title="Resetta Date">
+                        <button onclick="clearCustomDateFilter()" class="p-2 bg-darkSurface hover:bg-zinc-800 rounded-xl text-xs text-slate-300 border border-darkBorder cursor-pointer" title="Resetta Date">
                             <i class="fa-solid fa-rotate-left"></i>
                         </button>
                     </div>
