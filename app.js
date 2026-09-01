@@ -76,7 +76,7 @@ function fixLoginPlaceholders() {
     const inputs = document.querySelectorAll('#loginScreen input');
     if (inputs.length > 0) {
         inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale...";
+        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
     }
 }
 
@@ -573,8 +573,11 @@ if (clientForm) {
         localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
         db.ref('clients').child(clientId).set(newClient).catch(() => {});
 
+        // Pulisce e resetta il form e chiude la tendina di ricerca cliente
         clientForm.reset();
         if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
+        if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
+
         showToast(`Cliente "${name}" registrato!`, "success");
         renderItems();
         const managerModal = document.getElementById('clientManagerModal');
