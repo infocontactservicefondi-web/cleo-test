@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lavanderia Cleo - Gestionale</title>
-
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,420 +12,433 @@
             theme: {
                 extend: {
                     colors: {
-                        darkBg: '#0b0f19',
-                        darkSurface: '#111827',
-                        darkCard: '#1f2937',
-                        darkBorder: '#374151'
+                        darkBg: '#121212',
+                        darkSurface: '#1E1E1E',
+                        darkCard: '#242424',
+                        darkBorder: '#2C2C2C'
+                    },
+                    transitionTimingFunction: {
+                        'smooth-spring': 'cubic-bezier(0.16, 1, 0.3, 1)',
                     }
                 }
             }
         }
     </script>
-
-    <!-- FontAwesome CDN -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Firebase SDK (v8 per compatibilità con il codice) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    <style>
+        * {
+            transition-property: background-color, border-color, color, fill, stroke, opacity, transform, box-shadow;
+            transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+            transition-duration: 250ms;
+        }
+        @keyframes modalIn {
+            0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-modal {
+            animation: modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
 </head>
-<body class="bg-darkBg text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+<body class="bg-darkBg text-slate-100 min-h-screen font-sans selection:bg-blue-500 selection:text-white pb-20">
 
-    <!-- SCREEN LOGIN E ATTIVAZIONE LICENZA -->
-    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-darkBg/95 backdrop-blur-md transition-opacity duration-300">
-        <div class="bg-darkSurface border border-darkBorder p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4">
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-blue-500/30">
-                    <i class="fa-solid fa-shirt text-2xl"></i>
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="fixed inset-0 z-50 bg-darkBg/90 backdrop-blur-xl flex items-center justify-center p-4 opacity-100 transition-opacity duration-500">
+        <div class="bg-darkSurface p-8 rounded-3xl shadow-2xl w-full max-w-md border border-darkBorder text-center space-y-6 transform hover:scale-[1.01] hover:border-blue-500/50 shadow-blue-500/5">
+            <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 hover:scale-110 hover:rotate-3 shadow-lg shadow-blue-500/10">
+                <i class="fa-solid fa-shirt"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Lavanderia Cleo</h1>
+            
+            <!-- SEZIONE ATTIVAZIONE LICENZA DISPOSITIVO -->
+            <div id="licenseRegisterArea" class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-left space-y-3 hover:border-zinc-700 hover:bg-darkCard/80">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white uppercase tracking-wider">Licenza Dispositivo</span>
+                    <span id="licenseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In attesa</span>
                 </div>
-                <h1 class="text-2xl font-bold text-white tracking-wide">LAVANDERIA CLEO</h1>
-                <p class="text-xs text-slate-400 mt-1">Accedi o riscatta la licenza di utilizzo</p>
+                <p id="licenseInfoText" class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
+                <div class="flex gap-2">
+                    <input type="text" id="licensePhoneInput" placeholder="Es. CLEO-TEST-01" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-md shadow-blue-600/20 shrink-0 hover:shadow-blue-500/40">Attiva</button>
+                </div>
             </div>
 
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Codice Licenza Dispositivo</label>
-                    <div class="flex gap-2">
-                        <input type="text" class="w-full bg-darkBg border border-darkBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition" placeholder="Inserisci codice licenza...">
-                        <button onclick="checkNumericLicense()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs active:scale-95 transition shadow-lg shadow-blue-600/20">
-                            Attiva
-                        </button>
-                    </div>
-                </div>
-
-                <div class="relative flex py-2 items-center">
-                    <div class="flex-grow border-t border-darkBorder"></div>
-                    <span class="flex-shrink mx-4 text-[10px] text-slate-500 uppercase tracking-wider font-bold">Oppure Admin</span>
-                    <div class="flex-grow border-t border-darkBorder"></div>
-                </div>
-
-                <form id="loginForm" class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Password Amministratore</label>
-                        <input id="passwordInput" type="password" class="w-full bg-darkBg border border-darkBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition" placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="w-full bg-darkCard hover:bg-slate-700 border border-darkBorder text-slate-200 font-semibold py-2.5 rounded-xl text-xs active:scale-95 transition">
-                        Accesso Amministratore
-                    </button>
+            <!-- SEZIONE PASSWORD AMMINISTRATORE -->
+            <div class="border-t border-darkBorder pt-4">
+                <p class="text-xs text-slate-400 mb-4">Inserisci la password amministratore per accedere</p>
+                <form id="loginForm" class="space-y-4">
+                    <input type="password" id="passwordInput" placeholder="Password amministratore" class="w-full px-4 py-3 bg-darkCard border border-darkBorder rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold rounded-xl text-sm cursor-pointer shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40 hover:-translate-y-0.5">Accedi al Gestionale</button>
                 </form>
-
-                <p id="loginError" class="text-xs text-rose-400 text-center hidden font-medium"></p>
             </div>
+            
+            <p id="loginError" class="text-rose-500 text-xs mt-3 hidden font-medium animate-pulse"></p>
         </div>
     </div>
 
     <!-- MAIN APP CONTAINER -->
-    <div id="appContainer" class="hidden opacity-0 transition-opacity duration-300 flex-grow flex flex-col">
+    <div id="appContainer" class="hidden max-w-7xl mx-auto p-4 sm:p-6 space-y-6 opacity-0 transition-opacity duration-500">
+
         <!-- HEADER / NAVBAR -->
-        <header class="bg-darkSurface border-b border-darkBorder sticky top-0 z-30">
-            <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md shadow-blue-600/30">
-                        <i class="fa-solid fa-soap"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-bold text-base text-white tracking-wide leading-tight">LAVANDERIA CLEO</h1>
-                        <div class="flex items-center gap-2 text-[11px]">
-                            <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                            <span id="statusText" class="text-emerald-400 font-medium">Connesso</span>
-                        </div>
+        <header class="flex flex-wrap items-center justify-between gap-4 bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm hover:scale-105 hover:rotate-3">
+                    <i class="fa-solid fa-shirt"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white leading-tight">Lavanderia Cleo</h1>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
+                        <span id="statusText" class="text-emerald-400 font-medium">Online</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- NAVBAR NAVIGATION TABS -->
-                <nav class="flex items-center bg-darkBg p-1 rounded-xl border border-darkBorder">
-                    <button id="navTabActive" onclick="switchTab('active')" class="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95">
-                        <i class="fa-solid fa-list-check mr-1.5"></i> Capi in Lavorazione
-                    </button>
-                    <button id="navTabStats" onclick="switchTab('stats')" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95">
-                        <i class="fa-solid fa-chart-pie mr-1.5"></i> Statistiche & Storico
-                    </button>
-                </nav>
-
-                <!-- TOOLBAR ACTIONS -->
-                <div class="flex items-center gap-2">
-                    <button onclick="openClientManagerModal()" class="px-3 py-2 bg-darkCard hover:bg-slate-700 text-slate-200 border border-darkBorder rounded-xl text-xs font-semibold flex items-center gap-2 transition active:scale-95 cursor-pointer">
-                        <i class="fa-solid fa-users text-blue-400"></i> Anagrafica
-                    </button>
-                    <button onclick="toggleTheme()" class="p-2 bg-darkCard hover:bg-slate-700 text-slate-300 border border-darkBorder rounded-xl text-xs transition active:scale-95 cursor-pointer" title="Cambia Tema">
-                        <i id="themeIcon" class="fa-solid fa-moon"></i>
-                    </button>
-                    <button onclick="lockApp()" class="p-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-900/50 rounded-xl text-xs transition active:scale-95 cursor-pointer" title="Blocca / Esci">
-                        <i class="fa-solid fa-right-from-bracket"></i>
+            <!-- Global Search Bar -->
+            <div class="relative flex-1 max-w-md mx-auto w-full">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                    <input type="text" id="globalSearch" placeholder="Cerca cliente (nome, tel) o capo (tipo, armadio)..." class="w-full pl-9 pr-16 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="searchClearBtn" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs hidden cursor-pointer">
+                        <i class="fa-solid fa-xmark"></i> Pulisci
                     </button>
                 </div>
+                <!-- Dropdown Risultati Ricerca Globale -->
+                <div id="globalSearchDropdown" class="absolute left-0 right-0 mt-2 bg-darkSurface border border-darkBorder rounded-2xl shadow-2xl max-h-96 overflow-y-auto z-40 hidden divide-y divide-darkBorder animate-modal"></div>
+            </div>
+
+            <!-- Actions Navbar -->
+            <div class="flex items-center gap-2">
+                <button onclick="openClientManagerModal()" class="px-3.5 py-2 bg-darkCard hover:bg-zinc-800 active:scale-95 text-xs font-semibold rounded-xl text-slate-200 cursor-pointer flex items-center gap-1.5 shadow-sm hover:-translate-y-0.5">
+                    <i class="fa-solid fa-address-book text-blue-400"></i> Clienti
+                </button>
+                <button onclick="toggleTheme()" class="p-2.5 bg-darkCard hover:bg-zinc-800 active:scale-95 rounded-xl text-xs text-slate-200 cursor-pointer hover:rotate-45" title="Cambia Tema">
+                    <i id="themeIcon" class="fa-solid fa-moon"></i>
+                </button>
+                <button onclick="lockApp()" class="p-2.5 bg-rose-950/40 hover:bg-rose-900/60 active:scale-95 text-rose-400 rounded-xl text-xs cursor-pointer shadow-sm hover:scale-105" title="Esci / Blocca App">
+                    <i class="fa-solid fa-lock"></i>
+                </button>
             </div>
         </header>
 
-        <!-- CONTENT BODY -->
-        <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-grow">
+        <!-- NAVIGATION TABS -->
+        <div class="flex gap-2 border-b border-darkBorder pb-3">
+            <button onclick="switchTab('active')" id="navTabActive" class="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95 hover:bg-blue-500">
+                <i class="fa-solid fa-box-archive mr-1.5"></i> Capi in Lavorazione
+            </button>
+            <button onclick="switchTab('stats')" id="navTabStats" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95">
+                <i class="fa-solid fa-chart-pie mr-1.5"></i> Storico & Statistiche
+            </button>
+        </div>
 
-            <!-- TAB 1: CAPI IN LAVORAZIONE -->
-            <div id="viewActive" class="space-y-6">
-                <!-- BARRA RICERCA GLOBALE E REGISTRAZIONI -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- VIEW ACTIVE -->
+        <div id="viewActive" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Colonna Sinistra -->
+                <div class="lg:col-span-1 space-y-6">
                     
-                    <!-- BOX REGISTRAZIONE CLIENTE & CAPO -->
-                    <div class="lg:col-span-1 space-y-6">
-                        <!-- NUOVO CLIENTE -->
-                        <div class="bg-darkSurface border border-darkBorder rounded-2xl p-5 shadow-sm">
-                            <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                                <i class="fa-solid fa-user-plus text-blue-500"></i> Registra Nuovo Cliente
+                    <!-- Nuovo Cliente -->
+                    <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4 hover:border-zinc-700 hover:shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-user-plus text-blue-400"></i> Nuovo Cliente
                             </h2>
-                            <form id="clientForm" class="space-y-3">
-                                <input id="clientName" type="text" placeholder="Nome e Cognome *" required class="w-full bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                <input id="clientPhone" type="tel" placeholder="Numero di Telefono *" required class="w-full bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <input id="clientDob" type="text" placeholder="Data di nascita (GG/MM/AAAA)" class="bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                    <input id="clientAddress" type="text" placeholder="Indirizzo" class="bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                </div>
-                                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-xl text-xs transition active:scale-95 shadow-md shadow-blue-600/20 cursor-pointer">
-                                    Salva Cliente
-                                </button>
-                            </form>
                         </div>
-
-                        <!-- NUOVO CAPO -->
-                        <div class="bg-darkSurface border border-darkBorder rounded-2xl p-5 shadow-sm">
-                            <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                                <i class="fa-solid fa-shirt text-emerald-500"></i> Accettazione Capo
-                            </h2>
-                            <form id="itemForm" class="space-y-3">
-                                <!-- SELEZIONE CLIENTE -->
-                                <div class="relative">
-                                    <input type="hidden" id="selectedClientIdInput">
-                                    <div class="flex gap-1">
-                                        <input id="assignClientSearch" type="text" placeholder="Cerca cliente per assegnare..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                        <button type="button" id="assignClientToggleBtn" class="bg-darkCard hover:bg-slate-700 px-3 border border-darkBorder rounded-xl text-xs text-slate-300">
-                                            <i class="fa-solid fa-chevron-down"></i>
-                                        </button>
-                                    </div>
-                                    <div id="assignClientDropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-darkSurface border border-darkBorder rounded-xl shadow-xl max-h-56 overflow-y-auto z-40"></div>
-                                </div>
-
-                                <input id="itemType" type="text" placeholder="Tipo di capo (es. Piumone, Giacca, Abito...)" required class="w-full bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                
-                                <div class="grid grid-cols-3 gap-2">
-                                    <input id="itemCabinet" type="text" placeholder="Armadio *" required class="bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                    <input id="itemPosition" type="text" placeholder="Posizione *" required class="bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                    <input id="itemPrice" type="number" step="0.01" placeholder="Prezzo (€)" required class="bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                </div>
-
-                                <textarea id="itemNotes" rows="2" placeholder="Note/Anomalie capo (opzionale)..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500 resize-none"></textarea>
-
-                                <div class="flex gap-2">
-                                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-xl text-xs transition active:scale-95 shadow-md shadow-emerald-600/20 cursor-pointer">
-                                        Registra Capo
-                                    </button>
-                                    <button type="button" onclick="printItemLabel()" class="px-3 bg-darkCard hover:bg-slate-700 text-slate-200 border border-darkBorder rounded-xl text-xs font-semibold cursor-pointer active:scale-95" title="Stampa Ricevuta">
-                                        <i class="fa-solid fa-print"></i>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                        <form id="clientForm" class="space-y-3">
+                            <input type="text" id="clientName" placeholder="Nome e Cognome *" required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="tel" id="clientPhone" placeholder="Telefono *" required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="clientDob" placeholder="Data Nascita (GG/MM/AAAA)" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="text" id="clientAddress" placeholder="Indirizzo" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm shadow-emerald-600/20 hover:-translate-y-0.5">
+                                <i class="fa-solid fa-check mr-1"></i> Registra Cliente
+                            </button>
+                        </form>
                     </div>
 
-                    <!-- TABELLA CAPI IN LAVORAZIONE & RICERCA -->
-                    <div class="lg:col-span-2 space-y-4">
-                        <!-- BARRA DI RICERCA RAPIDA -->
-                        <div class="relative">
+                    <!-- Inserimento Capo -->
+                    <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4 hover:border-zinc-700 hover:shadow-lg">
+                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-shirt text-blue-400"></i> Accetta Capo in Armadio
+                        </h2>
+                        <form id="itemForm" class="space-y-3">
                             <div class="relative">
-                                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
-                                <input id="globalSearch" type="text" placeholder="Ricerca globale (Nome cliente, telefono, capo o armadio)..." class="w-full bg-darkSurface border border-darkBorder rounded-2xl pl-10 pr-10 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 shadow-sm">
-                                <button id="searchClearBtn" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs">
-                                    <i class="fa-solid fa-xmark"></i>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente *</label>
+                                <div class="relative flex items-center">
+                                    <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono cliente..." autocomplete="off" class="w-full pl-3 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="hidden" id="selectedClientIdInput" required>
+                                    <button type="button" id="assignClientToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
+                                        <i class="fa-solid fa-chevron-down"></i>
+                                    </button>
+                                </div>
+                                <div id="assignClientDropdown" class="absolute left-0 right-0 mt-1 bg-darkSurface border border-darkBorder rounded-xl shadow-xl max-h-60 overflow-y-auto z-30 hidden animate-modal"></div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tipologia Capo *</label>
+                                <input type="text" id="itemType" placeholder="Es. Giacca, Abito, Piumino..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Armadio *</label>
+                                    <input type="text" id="itemCabinet" placeholder="Es. A1, B2..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Posizione *</label>
+                                    <input type="text" id="itemPosition" placeholder="Es. 12, Gancio 4..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Prezzo (€)</label>
+                                <input type="number" step="0.05" id="itemPrice" placeholder="0.00" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Note opzionali</label>
+                                <textarea id="itemNotes" rows="2" placeholder="Es. Con cintura..." class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 pt-2">
+                                <button type="button" onclick="printItemLabel()" class="w-full py-2 bg-zinc-700 hover:bg-zinc-600 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:-translate-y-0.5">
+                                    <i class="fa-solid fa-print"></i> Stampa Etichetta
+                                </button>
+                                <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20 hover:-translate-y-0.5">
+                                    <i class="fa-solid fa-plus"></i> Inserisci
                                 </button>
                             </div>
-                            <div id="globalSearchDropdown" class="hidden absolute left-0 right-0 top-full mt-2 bg-darkSurface border border-darkBorder rounded-2xl shadow-2xl max-h-80 overflow-y-auto z-40 divide-y divide-darkBorder/50"></div>
-                        </div>
-
-                        <!-- TABELLA CAPI -->
-                        <div class="bg-darkSurface border border-darkBorder rounded-2xl p-5 shadow-sm">
-                            <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-                                <div class="flex items-center gap-2">
-                                    <h2 class="text-sm font-bold text-white">Capi in Giacenza</h2>
-                                    <span id="itemsCounterBadge" class="bg-blue-950 text-blue-400 border border-blue-900 px-2.5 py-0.5 rounded-full text-[11px] font-semibold">0 capi</span>
-                                </div>
-                                <input id="activeTableFilter" type="text" placeholder="Filtra tabella..." class="bg-darkBg border border-darkBorder rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 w-44">
-                            </div>
-
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr class="border-b border-darkBorder text-[11px] uppercase tracking-wider text-slate-400 bg-darkBg/50">
-                                            <th class="py-2.5 px-4">Cliente</th>
-                                            <th class="py-2.5 px-4">Capo / Prezzo</th>
-                                            <th class="py-2.5 px-4">Posizione</th>
-                                            <th class="py-2.5 px-4">Stato</th>
-                                            <th class="py-2.5 px-4 text-right">Azione</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="itemsTableBody" class="divide-y divide-darkBorder/40"></tbody>
-                                </table>
-                            </div>
-
-                            <div id="noItemsMessage" class="hidden flex-col items-center justify-center py-12 text-center">
-                                <i class="fa-solid fa-box-open text-4xl text-slate-600 mb-2"></i>
-                                <p class="text-xs text-slate-400">Nessun capo attualmente in lavorazione.</p>
-                            </div>
-                        </div>
+                        </form>
                     </div>
-                </div>
-            </div>
 
-            <!-- TAB 2: STATISTICHE E STORICO -->
-            <div id="viewStats" class="hidden space-y-6">
-                <!-- CONTROLLI FILTRI TEMPORALI -->
-                <div class="bg-darkSurface border border-darkBorder rounded-2xl p-5 shadow-sm space-y-4">
-                    <div class="flex flex-wrap justify-between items-center gap-4">
+                </div>
+
+                <!-- Colonna Destra -->
+                <div class="lg:col-span-2 bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm flex flex-col hover:border-zinc-700 hover:shadow-lg">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                         <div>
-                            <h2 class="text-base font-bold text-white">Analisi Storico e Incassi</h2>
-                            <p class="text-xs text-slate-400">Filtra per periodo o seleziona un intervallo personalizzato</p>
+                            <h2 class="text-sm font-bold text-white">Capi Attivi in Deposito</h2>
+                            <p class="text-xs text-slate-400">Elenco completo dei capi attualmente in lavorazione</p>
                         </div>
-                        
-                        <!-- BOTTONI RAPIDI PERIODO -->
-                        <div class="flex items-center gap-1.5 bg-darkBg p-1 rounded-2xl border border-darkBorder">
-                            <button id="btnPeriodDay" onclick="setStatPeriod('day')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Oggi</button>
-                            <button id="btnPeriodMonth" onclick="setStatPeriod('month')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Questo Mese</button>
-                            <button id="btnPeriodYear" onclick="setStatPeriod('year')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Quest'Anno</button>
-                            <button id="btnPeriodAll" onclick="setStatPeriod('all')" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95">Tutti</button>
-                        </div>
-                    </div>
-
-                    <!-- INTERVALLO DI DATE PERSONALIZZATO -->
-                    <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-darkBorder">
-                        <span class="text-xs font-semibold text-slate-400">Filtra per Data:</span>
                         <div class="flex items-center gap-2">
-                            <input id="statsCustomStartDate" type="date" onchange="renderHistory()" class="bg-darkBg border border-darkBorder rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-                            <span class="text-xs text-slate-500">al</span>
-                            <input id="statsCustomEndDate" type="date" onchange="renderHistory()" class="bg-darkBg border border-darkBorder rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-                        </div>
-                        <button onclick="clearCustomDateFilter()" class="px-3 py-1.5 bg-darkCard hover:bg-slate-700 text-slate-300 border border-darkBorder rounded-xl text-xs font-semibold cursor-pointer active:scale-95">
-                            Azzera Date
-                        </button>
-                        <div class="ml-auto flex items-center gap-2">
-                            <button onclick="exportBackup()" class="px-3.5 py-1.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded-xl text-xs font-semibold cursor-pointer active:scale-95">
-                                <i class="fa-solid fa-file-csv mr-1"></i> Esporta Report CSV
-                            </button>
-                            <button onclick="resetAllStatistics()" class="px-3.5 py-1.5 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer active:scale-95">
-                                <i class="fa-solid fa-trash-can mr-1"></i> Azzera Statistiche
-                            </button>
+                            <span id="itemsCounterBadge" class="px-2.5 py-1 bg-blue-950 text-blue-400 border border-blue-900 rounded-lg text-xs font-semibold">0 capi</span>
+                            <input type="text" id="activeTableFilter" placeholder="Filtra tabella..." class="px-3 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
-                </div>
 
-                <!-- CARDS METRICHE STATISTICHE -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="bg-darkSurface border border-darkBorder rounded-2xl p-4 shadow-sm">
-                        <div class="text-xs font-semibold text-slate-400 uppercase">Totale Incasso</div>
-                        <div id="statTotalRevenue" class="text-2xl font-bold text-emerald-400 mt-1">€ 0.00</div>
-                    </div>
-                    <div class="bg-darkSurface border border-darkBorder rounded-2xl p-4 shadow-sm">
-                        <div class="text-xs font-semibold text-slate-400 uppercase">Capi Consegnati</div>
-                        <div id="statTotalCount" class="text-2xl font-bold text-white mt-1">0</div>
-                    </div>
-                    <div class="bg-darkSurface border border-darkBorder rounded-2xl p-4 shadow-sm">
-                        <div class="text-xs font-semibold text-slate-400 uppercase">Clienti Unici</div>
-                        <div id="statUniqueClients" class="text-2xl font-bold text-blue-400 mt-1">0</div>
-                    </div>
-                    <div class="bg-darkSurface border border-darkBorder rounded-2xl p-4 shadow-sm">
-                        <div class="text-xs font-semibold text-slate-400 uppercase">Capo più frequente</div>
-                        <div id="statTopItemType" class="text-2xl font-bold text-amber-400 mt-1 truncate">-</div>
-                    </div>
-                </div>
-
-                <!-- TABELLA STORICO CONSEGNE -->
-                <div class="bg-darkSurface border border-darkBorder rounded-2xl p-5 shadow-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-sm font-bold text-white">Registro Capi Ritirati</h3>
-                        <span id="historyCounter" class="text-xs text-slate-400 font-medium">0 elementi</span>
-                    </div>
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto flex-1">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="border-b border-darkBorder text-[11px] uppercase tracking-wider text-slate-400 bg-darkBg/50">
-                                    <th class="py-2.5 px-4">Data Ritiro</th>
-                                    <th class="py-2.5 px-4">Cliente</th>
-                                    <th class="py-2.5 px-4">Capo</th>
-                                    <th class="py-2.5 px-4">Prezzo</th>
-                                    <th class="py-2.5 px-4">Ubicazione originale</th>
+                                <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase">
+                                    <th class="py-3 px-4">Cliente</th>
+                                    <th class="py-3 px-4">Capo & Prezzo</th>
+                                    <th class="py-3 px-4">Armadio / Pos</th>
+                                    <th class="py-3 px-4">Stato</th>
+                                    <th class="py-3 px-4 text-right">Azioni</th>
                                 </tr>
                             </thead>
-                            <tbody id="historyTableBody" class="divide-y divide-darkBorder/40"></tbody>
+                            <tbody id="itemsTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
                         </table>
+                        <div id="noItemsMessage" class="hidden flex-col items-center justify-center py-16 text-slate-400 space-y-2">
+                            <i class="fa-solid fa-box-open text-3xl"></i>
+                            <p class="text-xs">Nessun capo attivo registrato al momento.</p>
+                        </div>
                     </div>
                 </div>
+
+            </div>
+        </div>
+
+        <!-- VIEW STATS -->
+        <div id="viewStats" class="space-y-6 hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700 hover:-translate-y-1">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati (Periodo)</div>
+                    <div id="statTotalCount" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700 hover:-translate-y-1">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Incasso Totale</div>
+                    <div id="statTotalRevenue" class="text-2xl font-bold text-emerald-400">€ 0.00</div>
+                </div>
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700 hover:-translate-y-1">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Clienti Unici Serviti</div>
+                    <div id="statUniqueClients" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700 hover:-translate-y-1">
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capo più frequente</div>
+                    <div id="statTopItemType" class="text-2xl font-bold text-white truncate">-</div>
+                </div>
             </div>
 
-        </main>
+            <div class="bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm flex flex-wrap items-center justify-between gap-4 hover:border-zinc-700">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="setStatPeriod('day')" id="btnPeriodDay" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Oggi</button>
+                    <button onclick="setStatPeriod('month')" id="btnPeriodMonth" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Questo Mese</button>
+                    <button onclick="setStatPeriod('year')" id="btnPeriodYear" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Quest'Anno</button>
+                    <button onclick="setStatPeriod('all')" id="btnPeriodAll" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95">Tutti</button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 bg-darkSurface/50 p-2 rounded-xl border border-darkBorder">
+                    <span class="text-xs font-medium text-slate-400 pl-1">Da:</span>
+                    <input type="date" id="statsCustomStartDate" class="px-2.5 py-1.5 bg-darkCard border border-darkBorder rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <span class="text-xs font-medium text-slate-400">A:</span>
+                    <input type="date" id="statsCustomEndDate" class="px-2.5 py-1.5 bg-darkCard border border-darkBorder rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <button onclick="renderHistory()" title="Filtra per intervallo date" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-check"></i> Cerca
+                    </button>
+                    <button onclick="clearCustomDateFilter()" title="Azzera filtri" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-slate-300 rounded-lg text-xs cursor-pointer">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="exportBackup()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm hover:-translate-y-0.5">
+                        <i class="fa-solid fa-file-excel"></i> Esporta Excel
+                    </button>
+                    <button onclick="resetAllStatistics()" class="px-3 py-2 bg-rose-950/60 hover:bg-rose-900 active:scale-95 text-rose-400 text-xs font-semibold rounded-xl cursor-pointer" title="Azzera Storico">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm hover:border-zinc-700">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-white">Storico Capi Ritirati</h2>
+                    <span id="historyCounter" class="text-xs text-slate-400">0 elementi</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase">
+                                <th class="py-3 px-4">Data Ritiro</th>
+                                <th class="py-3 px-4">Cliente</th>
+                                <th class="py-3 px-4">Capo</th>
+                                <th class="py-3 px-4">Prezzo</th>
+                                <th class="py-3 px-4">Armadio Origine</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- MODALE ANAGRAFICA CLIENTE -->
-    <div id="clientModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-darkSurface border border-darkBorder rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-start border-b border-darkBorder pb-3">
+    <!-- MODALE CLIENTE -->
+    <div id="clientModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-2xl border border-darkBorder space-y-5 max-h-[90vh] overflow-y-auto animate-modal">
+            <div class="flex justify-between items-start">
                 <div>
-                    <h3 id="modalClientName" class="text-lg font-bold text-white">Nome Cliente</h3>
-                    <p id="modalClientDetails" class="text-xs text-slate-400 mt-0.5">Dettagli cliente</p>
+                    <h2 id="modalClientName" class="text-lg font-bold text-white">Nome Cliente</h2>
+                    <p id="modalClientDetails" class="text-xs text-slate-400 mt-0.5">Tel: - | Nascita: - | Indirizzo: -</p>
                 </div>
-                <button onclick="closeClientModal()" class="text-slate-400 hover:text-white p-1">
+                <button onclick="closeClientModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-
             <div class="grid grid-cols-2 gap-3">
-                <div class="bg-darkBg p-3 rounded-xl border border-darkBorder text-center">
-                    <div class="text-[11px] font-semibold text-slate-400 uppercase">Totale Capi Portati</div>
-                    <div id="modalClientTotalItems" class="text-xl font-bold text-white mt-1">0</div>
+                <div class="bg-darkCard p-3.5 rounded-2xl border border-darkBorder">
+                    <div class="text-[11px] font-semibold text-slate-400">Totale Capi</div>
+                    <div id="modalClientTotalItems" class="text-xl font-bold text-white mt-0.5">0</div>
                 </div>
-                <div class="bg-darkBg p-3 rounded-xl border border-darkBorder text-center">
-                    <div class="text-[11px] font-semibold text-slate-400 uppercase">Totale Speso</div>
-                    <div id="modalClientTotalSpent" class="text-xl font-bold text-emerald-400 mt-1">€ 0.00</div>
+                <div class="bg-darkCard p-3.5 rounded-2xl border border-darkBorder">
+                    <div class="text-[11px] font-semibold text-slate-400">Spesa Totale</div>
+                    <div id="modalClientTotalSpent" class="text-xl font-bold text-emerald-400 mt-0.5">€ 0.00</div>
                 </div>
             </div>
-
-            <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
-                <h4 class="text-xs font-bold text-slate-300 uppercase">Capi Attualmente in Lavanderia</h4>
-                <div id="modalClientActiveItemsList" class="space-y-1.5"></div>
-
-                <h4 class="text-xs font-bold text-slate-300 uppercase pt-2">Storico Capi Ritirati</h4>
-                <div id="modalClientHistoryList" class="space-y-1.5"></div>
+            <div class="space-y-3">
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Capi Attualmente in Armadio</h3>
+                <div id="modalClientActiveItemsList" class="space-y-2"></div>
             </div>
-
-            <div class="pt-2">
-                <button onclick="closeClientModal()" class="w-full bg-darkCard hover:bg-slate-700 text-slate-200 border border-darkBorder font-semibold py-2 rounded-xl text-xs">
-                    Chiudi
-                </button>
+            <div class="space-y-3 pt-2">
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Storico Capi Ritirati</h3>
+                <div id="modalClientHistoryList" class="space-y-2 max-h-40 overflow-y-auto"></div>
+            </div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeClientModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 text-white rounded-xl text-xs font-semibold cursor-pointer">Chiudi</button>
             </div>
         </div>
     </div>
 
-    <!-- MODALE GESTIONE ANAGRAFICA COMPLETA -->
-    <div id="clientManagerModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-darkSurface border border-darkBorder rounded-2xl max-w-3xl w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-darkBorder pb-3">
-                <h3 class="text-base font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-users text-blue-500"></i> Gestione Anagrafica Clienti
-                </h3>
-                <button onclick="closeClientManagerModal()" class="text-slate-400 hover:text-white p-1">
+    <!-- MODALE GESTIONE ANAGRAFICA -->
+    <div id="clientManagerModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-4xl border border-darkBorder space-y-5 max-h-[90vh] overflow-y-auto flex flex-col animate-modal">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold text-white">Anagrafica Clienti</h2>
+                    <p class="text-xs text-slate-400">Visualizza o elimina i clienti registrati</p>
+                </div>
+                <button onclick="closeClientManagerModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-
-            <input id="managerClientSearchInput" type="text" placeholder="Filtra per nome o telefono..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-
-            <div class="max-h-80 overflow-y-auto">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="managerClientSearchInput" placeholder="Filtra clienti..." class="w-full pl-9 pr-3 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="overflow-x-auto flex-1 max-h-96">
                 <table class="w-full text-left border-collapse">
-                    <thead class="sticky top-0 bg-darkSurface border-b border-darkBorder text-[11px] uppercase tracking-wider text-slate-400">
-                        <tr>
-                            <th class="py-2.5 px-4">Nome</th>
-                            <th class="py-2.5 px-4">Telefono</th>
-                            <th class="py-2.5 px-4">Indirizzo / Nascita</th>
-                            <th class="py-2.5 px-4 text-right">Azione</th>
+                    <thead>
+                        <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase sticky top-0 bg-darkSurface">
+                            <th class="py-3 px-4">Nominativo</th>
+                            <th class="py-3 px-4">Telefono</th>
+                            <th class="py-3 px-4">Indirizzo & Nascita</th>
+                            <th class="py-3 px-4 text-right">Azioni</th>
                         </tr>
                     </thead>
-                    <tbody id="managerClientsTableBody" class="divide-y divide-darkBorder/40"></tbody>
+                    <tbody id="managerClientsTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
                 </table>
             </div>
-        </div>
-    </div>
-
-    <!-- MODALI AVVISO E SCADENZA LICENZA -->
-    <div id="licenseWarningModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-darkSurface border border-amber-500/50 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
-            <div class="w-14 h-14 bg-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto border border-amber-500/30">
-                <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+            <div class="flex justify-end pt-2 border-t border-darkBorder">
+                <button onclick="closeClientManagerModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95 text-white rounded-xl text-xs font-semibold cursor-pointer">Chiudi</button>
             </div>
-            <h3 class="text-lg font-bold text-white">Avviso Scadenza Licenza</h3>
-            <p id="licenseWarningText" class="text-xs text-slate-300 leading-relaxed"></p>
-            <button onclick="closeWarningModal()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 rounded-xl text-xs active:scale-95 transition">
-                Ho capito
-            </button>
         </div>
     </div>
 
-    <div id="licenseExpiredModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-darkSurface border border-rose-500/50 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
-            <div class="w-14 h-14 bg-rose-500/20 text-rose-500 rounded-2xl flex items-center justify-center mx-auto border border-rose-500/30">
-                <i class="fa-solid fa-lock text-2xl"></i>
+    <!-- MODALI LICENZA -->
+    <div id="licenseWarningModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="bg-darkSurface border border-amber-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4 animate-modal">
+            <div class="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-2xl animate-bounce">
+                <i class="fa-solid fa-clock-rotate-left"></i>
             </div>
-            <h3 class="text-lg font-bold text-white">Licenza Scaduta</h3>
-            <p class="text-xs text-slate-300 leading-relaxed">La licenza per questo dispositivo è scaduta. Contatta l'amministratore per rinnovarla e continuare a utilizzare la piattaforma.</p>
-            <button onclick="closeExpiredModalAndRelogin()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs active:scale-95 transition">
-                Torna al Login
-            </button>
+            <h3 class="text-xl font-bold text-white">La licenza sta per scadere!</h3>
+            <p id="licenseWarningText" class="text-sm text-slate-300 leading-relaxed">La licenza di questo dispositivo scadrà tra pochi giorni.</p>
+            <button onclick="closeWarningModal()" class="w-full py-3 bg-amber-600 hover:bg-amber-500 active:scale-[0.98] text-white font-bold rounded-xl cursor-pointer">Ho capito, continua</button>
         </div>
     </div>
 
-    <!-- TOAST NOTIFICATION -->
-    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-        <div class="bg-darkSurface border border-darkBorder text-slate-100 text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
-            <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
-            <span id="toastMessage">Operazione completata</span>
+    <div id="licenseExpiredModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="bg-darkSurface border border-rose-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4 animate-modal">
+            <div class="w-16 h-16 bg-rose-500/20 text-rose-500 rounded-full flex items-center justify-center mx-auto text-2xl animate-pulse">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white">Periodo di Prova o Licenza Scaduto</h3>
+            <p class="text-sm text-slate-300 leading-relaxed">Il tempo di utilizzo è terminato.</p>
+            <button onclick="closeExpiredModalAndRelogin()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold rounded-xl cursor-pointer">OK, Inserisci Licenza</button>
         </div>
     </div>
 
-    <!-- SCRIPT APPLICATION -->
+    <!-- TOAST -->
+    <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-darkSurface border border-darkBorder shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3">
+            <div class="w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-xs">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <span id="toastMessage" class="text-xs font-semibold text-white">Operazione completata!</span>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- App Logic -->
     <script src="app.js"></script>
 </body>
 </html>
