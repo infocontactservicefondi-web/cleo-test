@@ -293,21 +293,41 @@
                 </div>
             </div>
 
-            <!-- 2. BARRA DEI FILTRI (Posizionata esattamente in mezzo) -->
+            <!-- 2. BARRA DEI FILTRI CON "DA" E "A" IDENTICA ALL'IMMAGINE -->
             <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
                         <button id="btnPeriodDay" onclick="setStatPeriod('day')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Oggi</button>
-                        <button id="btnPeriodMonth" onclick="setStatPeriod('month')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Mese</button>
-                        <button id="btnPeriodYear" onclick="setStatPeriod('year')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Anno</button>
-                        <button id="btnPeriodAll" onclick="setStatPeriod('all')" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95">Tutto</button>
+                        <button id="btnPeriodMonth" onclick="setStatPeriod('month')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Questo Mese</button>
+                        <button id="btnPeriodYear" onclick="setStatPeriod('year')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Quest'Anno</button>
+                        <button id="btnPeriodAll" onclick="setStatPeriod('all')" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95">Tutti</button>
                     </div>
+                    
+                    <!-- Selettore Da - A esatto come nella foto -->
                     <div class="flex items-center gap-2">
-                        <input type="date" id="statsCustomStartDate" onchange="renderHistory()" class="px-3 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none">
-                        <input type="date" id="statsCustomEndDate" onchange="renderHistory()" class="px-3 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none">
-                        <button onclick="clearCustomDateFilter()" class="p-2 bg-darkCard hover:bg-zinc-800 rounded-xl text-xs text-slate-300" title="Resetta Date"><i class="fa-solid fa-rotate-left"></i></button>
-                        <button onclick="exportBackup()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-csv"></i> Report CSV</button>
-                        <button onclick="resetAllStatistics()" class="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-400 border border-rose-900 rounded-xl text-xs font-semibold cursor-pointer"><i class="fa-solid fa-trash"></i> Azzera</button>
+                        <div class="flex items-center gap-1.5 bg-darkCard border border-darkBorder rounded-xl px-3 py-1.5">
+                            <span class="text-[11px] font-bold text-slate-400">Da:</span>
+                            <input type="date" id="statsCustomStartDate" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
+                        </div>
+                        <div class="flex items-center gap-1.5 bg-darkCard border border-darkBorder rounded-xl px-3 py-1.5">
+                            <span class="text-[11px] font-bold text-slate-400">A:</span>
+                            <input type="date" id="statsCustomEndDate" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
+                        </div>
+                        <button onclick="renderHistory()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-sm">
+                            <i class="fa-solid fa-check"></i> Cerca
+                        </button>
+                        <button onclick="clearCustomDateFilter()" class="p-2 bg-darkCard hover:bg-zinc-800 rounded-xl text-xs text-slate-300 border border-darkBorder cursor-pointer" title="Resetta Date">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportBackup()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm">
+                            <i class="fa-solid fa-file-excel"></i> Esporta Excel
+                        </button>
+                        <button onclick="resetAllStatistics()" class="p-2.5 bg-rose-950/60 hover:bg-rose-900 text-rose-400 border border-rose-900 rounded-xl text-xs cursor-pointer" title="Azzera Statistiche">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -322,11 +342,11 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase">
-                                <th class="py-3 px-4">Data Ritiro</th>
-                                <th class="py-3 px-4">Cliente</th>
-                                <th class="py-3 px-4">Capo</th>
-                                <th class="py-3 px-4">Prezzo</th>
-                                <th class="py-3 px-4">Armadio Origine</th>
+                                <th class="py-3 px-4">DATA RITIRO</th>
+                                <th class="py-3 px-4">CLIENTE</th>
+                                <th class="py-3 px-4">CAPO</th>
+                                <th class="py-3 px-4">PREZZO</th>
+                                <th class="py-3 px-4">ARMADIO ORIGINE</th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
