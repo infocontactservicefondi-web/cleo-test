@@ -163,6 +163,7 @@ window.closeExpiredModalAndRelogin = function() {
     lockAppComplete();
 };
 
+// ACCESSO AMMINISTRATORE (Tramite Lucchetto / Password) -> Permette di rientrare
 function checkAdminPassword() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredPassword = "";
@@ -180,7 +181,7 @@ function checkAdminPassword() {
 
     if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'true');
+        sessionStorage.setItem('laundry_logged_as_admin', 'true'); // Segna che è entrato come admin
         unlockApp();
         showToast("Accesso amministratore eseguito", "success");
     } else {
@@ -192,6 +193,7 @@ function checkAdminPassword() {
     }
 }
 
+// INSERIMENTO CODICE LICENZA (Una tantum) -> Blocca definitivamente il ritorno indietro
 function checkNumericLicense() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredCode = "";
@@ -210,7 +212,7 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'false');
+        sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Non è admin, è licenza standard blindata
         hasShownTodayWarning = false;
         unlockApp();
         startLicenseCountdownMonitor();
@@ -269,7 +271,7 @@ function checkNumericLicense() {
                     localStorage.setItem('laundry_code_already_redeemed', enteredCode);
                     localStorage.setItem('laundry_license_expiry', expirationTimestamp);
                     sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
+                    sessionStorage.setItem('laundry_logged_as_admin', 'false'); // Bloccato: niente ritorno indietro per gli operatori
                     hasShownTodayWarning = false;
                     
                     unlockApp();
@@ -857,10 +859,8 @@ function loadHistory() {
 
 window.setStatPeriod = function(period) {
     currentStatPeriod = period;
-    const startInput = document.getElementById('statsCustomStartDate');
-    const endInput = document.getElementById('statsCustomEndDate');
-    if (startInput) startInput.value = "";
-    if (endInput) endInput.value = "";
+    document.getElementById('statsCustomStartDate').value = "";
+    document.getElementById('statsCustomEndDate').value = "";
 
     ['Day', 'Month', 'Year', 'All'].forEach(p => {
         const btn = document.getElementById(`btnPeriod${p}`);
@@ -874,10 +874,8 @@ window.setStatPeriod = function(period) {
 };
 
 window.clearCustomDateFilter = function() {
-    const startInput = document.getElementById('statsCustomStartDate');
-    const endInput = document.getElementById('statsCustomEndDate');
-    if (startInput) startInput.value = "";
-    if (endInput) endInput.value = "";
+    document.getElementById('statsCustomStartDate').value = "";
+    document.getElementById('statsCustomEndDate').value = "";
     renderHistory();
 };
 
@@ -893,17 +891,14 @@ window.resetAllStatistics = function() {
 
 function renderHistory() {
     const historyTableBody = document.getElementById('historyTableBody');
-    if (!historyTableBody) return;
+    if(!historyTableBody) return;
     historyTableBody.innerHTML = "";
-
     let count = 0, totalRevenue = 0;
-    let uniqueClients = new Set();
-    let typeCounts = {};
+    let uniqueClients = new Set(), typeCounts = {};
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(), currentYear = now.getFullYear();
 
     const customStartEl = document.getElementById('statsCustomStartDate');
     const customEndEl = document.getElementById('statsCustomEndDate');
@@ -927,51 +922,36 @@ function renderHistory() {
 
         count++;
         totalRevenue += (item.price || 0);
-        if (item.clientId) uniqueClients.add(item.clientId);
-
-        const tLower = (item.type || "Altro").trim().toLowerCase();
+        uniqueClients.add(item.clientId);
+        const tLower = (item.type || "Altro").toLowerCase();
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
 
         const client = clientsData[item.clientId] || { name: "Non trovato" };
         const tr = document.createElement('tr');
         tr.className = "hover:bg-darkCard text-sm";
-        tr.innerHTML = `
-            <td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td>
-            <td class="py-3 px-4 font-semibold text-white">${client.name}</td>
-            <td class="py-3 px-4">${item.type}</td>
-            <td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td>
-            <td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet || 'N/D'}</td>
-        `;
+        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
         historyTableBody.appendChild(tr);
     }
 
-    const statCountEl = document.getElementById('statTotalCount');
-    const statRevenueEl = document.getElementById('statTotalRevenue');
-    const statClientsEl = document.getElementById('statUniqueClients');
-    const historyCounterEl = document.getElementById('historyCounter');
-    const statTopItemEl = document.getElementById('statTopItemType');
-
-    if (statCountEl) statCountEl.textContent = count;
-    if (statRevenueEl) statRevenueEl.textContent = `€ ${totalRevenue.toFixed(2)}`;
-    if (statClientsEl) statClientsEl.textContent = uniqueClients.size;
-    if (historyCounterEl) historyCounterEl.textContent = `${count} elementi`;
+    document.getElementById('statTotalCount').textContent = count;
+    document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
+    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
+    document.getElementById('historyCounter').textContent = `${count} elementi`;
 
     let topType = "-", maxC = 0;
     for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxC) {
-            maxC = c;
-            topType = t.charAt(0).toUpperCase() + t.slice(1);
-        }
+        if (c > maxC) { maxC = c; topType = t.charAt(0).toUpperCase() + t.slice(1); }
     }
-    if (statTopItemEl) statTopItemEl.textContent = topType;
+    document.getElementById('statTopItemType').textContent = topType;
 }
 
 window.exportBackup = function() {
     const generationDate = new Date().toLocaleDateString('it-IT');
     const startDateInput = document.getElementById('statsCustomStartDate');
     const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value + "T00:00:00") : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value + "T23:59:59") : null;
+    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
+    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
+    if (endDate) endDate.setHours(23, 59, 59, 999);
 
     let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
@@ -1013,7 +993,7 @@ window.exportBackup = function() {
     link.click();
     document.body.removeChild(link);
     showToast("Report esportato!", "success");
-};
+}
 
 function showToast(message, type = "success") {
     const toast = document.getElementById('toastNotification');
