@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="it" class="dark">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lavanderia Cleo - Gestionale</title>
+    <script>
+        // Applica subito il tema salvato prima del rendering per evitare sfarfallii
+        if (localStorage.getItem('laundry_theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -447,7 +455,7 @@
                 <i class="fa-solid fa-lock"></i>
             </div>
             <h2 class="text-lg font-bold text-white">Licenza Scaduta</h2>
-            <p class="text-xs text-slate-300 leading-relaxed">La licenza per este dispositivo è scaduta. Inserisci un nuovo codice per continuare a utilizzare il gestionale.</p>
+            <p class="text-xs text-slate-300 leading-relaxed">La licenza per questo dispositivo è scaduta. Inserisci un nuovo codice per continuare a utilizzare il gestionale.</p>
             <button onclick="closeExpiredModalAndRelogin()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs cursor-pointer shadow-lg shadow-rose-600/20">Inserisci Nuovo Codice</button>
         </div>
     </div>
