@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lavanderia Cleo - Gestionale</title>
     <script>
-        // Applica subito il tema salvato prima del rendering per evitare sfarfallii
+        // Applica subito il tema salvato prima del rendering per evitare sfarfallii[cite: 8]
         if (localStorage.getItem('laundry_theme') === 'light') {
             document.documentElement.classList.remove('dark');
         } else {
@@ -32,6 +32,43 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
     <style>
+        /* Definizione delle variabili per il tema Chiaro (Default) e Scuro */
+        :root {
+            --bg-main: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-card: #f1f5f9;
+            --border-color: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+        }
+
+        html.dark {
+            --bg-main: #121212;
+            --bg-surface: #1E1E1E;
+            --bg-card: #242424;
+            --border-color: #2C2C2C;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        /* Mappatura delle classi personalizzate sulle variabili di tema */
+        .bg-darkBg { background-color: var(--bg-main) !important; }
+        .bg-darkSurface { background-color: var(--bg-surface) !important; }
+        .bg-darkCard { background-color: var(--bg-card) !important; }
+        .border-darkBorder { border-color: var(--border-color) !important; }
+
+        /* Adattamento automatico dei testi in modalità chiara */
+        html:not(.dark) .text-white, 
+        html:not(.dark) .text-slate-100, 
+        html:not(.dark) .text-slate-200,
+        html:not(.dark) .text-slate-300 {
+            color: var(--text-main) !important;
+        }
+        
+        html:not(.dark) .text-slate-400 {
+            color: var(--text-muted) !important;
+        }
+
         * {
             transition-property: background-color, border-color, color, fill, stroke, opacity, transform, box-shadow;
             transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
