@@ -89,7 +89,7 @@
                 </div>
                 <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
                 <div class="flex gap-2">
-                    <input type="text" id="licensePhoneInput" placeholder="Inserisci codice licenza..." class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    <input type="text" id="licensePhoneInput" placeholder="Es. CLEO-TEST-01" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                     <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
                 </div>
             </div>
@@ -111,8 +111,10 @@
         <!-- HEADER -->
         <header class="flex flex-wrap items-center justify-between gap-4 bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm">
+                <!-- LOGO PROTETTO: Richiede 5 secondi di pressione continuata -->
+                <div id="protectedLogoBtn" class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm cursor-pointer select-none relative overflow-hidden" title="Tieni premuto 5 secondi">
                     <i class="fa-solid fa-shirt"></i>
+                    <div id="logoProgressFill" class="absolute bottom-0 left-0 w-full bg-blue-400/40 h-0 transition-all duration-75"></div>
                 </div>
                 <div>
                     <h1 class="text-base font-bold text-white leading-tight">Lavanderia Cleo</h1>
@@ -165,7 +167,7 @@
                 <!-- Colonna Sinistra -->
                 <div class="lg:col-span-1 space-y-6">
                     
-                    <!-- Nuovo Cliente -->
+                    <!-- Nuovo Cliente con Tabella integrata -->
                     <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
                         <div class="flex items-center justify-between">
                             <h2 class="text-sm font-bold text-white flex items-center gap-2">
@@ -177,7 +179,7 @@
                                 <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome e Cognome (Cerca con lente) *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
-                                    <input type="text" id="clientName" placeholder="Nome e Cognome..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="clientName" placeholder="Nome e Cognome (Cerca con lente)..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <input type="hidden" id="manageClientIdInput">
                                     <button type="button" id="clientSearchToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
                                         <i class="fa-solid fa-chevron-down"></i>
