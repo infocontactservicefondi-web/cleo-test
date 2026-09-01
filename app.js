@@ -73,10 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function fixLoginPlaceholders() {
-    const licenseInput = document.getElementById('licensePhoneInput');
-    if (licenseInput) {
-        licenseInput.value = "";
-        licenseInput.placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    if (inputs.length > 0) {
+        inputs[0].value = "";
+        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
     }
 }
 
@@ -168,7 +168,14 @@ window.closeExpiredModalAndRelogin = function() {
 };
 
 function checkAdminPassword() {
-    let enteredPassword = passwordInput ? passwordInput.value.trim() : "";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    let enteredPassword = "";
+
+    if (inputs.length > 1) {
+        enteredPassword = inputs[1].value.trim();
+    } else if (passwordInput) {
+        enteredPassword = passwordInput.value.trim();
+    }
 
     if (!enteredPassword) {
         showToast("Inserisci la password amministratore", "error");
@@ -190,8 +197,12 @@ function checkAdminPassword() {
 }
 
 function checkNumericLicense() {
-    const licenseInput = document.getElementById('licensePhoneInput');
-    let enteredCode = licenseInput ? licenseInput.value.trim() : "";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    let enteredCode = "";
+
+    if (inputs.length > 0) {
+        enteredCode = inputs[0].value.trim();
+    }
 
     if (!enteredCode) {
         showToast("Inserisci il codice numerico della licenza", "error");
@@ -312,10 +323,10 @@ function initConnectionMonitor() {
     db.ref('.info/connected').on('value', (snap) => {
         if (snap.val() === true) {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]";
-            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400 font-medium"; }
+            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400"; }
         } else {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
-            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400 font-medium"; }
+            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400"; }
         }
     });
 }
@@ -380,7 +391,8 @@ window.lockApp = function() {
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
     
-    if (passwordInput) passwordInput.value = '';
+    const inputs = document.querySelectorAll('#loginScreen input');
+    inputs.forEach(input => input.value = '');
 };
 
 function lockAppComplete() {
@@ -399,7 +411,8 @@ function lockAppComplete() {
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
     
-    if (passwordInput) passwordInput.value = '';
+    const inputs = document.querySelectorAll('#loginScreen input');
+    inputs.forEach(input => input.value = '');
 }
 
 function initApp() {
@@ -435,6 +448,7 @@ window.resetClientForm = function() {
     if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
 };
 
+// RICERCA CLIENTE SEZIONE NUOVO CLIENTE
 function renderClientSearchDropdown(filter = "") {
     if (!clientSearchDropdown) return;
     clientSearchDropdown.innerHTML = "";
@@ -505,6 +519,7 @@ if (clientSearchToggleBtn) {
     });
 }
 
+// STAMPA ETICHETTA CLIENTE
 window.printClientReceiptLabel = function() {
     const name = document.getElementById('clientName').value.trim();
     const phone = document.getElementById('clientPhone').value.trim();
@@ -738,6 +753,7 @@ if (itemForm) {
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
 
+        // Stampa una sola copia
         printItemLabel();
 
         itemForm.reset();
@@ -748,6 +764,7 @@ if (itemForm) {
     });
 }
 
+// STAMPA CAPO (SINGOLA COPIA)
 window.printItemLabel = function() {
     const clientId = selectedClientIdInput.value;
     const type = document.getElementById('itemType').value.trim();
@@ -995,7 +1012,7 @@ window.setStatPeriod = function(period) {
 
     ['Day', 'Month', 'Year', 'All'].forEach(p => {
         const btn = document.getElementById(`btnPeriod${p}`);
-        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-800 cursor-pointer active:scale-95";
+        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
     });
     
     const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
@@ -1099,6 +1116,11 @@ window.exportBackup = function() {
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
     }
 
+    let topProduct = "Nessuno", maxCount = 0;
+    for (let [t, c] of Object.entries(typeCounts)) {
+        if (c > maxCount) { maxCount = c; topProduct = t.charAt(0).toUpperCase() + t.slice(1); }
+    }
+
     let csvContent = "\uFEFF";
     csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
     csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
@@ -1119,7 +1141,7 @@ window.exportBackup = function() {
     link.click();
     document.body.removeChild(link);
     showToast("Report esportato!", "success");
-};
+}
 
 function showToast(message, type = "success") {
     const toast = document.getElementById('toastNotification');
