@@ -1,4 +1,4 @@
-/* global firebase, XLSX */
+/* global firebase */
 
 // ==========================================
 // CONFIGURAZIONE FIREBASE
@@ -260,24 +260,16 @@ function checkWarningThreshold(expiryTimestamp) {
 // ==========================================
 function showLoginScreen() {
     const loginScreen = document.getElementById('loginScreen');
-    const mainApp = document.getElementById('appContainer');
+    const mainApp = document.getElementById('mainApp');
     if (loginScreen) loginScreen.style.display = 'flex';
-    if (mainApp) {
-        mainApp.classList.add('hidden');
-        mainApp.style.opacity = '0';
-    }
+    if (mainApp) mainApp.style.display = 'none';
 }
 
 function unlockApp() {
     const loginScreen = document.getElementById('loginScreen');
-    const mainApp = document.getElementById('appContainer');
+    const mainApp = document.getElementById('mainApp');
     if (loginScreen) loginScreen.style.display = 'none';
-    if (mainApp) {
-        mainApp.classList.remove('hidden');
-        setTimeout(() => {
-            mainApp.style.opacity = '1';
-        }, 50);
-    }
+    if (mainApp) mainApp.style.display = 'block';
 
     // Pulisce l'input della schermata di login
     const input = document.querySelector('#loginScreen input');
@@ -301,10 +293,10 @@ function lockAppExpired() {
 
 function showExpiryWarningModal(daysLeft) {
     const warningModal = document.getElementById('licenseWarningModal');
-    const warningText = document.getElementById('licenseWarningText');
+    const daysContainer = document.getElementById('warningDaysLeft');
 
-    if (warningText) {
-        warningText.innerText = `Attenzione! La licenza per questo dispositivo scadrà tra ${daysLeft} giorni. Ti invitiamo a rinnovarla in tempo.`;
+    if (daysContainer) {
+        daysContainer.innerText = daysLeft;
     }
 
     if (warningModal) {
@@ -313,143 +305,6 @@ function showExpiryWarningModal(daysLeft) {
         showToast(`ATTENZIONE: La licenza scadrà tra ${daysLeft} giorni!`, "error");
     }
 }
-
-function closeWarningModal() {
-    const warningModal = document.getElementById('licenseWarningModal');
-    if (warningModal) warningModal.style.display = 'none';
-}
-
-function closeExpiredModalAndRelogin() {
-    const expiredModal = document.getElementById('licenseExpiredModal');
-    if (expiredModal) expiredModal.style.display = 'none';
-    showLoginScreen();
-}
-
-// ==========================================
-// ESPORTAZIONE REPORT EXCEL (.XLSX)
-// ==========================================
-window.exportBackup = function() {
-    const historySource = (typeof historyData !== "undefined" && historyData) ? historyData : {};
-
-    if (Object.keys(historySource).length === 0) {
-        showToast("Nessun capo presente nello storico da esportare.", "error");
-        return;
-    }
-
-    const todayDateStr = new Date().toLocaleDateString('it-IT');
-
-    // 1. Filtro e ordinamento capi per data di ritiro (dal più recente al meno recente)
-    const sortedHistory = Object.entries(historySource).sort((a, b) => {
-        const timeA = a[1].returnedAt || 0;
-        const timeB = b[1].returnedAt || 0;
-        return timeB - timeA;
-    });
-
-    const dataRows = [];
-    const summaryMap = {};
-    let totalRevenue = 0;
-    let totalItems = 0;
-
-    // 2. Elaborazione dati per la tabella di dettaglio e per il riepilogo
-    sortedHistory.forEach(([id, item]) => {
-        const client = (typeof clientsData !== "undefined" && clientsData && clientsData[item.clientId]) 
-            ? clientsData[item.clientId] 
-            : { name: item.clientName || "Non trovato", phone: item.clientPhone || "N/D" };
-
-        const price = parseFloat(item.price) || 0;
-        const retDate = item.returnedAt ? new Date(item.returnedAt).toLocaleDateString('it-IT') : todayDateStr;
-        const capoType = item.type || "Altro";
-
-        totalRevenue += price;
-        totalItems++;
-
-        // Aggregazione dati per tipologia capo
-        if (!summaryMap[capoType]) {
-            summaryMap[capoType] = { count: 0, revenue: 0 };
-        }
-        summaryMap[capoType].count += 1;
-        summaryMap[capoType].revenue += price;
-
-        // Dataset per il Foglio 2 (Storico Dettagliato)
-        dataRows.push({
-            "Data Ritiro": retDate,
-            "Cliente": client.name,
-            "Telefono": client.phone,
-            "Tipologia Capo": capoType,
-            "Prezzo (€)": price,
-            "Armadio": item.cabinet || "-",
-            "Posizione": item.position || "-"
-        });
-    });
-
-    // 3. Creazione del Workbook Excel con SheetJS
-    const wb = XLSX.utils.book_new();
-
-    // --- FOGLIO 1: DASHBOARD & RIEPILOGO ---
-    const averageTicket = totalItems > 0 ? (totalRevenue / totalItems) : 0;
-    
-    const summaryRows = [
-        ["LAVANDERIA CLEO - REPORT GESTIONALE"],
-        [`Data Generazione Report: ${todayDateStr}`],
-        [],
-        ["=== SINTESI GENERALE ==="],
-        ["Metrica", "Valore"],
-        ["Incasso Totale (€)", totalRevenue],
-        ["Totale Capi Ritirati", totalItems],
-        ["Scontrino Medio (€)", averageTicket],
-        [],
-        ["=== RIEPILOGO PER TIPOLOGIA CAPO ==="],
-        ["Tipologia Capo", "Quantità Ritirata", "Incasso Totale (€)", "% Su Incasso"]
-    ];
-
-    // Popolamento dinamico delle tipologie di capo
-    Object.keys(summaryMap).sort().forEach(type => {
-        const count = summaryMap[type].count;
-        const revenue = summaryMap[type].revenue;
-        const percentage = totalRevenue > 0 ? (revenue / totalRevenue) : 0;
-
-        summaryRows.push([
-            type,
-            count,
-            revenue,
-            percentage
-        ]);
-    });
-
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-
-    // Impostazione larghezza colonne per Foglio Riepilogo
-    wsSummary['!cols'] = [
-        { wch: 28 }, // Tipologia Capo / Metrica
-        { wch: 18 }, // Quantità / Valore
-        { wch: 18 }, // Incasso (€)
-        { wch: 15 }  // % Su Incasso
-    ];
-
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Riepilogo");
-
-    // --- FOGLIO 2: STORICO DETTAGLIATO ---
-    const wsHistory = XLSX.utils.json_to_sheet(dataRows);
-
-    // Impostazione larghezza colonne per Foglio Storico
-    wsHistory['!cols'] = [
-        { wch: 14 }, // Data Ritiro
-        { wch: 25 }, // Cliente
-        { wch: 16 }, // Telefono
-        { wch: 20 }, // Tipologia Capo
-        { wch: 14 }, // Prezzo (€)
-        { wch: 12 }, // Armadio
-        { wch: 12 }  // Posizione
-    ];
-
-    XLSX.utils.book_append_sheet(wb, wsHistory, "Storico Capi Ritirati");
-
-    // 4. Download diretto del file .xlsx
-    const fileName = `Report_Lavanderia_Cleo_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-
-    showToast("Report Excel esportato con successo!", "success");
-};
 
 // ==========================================
 // UTILITY TOAST
