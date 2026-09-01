@@ -753,7 +753,7 @@ if (itemForm) {
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
 
-        // Stampa una sola copia
+        // Stampa una sola copia a indumento finito
         printItemLabel();
 
         itemForm.reset();
@@ -764,7 +764,7 @@ if (itemForm) {
     });
 }
 
-// STAMPA CAPO (SINGOLA COPIA)
+// STAMPA CAPO (SINGOLA COPIA A INDUMENTO FINITO)
 window.printItemLabel = function() {
     const clientId = selectedClientIdInput.value;
     const type = document.getElementById('itemType').value.trim();
