@@ -61,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initLicenseSystem();
     initTheme();
     initConnectionMonitor(); 
+    initGlobalResetListener(); // Monitoraggio reset remoto
+    initProtectedLogo(); // Gestione pressione 5 secondi sul logo
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
 
@@ -73,28 +75,70 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function fixLoginPlaceholders() {
-    const licenseInput = document.getElementById('licensePhoneInput');
-    if (licenseInput) {
-        licenseInput.value = "";
-        licenseInput.placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    if (inputs.length > 0) {
+        inputs[0].value = "";
+        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
     }
 }
 
-function updateLicenseUI(isActivated, expiryTimestamp = null) {
-    const badge = document.getElementById('licenseBadge');
-    if (!badge) return;
-
-    if (isActivated) {
-        let text = "Attiva";
-        if (expiryTimestamp) {
-            const expDate = new Date(parseInt(expiryTimestamp, 10));
-            text = `Attiva fino al ${expDate.toLocaleDateString('it-IT')}`;
+// ==========================================
+// ASCOLTATORE RESET REMOTO GLOBALE DA FIREBASE
+// ==========================================
+function initGlobalResetListener() {
+    db.ref('global_reset_signal').on('value', (snap) => {
+        const serverSignal = snap.val();
+        if (serverSignal) {
+            const localSignalProcessed = localStorage.getItem('laundry_last_reset_processed');
+            if (localSignalProcessed !== String(serverSignal)) {
+                localStorage.setItem('laundry_last_reset_processed', String(serverSignal));
+                localStorage.removeItem('laundry_device_activated');
+                localStorage.removeItem('laundry_license_expiry');
+                localStorage.removeItem('laundry_active_license');
+                localStorage.removeItem('laundry_code_already_redeemed');
+                sessionStorage.clear();
+                
+                lockAppComplete();
+                showToast("Dispositivo scollegato da remoto dall'amministratore.", "error");
+            }
         }
-        badge.textContent = text;
-        badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900";
-    } else {
-        badge.textContent = "In attesa";
-        badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900";
+    });
+}
+
+// ==========================================
+// PROTEZIONE LOGO (5 SECONDI IN ALTO A SINISTRA)
+// ==========================================
+function initProtectedLogo() {
+    const logoBtn = document.getElementById('protectedLogoBtn');
+    const progressFill = document.getElementById('logoProgressFill');
+    let logoPressTimer = null;
+    const holdDuration = 5000; // 5 secondi
+    
+    if (logoBtn) {
+        ['mousedown', 'touchstart'].forEach(evt => {
+            logoBtn.addEventListener(evt, (e) => {
+                e.preventDefault();
+                let startTime = Date.now();
+                if(progressFill) progressFill.style.height = '100%';
+                
+                logoPressTimer = setInterval(() => {
+                    let elapsed = Date.now() - startTime;
+                    if (elapsed >= holdDuration) {
+                        clearInterval(logoPressTimer);
+                        if(progressFill) progressFill.style.height = '0%';
+                        showToast("Sblocco forzato attivato!", "success");
+                        lockApp(); 
+                    }
+                }, 100);
+            });
+        });
+
+        ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
+            logoBtn.addEventListener(evt, () => {
+                if (logoPressTimer) clearInterval(logoPressTimer);
+                if(progressFill) progressFill.style.height = '0%';
+            });
+        });
     }
 }
 
@@ -110,19 +154,15 @@ function initLicenseSystem() {
         const expiryTime = parseInt(licenseExpiry, 10);
 
         if (now < expiryTime) {
-            updateLicenseUI(true, expiryTime);
             checkDaysBeforeExpiry(now, expiryTime);
             sessionStorage.setItem('laundry_auth', 'true');
             unlockApp();
             return;
         } else {
-            updateLicenseUI(false);
             lockAppComplete();
             const expiredModal = document.getElementById('licenseExpiredModal');
             if (expiredModal) expiredModal.classList.remove('hidden');
         }
-    } else {
-        updateLicenseUI(false);
     }
 }
 
@@ -143,8 +183,6 @@ function startLicenseCountdownMonitor() {
             localStorage.removeItem('laundry_active_license');
             sessionStorage.removeItem('laundry_auth');
             
-            updateLicenseUI(false);
-
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
 
@@ -192,7 +230,14 @@ window.closeExpiredModalAndRelogin = function() {
 };
 
 function checkAdminPassword() {
-    let enteredPassword = passwordInput ? passwordInput.value.trim() : "";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    let enteredPassword = "";
+
+    if (inputs.length > 1) {
+        enteredPassword = inputs[1].value.trim();
+    } else if (passwordInput) {
+        enteredPassword = passwordInput.value.trim();
+    }
 
     if (!enteredPassword) {
         showToast("Inserisci la password amministratore", "error");
@@ -214,8 +259,12 @@ function checkAdminPassword() {
 }
 
 function checkNumericLicense() {
-    const licenseInput = document.getElementById('licensePhoneInput');
-    let enteredCode = licenseInput ? licenseInput.value.trim() : "";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    let enteredCode = "";
+
+    if (inputs.length > 0) {
+        enteredCode = inputs[0].value.trim();
+    }
 
     if (!enteredCode) {
         showToast("Inserisci il codice numerico della licenza", "error");
@@ -229,7 +278,6 @@ function checkNumericLicense() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
         hasShownTodayWarning = false;
-        updateLicenseUI(true, expirationTimestamp);
         unlockApp();
         startLicenseCountdownMonitor();
         showToast("TEST ATTIVO: Licenza di prova di 1 minuto avviata!", "success");
@@ -249,7 +297,6 @@ function checkNumericLicense() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         hasShownTodayWarning = false;
-        updateLicenseUI(true, expirationTimestamp);
         unlockApp();
         showToast("Accesso Master illimitato eseguito!", "success");
         return;
@@ -303,7 +350,6 @@ function checkNumericLicense() {
                     sessionStorage.setItem('laundry_logged_as_admin', 'false');
                     hasShownTodayWarning = false;
                     
-                    updateLicenseUI(true, expirationTimestamp);
                     unlockApp();
                     startLicenseCountdownMonitor();
                     const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
@@ -323,7 +369,6 @@ function checkNumericLicense() {
                     hasShownTodayWarning = false;
                     sessionStorage.setItem('laundry_auth', 'true');
                     sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    updateLicenseUI(true, expirationTimestamp);
                     unlockApp();
                     showToast("Licenza attivata con successo!", "success");
                 } else {
@@ -439,8 +484,6 @@ function lockAppComplete() {
     localStorage.removeItem('laundry_device_activated');
     localStorage.removeItem('laundry_license_expiry');
     
-    updateLicenseUI(false);
-
     if(appContainer) {
         appContainer.style.opacity = '0';
         setTimeout(() => appContainer.classList.add('hidden'), 400);
@@ -1178,10 +1221,10 @@ function showToast(message, type = "success") {
     const toastMsg = document.getElementById('toastMessage');
     if(!toast || !toastMsg) return;
     toastMsg.textContent = message;
-    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.remove('translate-y-25', 'opacity-0');
     toast.classList.add('translate-y-0', 'opacity-100');
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-25', 'opacity-0');
     }, 3500);
 }
