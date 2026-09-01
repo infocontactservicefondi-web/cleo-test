@@ -273,6 +273,7 @@
 
         <!-- VIEW STATS -->
         <div id="viewStats" class="space-y-6 hidden">
+            <!-- 1. Blocco Statistiche Superiori -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                     <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati (Periodo)</div>
@@ -292,8 +293,9 @@
                 </div>
             </div>
 
+            <!-- 2. BARRA DEI FILTRI (Sposta in mezzo tra le statistiche e lo storico) -->
             <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
                         <button id="btnPeriodDay" onclick="setStatPeriod('day')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Oggi</button>
                         <button id="btnPeriodMonth" onclick="setStatPeriod('month')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Mese</button>
@@ -308,6 +310,10 @@
                         <button onclick="resetAllStatistics()" class="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-400 border border-rose-900 rounded-xl text-xs font-semibold cursor-pointer"><i class="fa-solid fa-trash"></i> Azzera</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- 3. Blocco Storico Capi Ritirati (Tabella in basso) -->
+            <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-sm font-bold text-white">Storico Capi Ritirati</h2>
                     <span id="historyCounter" class="text-xs text-slate-400">0 elementi</span>
