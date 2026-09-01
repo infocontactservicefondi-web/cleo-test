@@ -753,7 +753,7 @@ if (itemForm) {
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
         db.ref('items').child(itemId).set(newItem).catch(() => {});
 
-        // Stampa una sola copia a indumento finito
+        // Stampa una sola copia
         printItemLabel();
 
         itemForm.reset();
@@ -764,7 +764,7 @@ if (itemForm) {
     });
 }
 
-// STAMPA CAPO (SINGOLA COPIA A INDUMENTO FINITO)
+// STAMPA CAPO (SINGOLA COPIA)
 window.printItemLabel = function() {
     const clientId = selectedClientIdInput.value;
     const type = document.getElementById('itemType').value.trim();
@@ -1005,11 +1005,19 @@ function loadHistory() {
     });
 }
 
+// ==========================================
+// GESTIONE FILTRI STATISTICHE
+// ==========================================
 window.setStatPeriod = function(period) {
     currentStatPeriod = period;
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
+    
+    // Azzera i campi data personalizzati
+    const startInput = document.getElementById('statsCustomStartDate');
+    const endInput = document.getElementById('statsCustomEndDate');
+    if (startInput) startInput.value = "";
+    if (endInput) endInput.value = "";
 
+    // Aggiorna lo stile grafico dei pulsanti
     ['Day', 'Month', 'Year', 'All'].forEach(p => {
         const btn = document.getElementById(`btnPeriod${p}`);
         if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
@@ -1021,20 +1029,22 @@ window.setStatPeriod = function(period) {
     renderHistory();
 };
 
-window.clearCustomDateFilter = function() {
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
+window.onCustomDateChange = function() {
+    // Quando l'utente inserisce una data personalizzata, deseleziona i pulsanti rapidi
+    currentStatPeriod = 'custom';
+    ['Day', 'Month', 'Year', 'All'].forEach(p => {
+        const btn = document.getElementById(`btnPeriod${p}`);
+        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
+    });
     renderHistory();
 };
 
-window.resetAllStatistics = function() {
-    if (confirm("Vuoi azzerare tutte le statistiche?")) {
-        historyData = {};
-        localStorage.removeItem('laundry_history');
-        db.ref('history').remove();
-        showToast("Statistiche azzerate", "success");
-        renderHistory();
-    }
+window.clearCustomDateFilter = function() {
+    const startInput = document.getElementById('statsCustomStartDate');
+    const endInput = document.getElementById('statsCustomEndDate');
+    if (startInput) startInput.value = "";
+    if (endInput) endInput.value = "";
+    setStatPeriod('all');
 };
 
 function renderHistory() {
@@ -1059,6 +1069,7 @@ function renderHistory() {
         const retDate = new Date(item.returnedAt || Date.now());
         const retDateStr = retDate.toISOString().split('T')[0];
 
+        // LOGICA DI FILTRAGGIO DATE
         if (customStart || customEnd) {
             if (customStart && retDate < customStart) continue;
             if (customEnd && retDate > customEnd) continue;
@@ -1093,21 +1104,34 @@ function renderHistory() {
     document.getElementById('statTopItemType').textContent = topType;
 }
 
+// ESPORTAZIONE EXCEL / CSV PER IL PERIODO SELEZIONATO
 window.exportBackup = function() {
     const generationDate = new Date().toLocaleDateString('it-IT');
     const startDateInput = document.getElementById('statsCustomStartDate');
     const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDate) endDate.setHours(23, 59, 59, 999);
+    
+    let customStart = startDateInput && startDateInput.value ? new Date(startDateInput.value + "T00:00:00") : null;
+    let customEnd = endDateInput && endDateInput.value ? new Date(endDateInput.value + "T23:59:59") : null;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const currentMonth = now.getMonth(), currentYear = now.getFullYear();
 
     let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sortedHistory) {
         const retDate = new Date(item.returnedAt || Date.now());
-        if (startDate && retDate < startDate) continue;
-        if (endDate && retDate > endDate) continue;
+        const retDateStr = retDate.toISOString().split('T')[0];
+
+        if (customStart || customEnd) {
+            if (customStart && retDate < customStart) continue;
+            if (customEnd && retDate > customEnd) continue;
+        } else {
+            if (currentStatPeriod === 'day' && retDateStr !== todayStr) continue;
+            if (currentStatPeriod === 'month' && (retDate.getMonth() !== currentMonth || retDate.getFullYear() !== currentYear)) continue;
+            if (currentStatPeriod === 'year' && retDate.getFullYear() !== currentYear) continue;
+        }
 
         filteredHistory.push({ id, item, retDate });
         totalItemsCount++;
@@ -1116,16 +1140,16 @@ window.exportBackup = function() {
         typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
     }
 
-    let topProduct = "Nessuno", maxCount = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxCount) { maxCount = c; topProduct = t.charAt(0).toUpperCase() + t.slice(1); }
+    if (filteredHistory.length === 0) {
+        showToast("Nessun dato da esportare per il periodo selezionato", "error");
+        return;
     }
 
-    let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
-    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
+    let csvContent = "\uFEFF"; // BOM UTF-8 per Excel
+    csvContent += `"LAVANDERIA CLEO - REPORT STATISTICHE";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
+    csvContent += `"=== RIEPILOGO STATISTICHE ===";;;;;;\n"Totale Capi Ritirati:";"${totalItemsCount}";;;;;\n"Incasso Totale:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
     
-    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
+    csvContent += `"=== DETTAGLIO STORICO CAPI ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
     for (let entry of filteredHistory) {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
@@ -1136,12 +1160,12 @@ window.exportBackup = function() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `Report_Lavanderia_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("Report esportato!", "success");
-}
+    showToast("Report Excel esportato con successo!", "success");
+};
 
 function showToast(message, type = "success") {
     const toast = document.getElementById('toastNotification');
