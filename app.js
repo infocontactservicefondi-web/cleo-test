@@ -573,6 +573,7 @@ if (clientForm) {
         localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
         db.ref('clients').child(clientId).set(newClient).catch(() => {});
 
+        // Pulisce e resetta il form e chiude la tendina di ricerca cliente
         clientForm.reset();
         if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
         if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
