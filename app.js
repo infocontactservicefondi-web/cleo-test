@@ -331,23 +331,43 @@ function initConnectionMonitor() {
     });
 }
 
+// ==========================================
+// GESTIONE TEMA (CHIARO / SCURO) CORRETTA
+// ==========================================
 window.toggleTheme = function() {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('laundry_theme', isDark ? 'dark' : 'light');
-    updateThemeUI(isDark);
+    const htmlEl = document.documentElement;
+    const isCurrentlyDark = htmlEl.classList.contains('dark');
+    
+    if (isCurrentlyDark) {
+        htmlEl.classList.remove('dark');
+        localStorage.setItem('laundry_theme', 'light');
+        updateThemeUI(false);
+    } else {
+        htmlEl.classList.add('dark');
+        localStorage.setItem('laundry_theme', 'dark');
+        updateThemeUI(true);
+    }
 };
 
 function initTheme() {
     const savedTheme = localStorage.getItem('laundry_theme');
-    const isDark = savedTheme ? savedTheme === 'dark' : true; 
-    if (isDark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    updateThemeUI(isDark);
+    const htmlEl = document.documentElement;
+    
+    if (savedTheme === 'light') {
+        htmlEl.classList.remove('dark');
+        updateThemeUI(false);
+    } else {
+        htmlEl.classList.add('dark');
+        localStorage.setItem('laundry_theme', 'dark');
+        updateThemeUI(true);
+    }
 }
 
 function updateThemeUI(isDark) {
     const icon = document.getElementById('themeIcon');
-    if (icon) icon.className = isDark ? "fa-solid fa-moon" : "fa-solid fa-sun";
+    if (icon) {
+        icon.className = isDark ? "fa-solid fa-moon" : "fa-solid fa-sun";
+    }
 }
 
 if (clientDobInput) {
