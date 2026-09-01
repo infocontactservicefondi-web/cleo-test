@@ -76,7 +76,7 @@ function fixLoginPlaceholders() {
     const inputs = document.querySelectorAll('#loginScreen input');
     if (inputs.length > 0) {
         inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+        inputs[0].placeholder = "Inserisci codice licenza annuale...";
     }
 }
 
