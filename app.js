@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (RISOLUZIONE BUG DURATION E NOTIFICA DEMO)
+// LAVANDERIA CLEO - APP LOGIC (IDENTIFICAZIONE NOME PROPRIETARIO E DISPOSITIVO)
 // ==========================================
 
 const firebaseConfig = {
@@ -40,6 +40,7 @@ let clientsData = {};
 let itemsData = {};
 let historyData = {};
 
+let currentStatPeriod = 'all';
 let licenseCheckInterval = null;
 let hasShownTodayWarning = false;
 
@@ -52,12 +53,18 @@ document.addEventListener('DOMContentLoaded', () => {
     initProtectedLogo();
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
+    setupForms();
+    setupDropdowns();
 
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             checkAdminPassword();
         });
+    }
+
+    if (activeTableFilter) {
+        activeTableFilter.addEventListener('input', renderItems);
     }
 });
 
@@ -111,9 +118,6 @@ function initRealtimeLicenseListener() {
             if (licData.expiry) {
                 localStorage.setItem('laundry_license_expiry', licData.expiry);
             }
-            if (licData.isDemo !== undefined) {
-                localStorage.setItem('laundry_license_is_demo', licData.isDemo ? 'true' : 'false');
-            }
         }
     });
 }
@@ -126,15 +130,15 @@ function initProtectedLogo() {
     
     if (logoBtn) {
         ['mousedown', 'touchstart'].forEach(evt => {
-            logoBtn.addEventListener(evt, (e) => {
+            logoBtn.addEventListener(evt, () => {
                 let startTime = Date.now();
-                if (progressFill) progressFill.style.height = '100%';
+                if(progressFill) progressFill.style.height = '100%';
                 
                 logoPressTimer = setInterval(() => {
                     let elapsed = Date.now() - startTime;
                     if (elapsed >= holdDuration) {
                         clearInterval(logoPressTimer);
-                        if (progressFill) progressFill.style.height = '0%';
+                        if(progressFill) progressFill.style.height = '0%';
                         forceUnlockByLogo();
                     }
                 }, 100);
@@ -144,48 +148,26 @@ function initProtectedLogo() {
         ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
             logoBtn.addEventListener(evt, () => {
                 if (logoPressTimer) clearInterval(logoPressTimer);
-                if (progressFill) progressFill.style.height = '0%';
+                if(progressFill) progressFill.style.height = '0%';
             });
         });
     }
 }
 
-// RIPRISTINATO IL COMPORTAMENTO CORRETTO SUL LOGO 5 SECONDI
 function forceUnlockByLogo() {
-    showToast("Ripristino schermata completato", "success");
+    showToast("Sblocco applicato!", "success");
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     
-    if (appContainer) {
+    if(appContainer) {
         appContainer.style.opacity = '0';
         setTimeout(() => appContainer.classList.add('hidden'), 400);
     }
-    if (loginScreen) {
+    if(loginScreen) {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
 }
-
-function checkAndShowDemoNotice() {
-    const isDemo = localStorage.getItem('laundry_license_is_demo') === 'true';
-    const expiry = localStorage.getItem('laundry_license_expiry');
-    if (isDemo && expiry) {
-        const dateStr = new Date(parseInt(expiry, 10)).toLocaleDateString('it-IT');
-        const demoText = document.getElementById('licenseDemoText');
-        const demoModal = document.getElementById('licenseDemoModal');
-        if (demoText) {
-            demoText.textContent = `Questo dispositivo sta utilizzando una licenza in versione DEMO di prova con scadenza il ${dateStr}. Per convertire in licenza definitiva, contattare l'assistenza.`;
-        }
-        if (demoModal) {
-            demoModal.classList.remove('hidden');
-        }
-    }
-}
-
-window.closeDemoModal = function() {
-    const demoModal = document.getElementById('licenseDemoModal');
-    if (demoModal) demoModal.classList.add('hidden');
-};
 
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
@@ -199,7 +181,6 @@ function initLicenseSystem() {
             checkDaysBeforeExpiry(now, expiryTime);
             sessionStorage.setItem('laundry_auth', 'true');
             unlockApp();
-            checkAndShowDemoNotice();
             return;
         } else {
             lockAppComplete();
@@ -309,7 +290,6 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_active_license', 'TEST1MIN');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-        localStorage.setItem('laundry_license_is_demo', 'true');
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
 
@@ -323,7 +303,6 @@ function checkNumericLicense() {
 
         hasShownTodayWarning = false;
         unlockApp();
-        checkAndShowDemoNotice();
         startLicenseCountdownMonitor();
         showToast("Licenza TEST avviata!", "success");
         return;
@@ -340,6 +319,7 @@ function checkNumericLicense() {
             let matchedKey = null;
             let customExpiryVal = null;
             let clientNameVal = "Lavanderia Cliente";
+            let clientPhoneVal = "";
             let isDemoVal = false;
 
             if (licenses) {
@@ -349,6 +329,7 @@ function checkNumericLicense() {
                         let obj = typeof licenses[key] === 'object' ? licenses[key] : { expiry: licenses[key] };
                         customExpiryVal = obj.expiry;
                         if (obj.clientName) clientNameVal = obj.clientName;
+                        if (obj.phone) clientPhoneVal = obj.phone;
                         if (obj.isDemo) isDemoVal = true;
                         break;
                     }
@@ -371,6 +352,7 @@ function checkNumericLicense() {
                     usedAt: Date.now(),
                     expiry: expirationTimestamp,
                     clientName: clientNameVal,
+                    phone: clientPhoneVal,
                     deviceInfo: fullDeviceName,
                     isDemo: isDemoVal
                 });
@@ -378,13 +360,11 @@ function checkNumericLicense() {
                 localStorage.setItem('laundry_device_activated', 'true');
                 localStorage.setItem('laundry_active_license', enteredCode);
                 localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                localStorage.setItem('laundry_license_is_demo', isDemoVal ? 'true' : 'false');
                 sessionStorage.setItem('laundry_auth', 'true');
                 sessionStorage.setItem('laundry_logged_as_admin', 'false');
                 hasShownTodayWarning = false;
 
                 unlockApp();
-                checkAndShowDemoNotice();
                 initRealtimeLicenseListener();
                 startLicenseCountdownMonitor();
                 showToast(`Licenza attivata per ${clientNameVal}!`, "success");
@@ -458,11 +438,11 @@ if (clientDobInput) {
 }
 
 function unlockApp() {
-    if (loginScreen) {
+    if(loginScreen) {
         loginScreen.style.opacity = '0';
         setTimeout(() => loginScreen.classList.add('hidden'), 400);
     }
-    if (appContainer) {
+    if(appContainer) {
         appContainer.classList.remove('hidden');
         setTimeout(() => appContainer.style.opacity = '1', 50);
     }
@@ -479,11 +459,11 @@ window.lockApp = function() {
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     
-    if (appContainer) {
+    if(appContainer) {
         appContainer.style.opacity = '0';
         setTimeout(() => appContainer.classList.add('hidden'), 400);
     }
-    if (loginScreen) {
+    if(loginScreen) {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
@@ -495,14 +475,13 @@ function lockAppComplete() {
     sessionStorage.removeItem('laundry_logged_as_admin');
     localStorage.removeItem('laundry_device_activated');
     localStorage.removeItem('laundry_license_expiry');
-    localStorage.removeItem('laundry_license_is_demo');
     localStorage.removeItem('laundry_active_license');
     
-    if (appContainer) {
+    if(appContainer) {
         appContainer.style.opacity = '0';
         setTimeout(() => appContainer.classList.add('hidden'), 400);
     }
-    if (loginScreen) {
+    if(loginScreen) {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
@@ -518,6 +497,273 @@ function initApp() {
     loadHistory();
 }
 
+function setupForms() {
+    if (clientForm) {
+        clientForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const clientId = document.getElementById('manageClientIdInput').value || ('client_' + Date.now());
+            const name = document.getElementById('clientName').value.trim();
+            const phone = document.getElementById('clientPhone').value.trim();
+            const email = document.getElementById('clientEmail') ? document.getElementById('clientEmail').value.trim() : '';
+            const dob = document.getElementById('clientDob').value.trim();
+            const address = document.getElementById('clientAddress').value.trim();
+            const notes = document.getElementById('clientNotes') ? document.getElementById('clientNotes').value.trim() : '';
+
+            if (!name || !phone) {
+                showToast("Nome e Telefono obbligatori!", "error");
+                return;
+            }
+
+            const clientObj = { name, phone, email, dob, address, notes, updatedAt: Date.now() };
+            clientsData[clientId] = clientObj;
+            localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
+            db.ref('clients/' + clientId).set(clientObj);
+
+            showToast("Cliente salvato con successo!", "success");
+            clientForm.reset();
+            document.getElementById('manageClientIdInput').value = '';
+        });
+    }
+
+    if (itemForm) {
+        itemForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const clientId = document.getElementById('selectedClientIdInput').value;
+            const type = document.getElementById('itemType').value.trim();
+            const cabinet = document.getElementById('itemCabinet').value.trim();
+            const position = document.getElementById('itemPosition').value.trim();
+            const price = parseFloat(document.getElementById('itemPrice').value) || 0;
+            const notes = document.getElementById('itemNotes').value.trim();
+
+            if (!clientId) {
+                showToast("Seleziona prima un cliente valido!", "error");
+                return;
+            }
+
+            const itemId = 'item_' + Date.now();
+            const itemObj = { clientId, type, cabinet, position, price, notes, timestamp: Date.now() };
+
+            itemsData[itemId] = itemObj;
+            localStorage.setItem('laundry_items', JSON.stringify(itemsData));
+            db.ref('items/' + itemId).set(itemObj);
+
+            showToast("Capo registrato!", "success");
+            itemForm.reset();
+            document.getElementById('assignClientSearch').value = '';
+            document.getElementById('selectedClientIdInput').value = '';
+        });
+    }
+}
+
+function setupDropdowns() {
+    const globalSearch = document.getElementById('globalSearch');
+    const globalDropdown = document.getElementById('globalSearchDropdown');
+    const searchClearBtn = document.getElementById('searchClearBtn');
+
+    if (globalSearch) {
+        globalSearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (searchClearBtn) searchClearBtn.classList.toggle('hidden', !query);
+            if (!query) {
+                if (globalDropdown) globalDropdown.classList.add('hidden');
+                return;
+            }
+
+            let results = [];
+            for (let id in clientsData) {
+                const c = clientsData[id];
+                if (c.name.toLowerCase().includes(query) || c.phone.includes(query) || (c.email && c.email.toLowerCase().includes(query))) {
+                    results.push(`<div onclick="selectGlobalClient('${id}')" class="p-3 hover:bg-darkCard cursor-pointer flex justify-between items-center text-xs">
+                        <div><strong class="text-white block">${c.name}</strong><span class="text-slate-400">${c.phone} ${c.email ? '&bull; ' + c.email : ''}</span></div>
+                        <span class="text-[10px] bg-blue-950 text-blue-400 px-2 py-0.5 rounded">Cliente</span>
+                    </div>`);
+                }
+            }
+
+            for (let id in itemsData) {
+                const it = itemsData[id];
+                const c = clientsData[it.clientId] || { name: 'Sconosciuto' };
+                if (it.type.toLowerCase().includes(query) || it.cabinet.toLowerCase().includes(query)) {
+                    results.push(`<div class="p-3 hover:bg-darkCard text-xs flex justify-between items-center">
+                        <div><strong class="text-white block">${it.type} (Armadio: ${it.cabinet})</strong><span class="text-slate-400">Cliente: ${c.name}</span></div>
+                        <span class="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded">Capo Attivo</span>
+                    </div>`);
+                }
+            }
+
+            if (globalDropdown) {
+                globalDropdown.innerHTML = results.length ? results.join('') : '<div class="p-3 text-xs text-slate-400">Nessun risultato trovato</div>';
+                globalDropdown.classList.remove('hidden');
+            }
+        });
+
+        if (searchClearBtn) {
+            searchClearBtn.addEventListener('click', () => {
+                globalSearch.value = '';
+                searchClearBtn.classList.add('hidden');
+                if (globalDropdown) globalDropdown.classList.add('hidden');
+            });
+        }
+    }
+
+    setupClientSearchDropdown('clientName', 'clientSearchDropdown', 'clientSearchToggleBtn', (id) => {
+        const c = clientsData[id];
+        if (c) {
+            document.getElementById('manageClientIdInput').value = id;
+            document.getElementById('clientName').value = c.name;
+            document.getElementById('clientPhone').value = c.phone;
+            if (document.getElementById('clientEmail')) document.getElementById('clientEmail').value = c.email || '';
+            document.getElementById('clientDob').value = c.dob || '';
+            document.getElementById('clientAddress').value = c.address || '';
+            if (document.getElementById('clientNotes')) document.getElementById('clientNotes').value = c.notes || '';
+        }
+    });
+
+    setupClientSearchDropdown('assignClientSearch', 'assignClientDropdown', 'assignClientToggleBtn', (id) => {
+        const c = clientsData[id];
+        if (c) {
+            document.getElementById('selectedClientIdInput').value = id;
+            document.getElementById('assignClientSearch').value = `${c.name} (${c.phone})`;
+        }
+    });
+}
+
+function setupClientSearchDropdown(inputId, dropdownId, toggleBtnId, onSelect) {
+    const input = document.getElementById(inputId);
+    const dropdown = document.getElementById(dropdownId);
+    const toggleBtn = document.getElementById(toggleBtnId);
+
+    function renderDropdown(filter = '') {
+        let html = '';
+        const q = filter.toLowerCase().trim();
+        for (let id in clientsData) {
+            const c = clientsData[id];
+            if (!q || c.name.toLowerCase().includes(q) || c.phone.includes(q) || (c.email && c.email.toLowerCase().includes(q))) {
+                html += `<div data-id="${id}" class="p-2.5 hover:bg-darkCard cursor-pointer text-xs border-b border-darkBorder/40">
+                    <strong class="text-white block">${c.name}</strong>
+                    <span class="text-slate-400">${c.phone} ${c.email ? '&bull; ' + c.email : ''}</span>
+                </div>`;
+            }
+        }
+        dropdown.innerHTML = html || '<div class="p-3 text-xs text-slate-400">Nessun cliente trovato</div>';
+        
+        dropdown.querySelectorAll('[data-id]').forEach(el => {
+            el.addEventListener('click', () => {
+                onSelect(el.getAttribute('data-id'));
+                dropdown.classList.add('hidden');
+            });
+        });
+    }
+
+    if (input) {
+        input.addEventListener('input', (e) => {
+            renderDropdown(e.target.value);
+            dropdown.classList.remove('hidden');
+        });
+        input.addEventListener('focus', () => {
+            renderDropdown(input.value);
+            dropdown.classList.remove('hidden');
+        });
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            if (dropdown.classList.contains('hidden')) {
+                renderDropdown('');
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        });
+    }
+}
+
+window.selectGlobalClient = function(id) {
+    const dropdown = document.getElementById('globalSearchDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+    openClientManagerModal();
+};
+
+window.openClientManagerModal = function() {
+    const modal = document.getElementById('clientManagerModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        renderClientManagerList();
+    }
+};
+
+window.closeClientManagerModal = function() {
+    const modal = document.getElementById('clientManagerModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.renderClientManagerList = function() {
+    const container = document.getElementById('clientManagerList');
+    const searchVal = (document.getElementById('clientManagerSearch')?.value || '').toLowerCase().trim();
+    if (!container) return;
+
+    let html = '';
+    for (let id in clientsData) {
+        const c = clientsData[id];
+        if (searchVal && !c.name.toLowerCase().includes(searchVal) && !c.phone.includes(searchVal) && !(c.email && c.email.toLowerCase().includes(searchVal))) continue;
+
+        html += `<div class="bg-darkCard p-3 rounded-xl border border-darkBorder flex justify-between items-center text-xs">
+            <div>
+                <strong class="text-white block text-sm">${c.name}</strong>
+                <span class="text-slate-400 block">${c.phone} ${c.email ? '&bull; ' + c.email : ''}</span>
+                ${c.notes ? `<p class="text-[11px] text-amber-400 mt-1"><i class="fa-solid fa-note-sticky mr-1"></i>${c.notes}</p>` : ''}
+            </div>
+            <div class="flex gap-2">
+                <button onclick="editClient('${id}')" class="px-2.5 py-1 bg-blue-900/40 text-blue-400 hover:bg-blue-900/60 rounded-lg"><i class="fa-solid fa-pen"></i> Modifica</button>
+                <button onclick="deleteClient('${id}')" class="px-2.5 py-1 bg-rose-900/40 text-rose-400 hover:bg-rose-900/60 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>`;
+    }
+
+    container.innerHTML = html || '<div class="text-slate-400 text-xs py-4 text-center">Nessun cliente presente</div>';
+};
+
+window.editClient = function(id) {
+    const c = clientsData[id];
+    if (c) {
+        closeClientManagerModal();
+        switchTab('active');
+        document.getElementById('manageClientIdInput').value = id;
+        document.getElementById('clientName').value = c.name;
+        document.getElementById('clientPhone').value = c.phone;
+        if (document.getElementById('clientEmail')) document.getElementById('clientEmail').value = c.email || '';
+        document.getElementById('clientDob').value = c.dob || '';
+        document.getElementById('clientAddress').value = c.address || '';
+        if (document.getElementById('clientNotes')) document.getElementById('clientNotes').value = c.notes || '';
+    }
+};
+
+window.deleteClient = function(id) {
+    if (confirm("Eliminare definitivamente questo cliente?")) {
+        delete clientsData[id];
+        localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
+        db.ref('clients/' + id).remove();
+        renderClientManagerList();
+        showToast("Cliente eliminato", "success");
+    }
+};
+
+window.printClientReceiptLabel = function() {
+    const name = document.getElementById('clientName').value;
+    const phone = document.getElementById('clientPhone').value;
+    if (!name || !phone) {
+        showToast("Seleziona o inserisci prima un cliente!", "error");
+        return;
+    }
+    const win = window.open('', '', 'width=300,height=200');
+    win.document.write(`<html><body style="font-family:sans-serif;padding:10px;text-align:center;">
+        <h3 style="margin:0;">LAVANDERIA CLEO</h3>
+        <p style="font-size:14px;margin:5px 0;"><strong>${name}</strong></p>
+        <p style="font-size:12px;margin:0;">Tel: ${phone}</p>
+        <script>window.print();window.close();<\/script>
+    </body></html>`);
+};
+
 window.switchTab = function(tab) {
     const viewActive = document.getElementById('viewActive');
     const viewStats = document.getElementById('viewStats');
@@ -525,17 +771,94 @@ window.switchTab = function(tab) {
     const navTabStats = document.getElementById('navTabStats');
 
     if (tab === 'active') {
-        if (viewStats) viewStats.classList.add('hidden');
-        if (viewActive) viewActive.classList.remove('hidden');
-        if (navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
-        if (navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
+        if(viewStats) viewStats.classList.add('hidden');
+        if(viewActive) viewActive.classList.remove('hidden');
+        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
+        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
     } else {
-        if (viewActive) viewActive.classList.add('hidden');
-        if (viewStats) viewStats.classList.remove('hidden');
-        if (navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
-        if (navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
+        if(viewActive) viewActive.classList.add('hidden');
+        if(viewStats) viewStats.classList.remove('hidden');
+        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
+        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
         renderHistory();
     }
+};
+
+window.setStatPeriod = function(period) {
+    currentStatPeriod = period;
+    ['btnPeriodDay', 'btnPeriodMonth', 'btnPeriodYear', 'btnPeriodAll'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer";
+    });
+    const activeBtn = document.getElementById('btnPeriod' + period.charAt(0).toUpperCase() + period.slice(1));
+    if (activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer";
+    renderHistory();
+};
+
+function renderHistory() {
+    const tbody = document.getElementById('historyTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    let totalRevenue = 0, count = 0;
+    let typeCounts = {}, uniqueClients = new Set();
+    const now = new Date();
+
+    const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
+
+    for (let [id, item] of sorted) {
+        const itemDate = new Date(item.returnedAt || 0);
+
+        if (currentStatPeriod === 'day' && itemDate.toDateString() !== now.toDateString()) continue;
+        if (currentStatPeriod === 'month' && (itemDate.getMonth() !== now.getMonth() || itemDate.getFullYear() !== now.getFullYear())) continue;
+        if (currentStatPeriod === 'year' && itemDate.getFullYear() !== now.getFullYear()) continue;
+
+        count++;
+        totalRevenue += (item.price || 0);
+        if (item.type) typeCounts[item.type] = (typeCounts[item.type] || 0) + 1;
+        if (item.clientId) uniqueClients.add(item.clientId);
+
+        const client = clientsData[item.clientId] || { name: 'Sconosciuto' };
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-darkCard';
+        tr.innerHTML = `
+            <td class="py-3 px-4 text-slate-300">${itemDate.toLocaleDateString('it-IT')} ${itemDate.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}</td>
+            <td class="py-3 px-4 font-semibold text-white">${client.name}</td>
+            <td class="py-3 px-4 text-slate-200">${item.type}</td>
+            <td class="py-3 px-4 text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</td>
+            <td class="py-3 px-4 text-slate-400">Armadio ${item.cabinet || 'N/D'}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    document.getElementById('statTotalCount').textContent = count;
+    document.getElementById('statTotalRevenue').textContent = '€ ' + totalRevenue.toFixed(2);
+    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
+    
+    let topType = '-';
+    let max = 0;
+    for (let t in typeCounts) {
+        if (typeCounts[t] > max) { max = typeCounts[t]; topType = t; }
+    }
+    document.getElementById('statTopItemType').textContent = topType;
+    document.getElementById('historyCounter').textContent = `${count} elementi`;
+}
+
+window.exportBackup = function() {
+    let csvContent = "data:text/csv;charset=utf-8,Data,Cliente,Capo,Prezzo,Armadio\n";
+    for (let id in historyData) {
+        const item = historyData[id];
+        const client = clientsData[item.clientId] || { name: 'N/D' };
+        const d = new Date(item.returnedAt || 0).toLocaleDateString('it-IT');
+        csvContent += `"${d}","${client.name}","${item.type}","${item.price}","${item.cabinet}"\n`;
+    }
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `storico_lavanderia_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 };
 
 window.showToast = function(msg, type = "success") {
@@ -580,7 +903,7 @@ function loadItems() {
 }
 
 function renderItems() {
-    if (!itemsTableBody) return;
+    if(!itemsTableBody) return;
     itemsTableBody.innerHTML = "";
     let count = 0, visibleCount = 0;
     const filterVal = activeTableFilter ? activeTableFilter.value.toLowerCase().trim() : "";
@@ -598,7 +921,8 @@ function renderItems() {
         tr.innerHTML = `
             <td class="py-4 px-4">
                 <span class="font-semibold text-white cursor-pointer hover:underline">${client.name}</span>
-                <div class="text-xs text-slate-400">${client.phone}</div>
+                <div class="text-xs text-slate-400">${client.phone} ${client.email ? '&bull; ' + client.email : ''}</div>
+                ${client.notes ? `<div class="text-[10px] text-amber-400 mt-0.5"><i class="fa-solid fa-note-sticky mr-1"></i>${client.notes}</div>` : ''}
             </td>
             <td class="py-4 px-4">
                 <span class="font-medium text-slate-200">${item.type}</span>
@@ -612,8 +936,8 @@ function renderItems() {
         `;
         itemsTableBody.appendChild(tr);
     }
-    if (itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
-    if (noItemsMessage) {
+    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
+    if(noItemsMessage) {
         noItemsMessage.classList.toggle('hidden', visibleCount > 0);
         noItemsMessage.classList.toggle('flex', visibleCount === 0);
     }
