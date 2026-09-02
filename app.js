@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (FORCED LOGOUT & OVERRIDE)
+// LAVANDERIA CLEO - APP LOGIC (LOCKED LICENSE & ADMIN TOGGLE)
 // ==========================================
 
 const firebaseConfig = {
@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initLicenseSystem();
     initTheme();
     initConnectionMonitor(); 
-    initGlobalResetListener();
-    initProtectedLogo();
+    initGlobalResetListener(); // Monitoraggio reset remoto
+    initProtectedLogo(); // Gestione pressione 5 secondi sul logo
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
 
@@ -75,10 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function fixLoginPlaceholders() {
-    const licenseInput = document.getElementById('licensePhoneInput');
-    if (licenseInput) {
-        licenseInput.value = "";
-        licenseInput.placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    if (inputs.length > 0) {
+        inputs[0].value = "";
+        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
     }
 }
 
@@ -98,7 +98,7 @@ function initGlobalResetListener() {
                 localStorage.removeItem('laundry_code_already_redeemed');
                 sessionStorage.clear();
                 
-                forceLogout();
+                lockAppComplete();
                 showToast("Dispositivo scollegato da remoto dall'amministratore.", "error");
             }
         }
@@ -115,68 +115,32 @@ function initProtectedLogo() {
     const holdDuration = 5000; // 5 secondi
     
     if (logoBtn) {
-        const startHold = (e) => {
-            e.preventDefault();
-            let startTime = Date.now();
-            if(progressFill) progressFill.style.height = '100%';
-            
-            if (logoPressTimer) clearInterval(logoPressTimer);
-            logoPressTimer = setInterval(() => {
-                let elapsed = Date.now() - startTime;
-                if (elapsed >= holdDuration) {
-                    clearInterval(logoPressTimer);
-                    logoPressTimer = null;
-                    if(progressFill) progressFill.style.height = '0%';
-                    
-                    // FORZA L'USCITA SENZA MOSTRARE ERRORI O CONTROLLI
-                    forceLogout();
-                    showToast("Sblocco forzato ed uscita eseguita!", "success");
-                }
-            }, 100);
-        };
+        ['mousedown', 'touchstart'].forEach(evt => {
+            logoBtn.addEventListener(evt, (e) => {
+                e.preventDefault();
+                let startTime = Date.now();
+                if(progressFill) progressFill.style.height = '100%';
+                
+                logoPressTimer = setInterval(() => {
+                    let elapsed = Date.now() - startTime;
+                    if (elapsed >= holdDuration) {
+                        clearInterval(logoPressTimer);
+                        if(progressFill) progressFill.style.height = '0%';
+                        showToast("Sblocco forzato attivato!", "success");
+                        lockApp(); 
+                    }
+                }, 100);
+            });
+        });
 
-        const cancelHold = () => {
-            if (logoPressTimer) {
-                clearInterval(logoPressTimer);
-                logoPressTimer = null;
-            }
-            if(progressFill) progressFill.style.height = '0%';
-        };
-
-        logoBtn.addEventListener('mousedown', startHold);
-        logoBtn.addEventListener('touchstart', startHold, { passive: false });
-
-        logoBtn.addEventListener('mouseup', cancelHold);
-        logoBtn.addEventListener('mouseleave', cancelHold);
-        logoBtn.addEventListener('touchend', cancelHold);
-        logoBtn.addEventListener('touchcancel', cancelHold);
+        ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
+            logoBtn.addEventListener(evt, () => {
+                if (logoPressTimer) clearInterval(logoPressTimer);
+                if(progressFill) progressFill.style.height = '0%';
+            });
+        });
     }
 }
-
-// ==========================================
-// USITA FORZATA REALE (USATA DAL LOGO E DAL TASTO LOCK)
-// ==========================================
-window.forceLogout = function() {
-    sessionStorage.removeItem('laundry_auth');
-    sessionStorage.removeItem('laundry_logged_as_admin');
-    
-    if(appContainer) {
-        appContainer.style.opacity = '0';
-        setTimeout(() => appContainer.classList.add('hidden'), 300);
-    }
-    if(loginScreen) {
-        loginScreen.classList.remove('hidden');
-        setTimeout(() => loginScreen.style.opacity = '1', 50);
-    }
-    
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
-};
-
-// Mantenuta per retrocompatibilità, reindirizza direttamente alla disconnessione
-window.lockApp = function() {
-    forceLogout();
-};
 
 // ==========================================
 // SISTEMA LICENZA E LOGIN
@@ -266,7 +230,14 @@ window.closeExpiredModalAndRelogin = function() {
 };
 
 function checkAdminPassword() {
-    let enteredPassword = passwordInput ? passwordInput.value.trim() : "";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    let enteredPassword = "";
+
+    if (inputs.length > 1) {
+        enteredPassword = inputs[1].value.trim();
+    } else if (passwordInput) {
+        enteredPassword = passwordInput.value.trim();
+    }
 
     if (!enteredPassword) {
         showToast("Inserisci la password amministratore", "error");
@@ -288,8 +259,12 @@ function checkAdminPassword() {
 }
 
 function checkNumericLicense() {
-    const licenseInput = document.getElementById('licensePhoneInput');
-    let enteredCode = licenseInput ? licenseInput.value.trim() : "";
+    const inputs = document.querySelectorAll('#loginScreen input');
+    let enteredCode = "";
+
+    if (inputs.length > 0) {
+        enteredCode = inputs[0].value.trim();
+    }
 
     if (!enteredCode) {
         showToast("Inserisci il codice numerico della licenza", "error");
@@ -410,10 +385,10 @@ function initConnectionMonitor() {
     db.ref('.info/connected').on('value', (snap) => {
         if (snap.val() === true) {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]";
-            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400 font-medium"; }
+            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400"; }
         } else {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
-            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400 font-medium"; }
+            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400"; }
         }
     });
 }
@@ -477,6 +452,30 @@ function unlockApp() {
     }
     initApp();
 }
+
+window.lockApp = function() {
+    const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
+    
+    if (isLoggedAsAdmin !== 'true') {
+        showToast("Dispositivo con licenza attiva: impossibile uscire.", "error");
+        return;
+    }
+
+    sessionStorage.removeItem('laundry_auth');
+    sessionStorage.removeItem('laundry_logged_as_admin');
+    
+    if(appContainer) {
+        appContainer.style.opacity = '0';
+        setTimeout(() => appContainer.classList.add('hidden'), 400);
+    }
+    if(loginScreen) {
+        loginScreen.classList.remove('hidden');
+        setTimeout(() => loginScreen.style.opacity = '1', 50);
+    }
+    
+    const inputs = document.querySelectorAll('#loginScreen input');
+    inputs.forEach(input => input.value = '');
+};
 
 function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
@@ -1215,17 +1214,17 @@ window.exportBackup = function() {
     link.click();
     document.body.removeChild(link);
     showToast("Report esportato!", "success");
-};
+}
 
 function showToast(message, type = "success") {
     const toast = document.getElementById('toastNotification');
     const toastMsg = document.getElementById('toastMessage');
     if(!toast || !toastMsg) return;
     toastMsg.textContent = message;
-    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.remove('translate-y-25', 'opacity-0');
     toast.classList.add('translate-y-0', 'opacity-100');
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-25', 'opacity-0');
     }, 3500);
 }
