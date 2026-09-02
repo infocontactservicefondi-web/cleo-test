@@ -75,10 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function fixLoginPlaceholders() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    if (inputs.length > 0) {
-        inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+    const licenseInput = document.getElementById('licensePhoneInput');
+    if (licenseInput) {
+        licenseInput.value = "";
+        licenseInput.placeholder = "Inserisci codice licenza...";
     }
 }
 
@@ -155,14 +155,53 @@ function initLicenseSystem() {
 
         if (now < expiryTime) {
             checkDaysBeforeExpiry(now, expiryTime);
-            sessionStorage.setItem('laundry_auth', 'true');
-            unlockApp();
+            updateLicenseUIState(true);
+            
+            // Se l'utente era autenticato in sessione, sblocca l'app direttamente
+            if (sessionStorage.getItem('laundry_auth') === 'true') {
+                unlockApp();
+            } else {
+                showLoginScreenOnly();
+            }
             return;
         } else {
             lockAppComplete();
             const expiredModal = document.getElementById('licenseExpiredModal');
             if (expiredModal) expiredModal.classList.remove('hidden');
         }
+    } else {
+        updateLicenseUIState(false);
+    }
+}
+
+function updateLicenseUIState(isActivated) {
+    const licenseRegisterArea = document.getElementById('licenseRegisterArea');
+    const licenseBadge = document.getElementById('licenseBadge');
+    
+    if (isActivated) {
+        if (licenseRegisterArea) licenseRegisterArea.classList.add('hidden');
+        if (licenseBadge) {
+            licenseBadge.textContent = "Attiva";
+            licenseBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900";
+        }
+    } else {
+        if (licenseRegisterArea) licenseRegisterArea.classList.remove('hidden');
+        if (licenseBadge) {
+            licenseBadge.textContent = "In attesa";
+            licenseBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900";
+        }
+    }
+}
+
+function showLoginScreenOnly() {
+    updateLicenseUIState(localStorage.getItem('laundry_device_activated') === 'true');
+    if(appContainer) {
+        appContainer.style.opacity = '0';
+        appContainer.classList.add('hidden');
+    }
+    if(loginScreen) {
+        loginScreen.classList.remove('hidden');
+        setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
 }
 
@@ -230,14 +269,7 @@ window.closeExpiredModalAndRelogin = function() {
 };
 
 function checkAdminPassword() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredPassword = "";
-
-    if (inputs.length > 1) {
-        enteredPassword = inputs[1].value.trim();
-    } else if (passwordInput) {
-        enteredPassword = passwordInput.value.trim();
-    }
+    const enteredPassword = passwordInput ? passwordInput.value.trim() : "";
 
     if (!enteredPassword) {
         showToast("Inserisci la password amministratore", "error");
@@ -248,9 +280,9 @@ function checkAdminPassword() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         unlockApp();
-        showToast("Accesso amministratore eseguito", "success");
+        showToast("Accesso eseguito con successo!", "success");
     } else {
-        showToast("Password amministratore errata", "error");
+        showToast("Password errata", "error");
         if (loginError) {
             loginError.textContent = "Password errata. Riprova.";
             loginError.classList.remove('hidden');
@@ -259,12 +291,8 @@ function checkAdminPassword() {
 }
 
 function checkNumericLicense() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredCode = "";
-
-    if (inputs.length > 0) {
-        enteredCode = inputs[0].value.trim();
-    }
+    const licenseInput = document.getElementById('licensePhoneInput');
+    let enteredCode = licenseInput ? licenseInput.value.trim() : "";
 
     if (!enteredCode) {
         showToast("Inserisci il codice numerico della licenza", "error");
@@ -328,13 +356,33 @@ function checkNumericLicense() {
                 }
 
                 if (enteredCode === "2580" || matchedKey) {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
+                    let expirationTimestamp = null;
 
+                    // Gestione flessibile della scadenza dalla dashboard
                     if (customExpiryVal) {
-                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
-                        if (!isNaN(parsedTime)) {
-                            expirationTimestamp = parsedTime;
+                        if (typeof customExpiryVal === 'number') {
+                            if (customExpiryVal < 1000) {
+                                // Se è passato un numero di giorni (es. 1 o 15)
+                                const now = new Date();
+                                now.setDate(now.getDate() + customExpiryVal);
+                                expirationTimestamp = now.getTime();
+                            } else {
+                                // Se è un timestamp in millisecondi
+                                expirationTimestamp = customExpiryVal;
+                            }
+                        } else if (typeof customExpiryVal === 'string') {
+                            let parsed = new Date(customExpiryVal).getTime();
+                            if (!isNaN(parsed)) {
+                                expirationTimestamp = parsed;
+                            }
                         }
+                    }
+
+                    // Logica di fallback se la durata/data non è specificata
+                    if (!expirationTimestamp) {
+                        const now = new Date();
+                        now.setDate(now.getDate() + 1); // Default 1 giorno
+                        expirationTimestamp = now.getTime();
                     }
                     
                     db.ref('used_licenses/' + enteredCode).set(true);
@@ -360,7 +408,7 @@ function checkNumericLicense() {
             })
             .catch(() => {
                 if (enteredCode === "2580") {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
+                    let expirationTimestamp = Date.now() + (24 * 60 * 60 * 1000); // 1 giorno di fallback
                     db.ref('used_licenses/' + enteredCode).set(true);
                     localStorage.setItem('laundry_device_activated', 'true');
                     localStorage.setItem('laundry_active_license', enteredCode);
@@ -454,27 +502,12 @@ function unlockApp() {
 }
 
 window.lockApp = function() {
-    const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
-    
-    if (isLoggedAsAdmin !== 'true') {
-        showToast("Dispositivo con licenza attiva: impossibile uscire.", "error");
-        return;
-    }
-
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     
-    if(appContainer) {
-        appContainer.style.opacity = '0';
-        setTimeout(() => appContainer.classList.add('hidden'), 400);
-    }
-    if(loginScreen) {
-        loginScreen.classList.remove('hidden');
-        setTimeout(() => loginScreen.style.opacity = '1', 50);
-    }
-    
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
+    showLoginScreenOnly();
+    if (passwordInput) passwordInput.value = '';
+    showToast("Logout effettuato", "success");
 };
 
 function lockAppComplete() {
@@ -484,6 +517,7 @@ function lockAppComplete() {
     localStorage.removeItem('laundry_device_activated');
     localStorage.removeItem('laundry_license_expiry');
     
+    updateLicenseUIState(false);
     if(appContainer) {
         appContainer.style.opacity = '0';
         setTimeout(() => appContainer.classList.add('hidden'), 400);
@@ -493,8 +527,7 @@ function lockAppComplete() {
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
     
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
+    if (passwordInput) passwordInput.value = '';
 }
 
 function initApp() {
