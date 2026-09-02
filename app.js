@@ -82,31 +82,53 @@ function fixLoginPlaceholders() {
     }
 }
 
-// Rilevamento tipologia dispositivo (Smartphone, Tablet, Desktop)
+// Rilevamento avanzato ed esteso del dispositivo per la dashboard
 function getDeviceInfoString() {
     const ua = navigator.userAgent;
-    let type = "Desktop";
-    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
-        type = "Tablet";
-    } else if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
-        type = "Smartphone";
+    let deviceName = "Notebook / PC Generico";
+    
+    // Rilevamento specifico modelli e marche smartphone/tablet
+    if (/iPhone/i.test(ua)) {
+        deviceName = "iPhone";
+    } else if (/iPad/i.test(ua)) {
+        deviceName = "iPad";
+    } else if (/Samsung/i.test(ua) || /SM-/i.test(ua)) {
+        if (/SM-T/i.test(ua) || /Tab/i.test(ua)) {
+            deviceName = "Samsung Tablet";
+        } else {
+            deviceName = "Samsung Smartphone";
+        }
+    } else if (/Xiaomi|Redmi|POCO/i.test(ua)) {
+        deviceName = "Xiaomi / Redmi";
+    } else if (/Huawei|Honor/i.test(ua)) {
+        deviceName = "Huawei / Honor";
+    } else if (/OPPO/i.test(ua)) {
+        deviceName = "Oppo";
+    } else if (/Vivo/i.test(ua)) {
+        deviceName = "Vivo";
+    } else if (/Realme/i.test(ua)) {
+        deviceName = "Realme";
+    } else if (/OnePlus/i.test(ua)) {
+        deviceName = "OnePlus";
+    } else if (/Moto/i.test(ua)) {
+        deviceName = "Motorola";
+    } else if (/Tablet/i.test(ua) || /Android.*Tab/i.test(ua)) {
+        deviceName = "Tablet Android";
+    } else if (/Mobile/i.test(ua)) {
+        deviceName = "Smartphone Generico";
     }
-    
-    let os = "Sconosciuto";
+
+    // Rilevamento sistema operativo di contorno
+    let os = "Desktop";
     if (ua.indexOf("Win") !== -1) os = "Windows";
-    if (ua.indexOf("Mac") !== -1) os = "MacOS/iOS";
-    if (ua.indexOf("Linux") !== -1) os = "Linux";
-    if (ua.indexOf("Android") !== -1) os = "Android";
-    if (ua.indexOf("like Mac") !== -1) os = "iOS";
-    if (ua.indexOf("iPhone") !== -1) os = "iPhone";
-    if (ua.indexOf("iPad") !== -1) os = "iPad";
-    
-    return type + " (" + os + ")";
+    else if (ua.indexOf("Mac") !== -1) os = "macOS/iOS";
+    else if (ua.indexOf("Linux") !== -1) os = "Linux";
+    else if (ua.indexOf("Android") !== -1) os = "Android";
+    else if (ua.indexOf("like Mac") !== -1) os = "iOS";
+
+    return `${deviceName} (${os})`;
 }
 
-// ==========================================
-// ASCOLTATORE RESET E DISATTIVAZIONE LICENZA IN TEMPO REALE
-// ==========================================
 function initGlobalResetListener() {
     db.ref('global_reset_signal').on('value', (snap) => {
         const serverSignal = snap.val();
@@ -135,7 +157,6 @@ function initRealtimeLicenseListener() {
             const licData = snap.val();
             if (licData.expiry) {
                 localStorage.setItem('laundry_license_expiry', licData.expiry);
-                // Controllo immediato se è scaduta mentre siamo loggati
                 if (Date.now() >= licData.expiry) {
                     lockAppComplete();
                     const expiredModal = document.getElementById('licenseExpiredModal');
@@ -146,9 +167,6 @@ function initRealtimeLicenseListener() {
     });
 }
 
-// ==========================================
-// PROTEZIONE LOGO E SBLOCCO FORZATO
-// ==========================================
 function initProtectedLogo() {
     const logoBtn = document.getElementById('protectedLogoBtn');
     const progressFill = document.getElementById('logoProgressFill');
@@ -196,9 +214,6 @@ function forceUnlockByLogo() {
     }
 }
 
-// ==========================================
-// SISTEMA LICENZA E MONITORAGGIO SCADENZA (COMPRESO DEMO)
-// ==========================================
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
     const licenseExpiry = localStorage.getItem('laundry_license_expiry');
@@ -212,7 +227,7 @@ function initLicenseSystem() {
             sessionStorage.setItem('laundry_auth', 'true');
             unlockApp();
             
-            // Avviso DEMO all'ingresso del sito
+            // Mostra avviso demo professionale all'ingresso se è attiva una demo
             if (isDemo && !sessionStorage.getItem('demo_warning_shown')) {
                 showDemoWarningModal(expiryTime);
                 sessionStorage.setItem('demo_warning_shown', 'true');
@@ -222,7 +237,6 @@ function initLicenseSystem() {
             startLicenseCountdownMonitor();
             return;
         } else {
-            // Licenza già scaduta al caricamento
             lockAppComplete();
             const expiredModal = document.getElementById('licenseExpiredModal');
             if (expiredModal) expiredModal.classList.remove('hidden');
@@ -232,10 +246,10 @@ function initLicenseSystem() {
 
 function showDemoWarningModal(expiryTime) {
     const diffMs = expiryTime - Date.now();
-    const diffDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     const warningText = document.getElementById('licenseWarningText');
     if (warningText) {
-        warningText.innerHTML = `⚠️ <b>STAI UTILIZZANDO UNA LICENZA DEMO</b><br><br>La tua licenza di prova scadrà tra <b>${diffDays} giorni</b>. <br>Contatta l'amministratore per acquistare la versione completa ed evitare interruzioni.`;
+        warningText.innerHTML = `Gentile utente, vi informiamo che questo terminale sta operando con una <b>Licenza di Valutazione (Demo)</b>.<br><br>Il periodo di prova scadrà tra <b>${diffDays} giorni</b>. Per continuare a usufruire di tutte le funzionalità del gestionale senza interruzioni, vi invitiamo a contattare il vostro fornitore per l'attivazione della licenza definitiva.`;
     }
     const warningModal = document.getElementById('licenseWarningModal');
     if (warningModal) warningModal.classList.remove('hidden');
@@ -251,7 +265,6 @@ function startLicenseCountdownMonitor() {
         const now = Date.now();
         const expiryTime = parseInt(licenseExpiry, 10);
 
-        // Controllo giorni 00 automatico: butta fuori immediatamente l'utente
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
             lockAppComplete();
@@ -278,9 +291,9 @@ function checkDaysBeforeExpiry(now, expiryTime) {
         const warningText = document.getElementById('licenseWarningText');
         if (warningText) {
             if (diffDays === 1) {
-                warningText.textContent = `⚠️ ATTENZIONE: La licenza scadrà domani! Rinnovala subito per evitare il blocco del gestionale.`;
+                warningText.textContent = `Avviso importante: La licenza di questo dispositivo scadrà domani. Si prega di provvedere al rinnovo per evitare la sospensione del servizio.`;
             } else {
-                warningText.textContent = `⚠️ La licenza per questo dispositivo scadrà tra ${diffDays} giorni. Contatta l'amministratore per il rinnovo.`;
+                warningText.textContent = `Avviso di scadenza: La licenza scadrà tra ${diffDays} giorni. Contattare l'assistenza per rinnovare il contratto.`;
             }
         }
         const warningModal = document.getElementById('licenseWarningModal');
@@ -376,12 +389,14 @@ function checkNumericLicense() {
                     }
                 }
                 
+                const detectedDevice = getDeviceInfoString();
+
                 db.ref('used_licenses/' + enteredCode).set({
                     usedAt: Date.now(),
                     expiry: expirationTimestamp,
                     clientName: clientNameVal,
                     isDemo: isDemoVal,
-                    deviceInfo: getDeviceInfoString() // Salviamo se è iPhone, Tablet, etc.
+                    deviceInfo: detectedDevice
                 });
 
                 if (matchedKey) {
@@ -400,7 +415,6 @@ function checkNumericLicense() {
                 initRealtimeLicenseListener();
                 startLicenseCountdownMonitor();
                 
-                // Se è una licenza DEMO mostra l'avviso subito all'attivazione
                 if(isDemoVal) {
                     showDemoWarningModal(expirationTimestamp);
                     sessionStorage.setItem('demo_warning_shown', 'true');
@@ -573,7 +587,6 @@ window.showToast = function(msg, type = "success") {
     }, 3000);
 };
 
-// Funzioni dati / gestione capi e clienti
 function loadClients() {
     const local = localStorage.getItem('laundry_clients');
     if (local) clientsData = JSON.parse(local);
