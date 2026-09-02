@@ -75,10 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function fixLoginPlaceholders() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    if (inputs.length > 0) {
-        inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+    const licenseInput = document.getElementById('licensePhoneInput');
+    if (licenseInput) {
+        licenseInput.value = "";
+        licenseInput.placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
     }
 }
 
@@ -230,12 +230,9 @@ window.closeExpiredModalAndRelogin = function() {
 };
 
 function checkAdminPassword() {
-    const inputs = document.querySelectorAll('#loginScreen input');
     let enteredPassword = "";
 
-    if (inputs.length > 1) {
-        enteredPassword = inputs[1].value.trim();
-    } else if (passwordInput) {
+    if (passwordInput) {
         enteredPassword = passwordInput.value.trim();
     }
 
@@ -259,12 +256,8 @@ function checkAdminPassword() {
 }
 
 function checkNumericLicense() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredCode = "";
-
-    if (inputs.length > 0) {
-        enteredCode = inputs[0].value.trim();
-    }
+    const licenseInput = document.getElementById('licensePhoneInput');
+    let enteredCode = licenseInput ? licenseInput.value.trim() : "";
 
     if (!enteredCode) {
         showToast("Inserisci il codice numerico della licenza", "error");
@@ -473,8 +466,9 @@ window.lockApp = function() {
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
     
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
+    const licenseInput = document.getElementById('licensePhoneInput');
+    if (licenseInput) licenseInput.value = '';
+    if (passwordInput) passwordInput.value = '';
 };
 
 function lockAppComplete() {
@@ -493,8 +487,9 @@ function lockAppComplete() {
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
     
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
+    const licenseInput = document.getElementById('licensePhoneInput');
+    if (licenseInput) licenseInput.value = '';
+    if (passwordInput) passwordInput.value = '';
 }
 
 function initApp() {
