@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (IDENTIFICAZIONE NOME PROPRIETARIO E DISPOSITIVO)
+// LAVANDERIA CLEO - APP LOGIC (RISOLUZIONE BUG DURATION E NOTIFICA DEMO)
 // ==========================================
 
 const firebaseConfig = {
@@ -111,6 +111,9 @@ function initRealtimeLicenseListener() {
             if (licData.expiry) {
                 localStorage.setItem('laundry_license_expiry', licData.expiry);
             }
+            if (licData.isDemo !== undefined) {
+                localStorage.setItem('laundry_license_is_demo', licData.isDemo ? 'true' : 'false');
+            }
         }
     });
 }
@@ -123,15 +126,15 @@ function initProtectedLogo() {
     
     if (logoBtn) {
         ['mousedown', 'touchstart'].forEach(evt => {
-            logoBtn.addEventListener(evt, () => {
+            logoBtn.addEventListener(evt, (e) => {
                 let startTime = Date.now();
-                if(progressFill) progressFill.style.height = '100%';
+                if (progressFill) progressFill.style.height = '100%';
                 
                 logoPressTimer = setInterval(() => {
                     let elapsed = Date.now() - startTime;
                     if (elapsed >= holdDuration) {
                         clearInterval(logoPressTimer);
-                        if(progressFill) progressFill.style.height = '0%';
+                        if (progressFill) progressFill.style.height = '0%';
                         forceUnlockByLogo();
                     }
                 }, 100);
@@ -141,26 +144,48 @@ function initProtectedLogo() {
         ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
             logoBtn.addEventListener(evt, () => {
                 if (logoPressTimer) clearInterval(logoPressTimer);
-                if(progressFill) progressFill.style.height = '0%';
+                if (progressFill) progressFill.style.height = '0%';
             });
         });
     }
 }
 
+// RIPRISTINATO IL COMPORTAMENTO CORRETTO SUL LOGO 5 SECONDI
 function forceUnlockByLogo() {
-    showToast("Sblocco applicato!", "success");
+    showToast("Ripristino schermata completato", "success");
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     
-    if(appContainer) {
+    if (appContainer) {
         appContainer.style.opacity = '0';
         setTimeout(() => appContainer.classList.add('hidden'), 400);
     }
-    if(loginScreen) {
+    if (loginScreen) {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
 }
+
+function checkAndShowDemoNotice() {
+    const isDemo = localStorage.getItem('laundry_license_is_demo') === 'true';
+    const expiry = localStorage.getItem('laundry_license_expiry');
+    if (isDemo && expiry) {
+        const dateStr = new Date(parseInt(expiry, 10)).toLocaleDateString('it-IT');
+        const demoText = document.getElementById('licenseDemoText');
+        const demoModal = document.getElementById('licenseDemoModal');
+        if (demoText) {
+            demoText.textContent = `Questo dispositivo sta utilizzando una licenza in versione DEMO di prova con scadenza il ${dateStr}. Per convertire in licenza definitiva, contattare l'assistenza.`;
+        }
+        if (demoModal) {
+            demoModal.classList.remove('hidden');
+        }
+    }
+}
+
+window.closeDemoModal = function() {
+    const demoModal = document.getElementById('licenseDemoModal');
+    if (demoModal) demoModal.classList.add('hidden');
+};
 
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
@@ -174,6 +199,7 @@ function initLicenseSystem() {
             checkDaysBeforeExpiry(now, expiryTime);
             sessionStorage.setItem('laundry_auth', 'true');
             unlockApp();
+            checkAndShowDemoNotice();
             return;
         } else {
             lockAppComplete();
@@ -283,6 +309,7 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_active_license', 'TEST1MIN');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+        localStorage.setItem('laundry_license_is_demo', 'true');
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
 
@@ -296,6 +323,7 @@ function checkNumericLicense() {
 
         hasShownTodayWarning = false;
         unlockApp();
+        checkAndShowDemoNotice();
         startLicenseCountdownMonitor();
         showToast("Licenza TEST avviata!", "success");
         return;
@@ -350,11 +378,13 @@ function checkNumericLicense() {
                 localStorage.setItem('laundry_device_activated', 'true');
                 localStorage.setItem('laundry_active_license', enteredCode);
                 localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+                localStorage.setItem('laundry_license_is_demo', isDemoVal ? 'true' : 'false');
                 sessionStorage.setItem('laundry_auth', 'true');
                 sessionStorage.setItem('laundry_logged_as_admin', 'false');
                 hasShownTodayWarning = false;
 
                 unlockApp();
+                checkAndShowDemoNotice();
                 initRealtimeLicenseListener();
                 startLicenseCountdownMonitor();
                 showToast(`Licenza attivata per ${clientNameVal}!`, "success");
@@ -428,11 +458,11 @@ if (clientDobInput) {
 }
 
 function unlockApp() {
-    if(loginScreen) {
+    if (loginScreen) {
         loginScreen.style.opacity = '0';
         setTimeout(() => loginScreen.classList.add('hidden'), 400);
     }
-    if(appContainer) {
+    if (appContainer) {
         appContainer.classList.remove('hidden');
         setTimeout(() => appContainer.style.opacity = '1', 50);
     }
@@ -449,11 +479,11 @@ window.lockApp = function() {
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     
-    if(appContainer) {
+    if (appContainer) {
         appContainer.style.opacity = '0';
         setTimeout(() => appContainer.classList.add('hidden'), 400);
     }
-    if(loginScreen) {
+    if (loginScreen) {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
@@ -465,13 +495,14 @@ function lockAppComplete() {
     sessionStorage.removeItem('laundry_logged_as_admin');
     localStorage.removeItem('laundry_device_activated');
     localStorage.removeItem('laundry_license_expiry');
+    localStorage.removeItem('laundry_license_is_demo');
     localStorage.removeItem('laundry_active_license');
     
-    if(appContainer) {
+    if (appContainer) {
         appContainer.style.opacity = '0';
         setTimeout(() => appContainer.classList.add('hidden'), 400);
     }
-    if(loginScreen) {
+    if (loginScreen) {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
@@ -494,15 +525,15 @@ window.switchTab = function(tab) {
     const navTabStats = document.getElementById('navTabStats');
 
     if (tab === 'active') {
-        if(viewStats) viewStats.classList.add('hidden');
-        if(viewActive) viewActive.classList.remove('hidden');
-        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
-        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
+        if (viewStats) viewStats.classList.add('hidden');
+        if (viewActive) viewActive.classList.remove('hidden');
+        if (navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
+        if (navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
     } else {
-        if(viewActive) viewActive.classList.add('hidden');
-        if(viewStats) viewStats.classList.remove('hidden');
-        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
-        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
+        if (viewActive) viewActive.classList.add('hidden');
+        if (viewStats) viewStats.classList.remove('hidden');
+        if (navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
+        if (navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
         renderHistory();
     }
 };
@@ -549,7 +580,7 @@ function loadItems() {
 }
 
 function renderItems() {
-    if(!itemsTableBody) return;
+    if (!itemsTableBody) return;
     itemsTableBody.innerHTML = "";
     let count = 0, visibleCount = 0;
     const filterVal = activeTableFilter ? activeTableFilter.value.toLowerCase().trim() : "";
@@ -581,8 +612,8 @@ function renderItems() {
         `;
         itemsTableBody.appendChild(tr);
     }
-    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
-    if(noItemsMessage) {
+    if (itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
+    if (noItemsMessage) {
         noItemsMessage.classList.toggle('hidden', visibleCount > 0);
         noItemsMessage.classList.toggle('flex', visibleCount === 0);
     }
