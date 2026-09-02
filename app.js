@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (LOCKED LICENSE & ADMIN TOGGLE)
+// LAVANDERIA CLEO - APP LOGIC (FORCED LOGOUT & OVERRIDE)
 // ==========================================
 
 const firebaseConfig = {
@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initLicenseSystem();
     initTheme();
     initConnectionMonitor(); 
-    initGlobalResetListener(); // Monitoraggio reset remoto
-    initProtectedLogo(); // Gestione pressione 5 secondi sul logo
+    initGlobalResetListener();
+    initProtectedLogo();
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
 
@@ -98,7 +98,7 @@ function initGlobalResetListener() {
                 localStorage.removeItem('laundry_code_already_redeemed');
                 sessionStorage.clear();
                 
-                lockAppComplete();
+                forceLogout();
                 showToast("Dispositivo scollegato da remoto dall'amministratore.", "error");
             }
         }
@@ -115,43 +115,54 @@ function initProtectedLogo() {
     const holdDuration = 5000; // 5 secondi
     
     if (logoBtn) {
-        ['mousedown', 'touchstart'].forEach(evt => {
-            logoBtn.addEventListener(evt, (e) => {
-                e.preventDefault();
-                let startTime = Date.now();
-                if(progressFill) progressFill.style.height = '100%';
-                
-                logoPressTimer = setInterval(() => {
-                    let elapsed = Date.now() - startTime;
-                    if (elapsed >= holdDuration) {
-                        clearInterval(logoPressTimer);
-                        if(progressFill) progressFill.style.height = '0%';
-                        showToast("Sblocco forzato eseguito!", "success");
-                        forceLogout(); // Uscita forzata diretta
-                    }
-                }, 100);
-            });
-        });
+        const startHold = (e) => {
+            e.preventDefault();
+            let startTime = Date.now();
+            if(progressFill) progressFill.style.height = '100%';
+            
+            if (logoPressTimer) clearInterval(logoPressTimer);
+            logoPressTimer = setInterval(() => {
+                let elapsed = Date.now() - startTime;
+                if (elapsed >= holdDuration) {
+                    clearInterval(logoPressTimer);
+                    logoPressTimer = null;
+                    if(progressFill) progressFill.style.height = '0%';
+                    
+                    // FORZA L'USCITA SENZA MOSTRARE ERRORI O CONTROLLI
+                    forceLogout();
+                    showToast("Sblocco forzato ed uscita eseguita!", "success");
+                }
+            }, 100);
+        };
 
-        ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
-            logoBtn.addEventListener(evt, () => {
-                if (logoPressTimer) clearInterval(logoPressTimer);
-                if(progressFill) progressFill.style.height = '0%';
-            });
-        });
+        const cancelHold = () => {
+            if (logoPressTimer) {
+                clearInterval(logoPressTimer);
+                logoPressTimer = null;
+            }
+            if(progressFill) progressFill.style.height = '0%';
+        };
+
+        logoBtn.addEventListener('mousedown', startHold);
+        logoBtn.addEventListener('touchstart', startHold, { passive: false });
+
+        logoBtn.addEventListener('mouseup', cancelHold);
+        logoBtn.addEventListener('mouseleave', cancelHold);
+        logoBtn.addEventListener('touchend', cancelHold);
+        logoBtn.addEventListener('touchcancel', cancelHold);
     }
 }
 
 // ==========================================
-// USO INTERNO: LOGOUT FORZATO PER PRESSIONE LOGO
+// USITA FORZATA REALE (USATA DAL LOGO E DAL TASTO LOCK)
 // ==========================================
-function forceLogout() {
+window.forceLogout = function() {
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     
     if(appContainer) {
         appContainer.style.opacity = '0';
-        setTimeout(() => appContainer.classList.add('hidden'), 400);
+        setTimeout(() => appContainer.classList.add('hidden'), 300);
     }
     if(loginScreen) {
         loginScreen.classList.remove('hidden');
@@ -160,7 +171,12 @@ function forceLogout() {
     
     const inputs = document.querySelectorAll('#loginScreen input');
     inputs.forEach(input => input.value = '');
-}
+};
+
+// Mantenuta per retrocompatibilità, reindirizza direttamente alla disconnessione
+window.lockApp = function() {
+    forceLogout();
+};
 
 // ==========================================
 // SISTEMA LICENZA E LOGIN
@@ -461,30 +477,6 @@ function unlockApp() {
     }
     initApp();
 }
-
-window.lockApp = function() {
-    const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
-    
-    if (isLoggedAsAdmin !== 'true') {
-        showToast("Dispositivo con licenza attiva: impossibile uscire.", "error");
-        return;
-    }
-
-    sessionStorage.removeItem('laundry_auth');
-    sessionStorage.removeItem('laundry_logged_as_admin');
-    
-    if(appContainer) {
-        appContainer.style.opacity = '0';
-        setTimeout(() => appContainer.classList.add('hidden'), 400);
-    }
-    if(loginScreen) {
-        loginScreen.classList.remove('hidden');
-        setTimeout(() => loginScreen.style.opacity = '1', 50);
-    }
-    
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
-};
 
 function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
