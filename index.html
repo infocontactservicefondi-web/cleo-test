@@ -87,9 +87,9 @@
                     <span class="text-xs font-bold text-white uppercase tracking-wider">Licenza Dispositivo</span>
                     <span id="licenseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In attesa</span>
                 </div>
-                <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
+                <p class="text-[11px] text-slate-400">Inserisci il codice licenza annuale o Demo (es. DEMO15-XXX) per abilitare questo tablet.</p>
                 <div class="flex gap-2">
-                    <input type="text" id="licensePhoneInput" placeholder="Es. CLEO-TEST-01" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    <input type="text" id="licensePhoneInput" placeholder="Es. DEMO15-ABC" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                     <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
                 </div>
             </div>
@@ -462,6 +462,27 @@
             <div class="flex justify-end pt-2 border-t border-darkBorder">
                 <button onclick="closeClientModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-semibold cursor-pointer">Chiudi</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODALE ATTIVAZIONE LICENZA DEMO (15 GIORNI) -->
+    <div id="demoActivatedModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-blue-600/50 text-center space-y-4 animate-modal">
+            <div class="w-14 h-14 bg-blue-600/20 text-blue-400 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg shadow-blue-500/10">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <div>
+                <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-blue-950 text-blue-400 border border-blue-900 uppercase tracking-widest">Modalità Valutazione</span>
+                <h2 class="text-xl font-bold text-white mt-2">Licenza Demo 15 Giorni Attiva</h2>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+                Hai attivato la versione dimostrativa del gestionale <strong>Lavanderia Cleo</strong> con accesso a tutte le funzionalità senza limitazioni operative.
+            </p>
+            <div class="bg-darkCard p-3.5 rounded-2xl border border-darkBorder text-xs space-y-1">
+                <div class="text-slate-400 font-medium">Scadenza Periodo di Prova:</div>
+                <div id="demoExpiryDate" class="text-sm font-bold text-blue-400">--/--/----</div>
+            </div>
+            <button onclick="closeDemoModal()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs cursor-pointer shadow-lg shadow-blue-600/20">Accedi al Gestionale</button>
         </div>
     </div>
 
