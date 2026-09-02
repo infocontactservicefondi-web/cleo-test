@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (LOCKED LICENSE & ADMIN TOGGLE)
+// LAVANDERIA CLEO - APP LOGIC
 // ==========================================
 
 const firebaseConfig = {
@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     initConnectionMonitor(); 
     initGlobalResetListener();
+    initRevokedLicenseListener();
     initProtectedLogo();
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
@@ -74,30 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function showToast(message, type = "success") {
-    const toast = document.getElementById('toastNotification');
-    const toastMessage = document.getElementById('toastMessage');
-    const toastIcon = document.getElementById('toastIcon');
-    if (!toast || !toastMessage) return;
-
-    toastMessage.textContent = message;
-    if (type === "error") {
-        toastIcon.className = "w-7 h-7 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center text-xs";
-        toastIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>`;
-    } else {
-        toastIcon.className = "w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-xs";
-        toastIcon.innerHTML = `<i class="fa-solid fa-check"></i>`;
-    }
-
-    toast.classList.remove('translate-y-20', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
-
-    setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
-    }, 3000);
-}
-
 function fixLoginPlaceholders() {
     const licenseInput = document.getElementById('licensePhoneInput');
     if (licenseInput) {
@@ -107,7 +84,7 @@ function fixLoginPlaceholders() {
 }
 
 // ==========================================
-// ASCOLTATORE RESET REMOTO GLOBALE DA FIREBASE
+// ASCOLTATORE RESET REMOTO GLOBALE E SINGOLO
 // ==========================================
 function initGlobalResetListener() {
     db.ref('global_reset_signal').on('value', (snap) => {
@@ -116,12 +93,6 @@ function initGlobalResetListener() {
             const localSignalProcessed = localStorage.getItem('laundry_last_reset_processed');
             if (localSignalProcessed !== String(serverSignal)) {
                 localStorage.setItem('laundry_last_reset_processed', String(serverSignal));
-                localStorage.removeItem('laundry_device_activated');
-                localStorage.removeItem('laundry_license_expiry');
-                localStorage.removeItem('laundry_active_license');
-                localStorage.removeItem('laundry_code_already_redeemed');
-                sessionStorage.clear();
-                
                 lockAppComplete();
                 showToast("Dispositivo scollegato da remoto dall'amministratore.", "error");
             }
@@ -129,8 +100,22 @@ function initGlobalResetListener() {
     });
 }
 
+function initRevokedLicenseListener() {
+    const currentLicenseCode = localStorage.getItem('laundry_active_license');
+    if (!currentLicenseCode) return;
+
+    db.ref('revoked_license_signal/' + currentLicenseCode).on('value', (snap) => {
+        if (snap.exists()) {
+            db.ref('revoked_license_signal/' + currentLicenseCode).remove();
+            lockAppComplete();
+            const expiredModal = document.getElementById('licenseExpiredModal');
+            if (expiredModal) expiredModal.classList.remove('hidden');
+        }
+    });
+}
+
 // ==========================================
-// PROTEZIONE LOGO (SBLOCCO FORZATO TELEFONO 5 SECONDI)
+// PROTEZIONE LOGO (SBLOCCO FORZATO 5 SECONDI)
 // ==========================================
 function initProtectedLogo() {
     const logoBtn = document.getElementById('protectedLogoBtn');
@@ -140,7 +125,7 @@ function initProtectedLogo() {
     
     if (logoBtn) {
         ['mousedown', 'touchstart'].forEach(evt => {
-            logoBtn.addEventListener(evt, (e) => {
+            logoBtn.addEventListener(evt, () => {
                 let startTime = Date.now();
                 if(progressFill) progressFill.style.height = '100%';
                 
@@ -192,6 +177,7 @@ function initLicenseSystem() {
 
         if (now < expiryTime) {
             checkDaysBeforeExpiry(now, expiryTime);
+            checkDemoNoticeBanner(expiryTime);
             sessionStorage.setItem('laundry_auth', 'true');
             unlockApp();
             return;
@@ -200,6 +186,20 @@ function initLicenseSystem() {
             const expiredModal = document.getElementById('licenseExpiredModal');
             if (expiredModal) expiredModal.classList.remove('hidden');
         }
+    }
+}
+
+function checkDemoNoticeBanner(expiryTime) {
+    const isDemo = localStorage.getItem('laundry_is_demo') === 'true';
+    const demoBanner = document.getElementById('demoNoticeBanner');
+    const demoNoticeText = document.getElementById('demoNoticeText');
+
+    if (isDemo && demoBanner && demoNoticeText) {
+        const dateFormatted = new Date(expiryTime).toLocaleDateString('it-IT');
+        demoNoticeText.innerHTML = `⚠️ Stai utilizzando una versione DEMO di prova (15 Giorni). La licenza scadrà il giorno <strong>${dateFormatted}</strong>.`;
+        demoBanner.classList.remove('hidden');
+    } else if (demoBanner) {
+        demoBanner.classList.add('hidden');
     }
 }
 
@@ -215,10 +215,7 @@ function startLicenseCountdownMonitor() {
 
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
-            localStorage.removeItem('laundry_device_activated');
-            localStorage.removeItem('laundry_license_expiry');
-            localStorage.removeItem('laundry_active_license');
-            sessionStorage.removeItem('laundry_auth');
+            lockAppComplete();
             
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
@@ -305,6 +302,7 @@ function checkNumericLicense() {
         let expirationTimestamp = Date.now() + (60 * 1000); 
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+        localStorage.setItem('laundry_is_demo', 'false');
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
         hasShownTodayWarning = false;
@@ -314,16 +312,11 @@ function checkNumericLicense() {
         return;
     }
 
-    const alreadyUsedCode = localStorage.getItem('laundry_code_already_redeemed');
-    if (alreadyUsedCode === enteredCode && enteredCode !== APP_PASSWORD && enteredCode !== "CLEO-MASTER") {
-        showToast("Questo dispositivo ha già utilizzato questo codice.", "error");
-        return;
-    }
-
     if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER") {
         let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+        localStorage.setItem('laundry_is_demo', 'false');
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         hasShownTodayWarning = false;
@@ -332,71 +325,76 @@ function checkNumericLicense() {
         return;
     }
 
-    db.ref('used_licenses/' + enteredCode).once('value').then((usedSnap) => {
-        if (usedSnap.exists() && enteredCode === "2580") {
-            showToast("Questo codice è già stato utilizzato su un altro dispositivo!", "error");
-            return;
-        }
+    db.ref('licenses').once('value')
+        .then((snapshot) => {
+            const licenses = snapshot.val();
+            let matchedKey = null;
+            let licenseObj = null;
 
-        db.ref('licenses').once('value')
-            .then((snapshot) => {
-                const licenses = snapshot.val();
-                let matchedKey = null;
-                let customExpiryVal = null;
+            if (licenses) {
+                for (let key in licenses) {
+                    if (String(key) === String(enteredCode)) {
+                        matchedKey = key;
+                        licenseObj = licenses[key];
+                        break;
+                    } else if (typeof licenses[key] === 'object' && String(licenses[key].code) === String(enteredCode)) {
+                        matchedKey = key;
+                        licenseObj = licenses[key];
+                        break;
+                    }
+                }
+            }
 
-                if (licenses) {
-                    for (let key in licenses) {
-                        if (String(key) === String(enteredCode)) {
-                            matchedKey = key;
-                            customExpiryVal = typeof licenses[key] === 'object' ? licenses[key].expiry : licenses[key];
-                            break;
-                        } else if (typeof licenses[key] === 'object' && String(licenses[key].code) === String(enteredCode)) {
-                            matchedKey = key;
-                            customExpiryVal = licenses[key].expiry;
-                            break;
-                        }
+            if (matchedKey || licenseObj) {
+                let expirationTimestamp = Date.now() + (24 * 60 * 60 * 1000);
+                let isDemo = false;
+                let clientName = "Cliente";
+                let city = "";
+                let phone = "";
+
+                if (licenseObj) {
+                    if (typeof licenseObj === 'object') {
+                        expirationTimestamp = licenseObj.expiry || expirationTimestamp;
+                        isDemo = !!licenseObj.isDemo || (licenseObj.durationDays === 15);
+                        clientName = licenseObj.clientName || clientName;
+                        city = licenseObj.city || "";
+                        phone = licenseObj.phone || "";
+                    } else if (typeof licenseObj === 'number') {
+                        expirationTimestamp = licenseObj;
                     }
                 }
 
-                if (matchedKey || customExpiryVal) {
-                    let expirationTimestamp = Date.now() + (24 * 60 * 60 * 1000);
+                db.ref('used_licenses/' + enteredCode).set({
+                    usedAt: Date.now(),
+                    expiry: expirationTimestamp,
+                    isDemo: isDemo,
+                    clientName: clientName,
+                    city: city,
+                    phone: phone
+                });
 
-                    if (customExpiryVal) {
-                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
-                        if (!isNaN(parsedTime) && parsedTime > Date.now()) {
-                            expirationTimestamp = parsedTime;
-                        }
-                    }
-                    
-                    db.ref('used_licenses/' + enteredCode).set({
-                        usedAt: Date.now(),
-                        expiry: expirationTimestamp
-                    });
+                localStorage.setItem('laundry_device_activated', 'true');
+                localStorage.setItem('laundry_active_license', enteredCode);
+                localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+                localStorage.setItem('laundry_is_demo', isDemo ? 'true' : 'false');
+                sessionStorage.setItem('laundry_auth', 'true');
+                sessionStorage.setItem('laundry_logged_as_admin', 'false');
+                hasShownTodayWarning = false;
+                
+                unlockApp();
+                checkDemoNoticeBanner(expirationTimestamp);
+                startLicenseCountdownMonitor();
+                initRevokedLicenseListener();
 
-                    if (matchedKey) {
-                        db.ref('licenses').child(matchedKey).remove().catch(() => {});
-                    }
-
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    hasShownTodayWarning = false;
-                    
-                    unlockApp();
-                    startLicenseCountdownMonitor();
-                    const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-                    showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
-                } else {
-                    showToast("Codice licenza non valido o già attivato.", "error");
-                }
-            })
-            .catch(() => {
-                showToast("Errore di connessione durante la verifica della licenza.", "error");
-            });
-    });
+                const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
+                showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+            } else {
+                showToast("Codice licenza non valido.", "error");
+            }
+        })
+        .catch(() => {
+            showToast("Errore di connessione durante la verifica della licenza.", "error");
+        });
 }
 
 function initConnectionMonitor() {
@@ -502,6 +500,8 @@ function lockAppComplete() {
     sessionStorage.removeItem('laundry_logged_as_admin');
     localStorage.removeItem('laundry_device_activated');
     localStorage.removeItem('laundry_license_expiry');
+    localStorage.removeItem('laundry_active_license');
+    localStorage.removeItem('laundry_is_demo');
     
     if(appContainer) {
         appContainer.style.opacity = '0';
@@ -541,13 +541,6 @@ window.switchTab = function(tab) {
         if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95";
         renderHistory();
     }
-};
-
-window.resetClientForm = function() {
-    if (clientForm) clientForm.reset();
-    const manageInput = document.getElementById('manageClientIdInput');
-    if (manageInput) manageInput.value = "";
-    if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
 };
 
 function renderClientSearchDropdown(filter = "") {
@@ -1098,130 +1091,139 @@ function loadHistory() {
             historyData = val;
             localStorage.setItem('laundry_history', JSON.stringify(val));
         }
-        const statsView = document.getElementById('viewStats');
-        if (statsView && !statsView.classList.contains('hidden')) renderHistory();
+        renderHistory();
     });
 }
 
-window.setStatPeriod = function(period) {
+function setStatPeriod(period) {
     currentStatPeriod = period;
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-
-    ['Day', 'Month', 'Year', 'All'].forEach(p => {
-        const btn = document.getElementById(`btnPeriod${p}`);
-        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
-    });
-    
-    const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
-    if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95";
-
+    document.getElementById('statsCustomStartDate').value = '';
+    document.getElementById('statsCustomEndDate').value = '';
     renderHistory();
-};
+}
 
-window.clearCustomDateFilter = function() {
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
+function clearCustomDateFilter() {
+    document.getElementById('statsCustomStartDate').value = '';
+    document.getElementById('statsCustomEndDate').value = '';
     setStatPeriod('all');
-};
+}
 
 function renderHistory() {
     const tbody = document.getElementById('historyTableBody');
-    if(!tbody) return;
+    if (!tbody) return;
     tbody.innerHTML = "";
 
-    const customStart = document.getElementById('statsCustomStartDate').value;
-    const customEnd = document.getElementById('statsCustomEndDate').value;
+    const startDateVal = document.getElementById('statsCustomStartDate').value;
+    const endDateVal = document.getElementById('statsCustomEndDate').value;
 
-    let startMs = 0;
-    let endMs = Infinity;
+    let totalCount = 0;
+    let totalRevenue = 0;
+    let uniqueClientsSet = new Set();
+    let typeCounts = {};
 
-    if (customStart || customEnd) {
-        if (customStart) startMs = new Date(customStart + "T00:00:00").getTime();
-        if (customEnd) endMs = new Date(customEnd + "T23:59:59").getTime();
-    } else {
-        const now = new Date();
-        if (currentStatPeriod === 'day') {
-            startMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        } else if (currentStatPeriod === 'month') {
-            startMs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-        } else if (currentStatPeriod === 'year') {
-            startMs = new Date(now.getFullYear(), 0, 1).getTime();
+    const now = new Date();
+    const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
+
+    for (let [id, item] of sorted) {
+        const itemDate = new Date(item.returnedAt);
+
+        if (startDateVal || endDateVal) {
+            if (startDateVal) {
+                const sDate = new Date(startDateVal);
+                sDate.setHours(0, 0, 0, 0);
+                if (itemDate < sDate) continue;
+            }
+            if (endDateVal) {
+                const eDate = new Date(endDateVal);
+                eDate.setHours(23, 59, 59, 999);
+                if (itemDate > eDate) continue;
+            }
+        } else {
+            if (currentStatPeriod === 'day') {
+                if (itemDate.toDateString() !== now.toDateString()) continue;
+            } else if (currentStatPeriod === 'month') {
+                if (itemDate.getMonth() !== now.getMonth() || itemDate.getFullYear() !== now.getFullYear()) continue;
+            } else if (currentStatPeriod === 'year') {
+                if (itemDate.getFullYear() !== now.getFullYear()) continue;
+            }
         }
+
+        totalCount++;
+        totalRevenue += (item.price || 0);
+        if (item.clientId) uniqueClientsSet.add(item.clientId);
+        typeCounts[item.type] = (typeCounts[item.type] || 0) + 1;
+
+        const client = clientsData[item.clientId] || { name: "Non trovato" };
+        const dateStr = itemDate.toLocaleDateString('it-IT') + ' ' + itemDate.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-darkCard";
+        tr.innerHTML = `
+            <td class="py-3 px-4 text-slate-400 font-mono">${dateStr}</td>
+            <td class="py-3 px-4 font-bold text-white">${client.name}</td>
+            <td class="py-3 px-4 text-slate-200">${item.type}</td>
+            <td class="py-3 px-4 font-bold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td>
+            <td class="py-3 px-4 text-slate-400">Armadio ${item.cabinet} (Pos. ${item.position})</td>
+        `;
+        tbody.appendChild(tr);
     }
 
-    let totalRev = 0;
-    let itemCount = 0;
-    let uniqueClients = new Set();
-    let itemTypesCount = {};
-
-    const sortedHist = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sortedHist) {
-        const retMs = item.returnedAt || 0;
-        if (retMs >= startMs && retMs <= endMs) {
-            itemCount++;
-            totalRev += (item.price || 0);
-            if(item.clientId) uniqueClients.add(item.clientId);
-
-            const tName = item.type || "Altro";
-            itemTypesCount[tName] = (itemTypesCount[tName] || 0) + 1;
-
-            const client = clientsData[item.clientId] || { name: "N/D" };
-            const dateFormatted = new Date(retMs).toLocaleDateString('it-IT') + ' ' + new Date(retMs).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-
-            const tr = document.createElement('tr');
-            tr.className = "hover:bg-darkCard";
-            tr.innerHTML = `
-                <td class="py-3 px-4 text-slate-400">${dateFormatted}</td>
-                <td class="py-3 px-4 font-bold text-white">${client.name}</td>
-                <td class="py-3 px-4 text-slate-200">${item.type}</td>
-                <td class="py-3 px-4 text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</td>
-                <td class="py-3 px-4 text-slate-400">Armadio ${item.cabinet || '-'}</td>
-            `;
-            tbody.appendChild(tr);
-        }
-    }
-
-    document.getElementById('statTotalCount').textContent = itemCount;
-    document.getElementById('statTotalRevenue').textContent = `€ ${totalRev.toFixed(2)}`;
-    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
+    document.getElementById('statTotalCount').textContent = totalCount;
+    document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
+    document.getElementById('statUniqueClients').textContent = uniqueClientsSet.size;
+    document.getElementById('historyCounter').textContent = `${totalCount} elementi`;
 
     let topType = "-";
     let maxCount = 0;
-    for (let type in itemTypesCount) {
-        if (itemTypesCount[type] > maxCount) {
-            maxCount = itemTypesCount[type];
-            topType = type;
+    for (let t in typeCounts) {
+        if (typeCounts[t] > maxCount) {
+            maxCount = typeCounts[t];
+            topType = t;
         }
     }
     document.getElementById('statTopItemType').textContent = topType;
-    document.getElementById('historyCounter').textContent = `${itemCount} elementi`;
 }
 
-window.exportBackup = function() {
-    let csvContent = "data:text/csv;charset=utf-8,Data Ritiro,Cliente,Telefono,Capo,Prezzo,Armadio\n";
-    for (let [id, item] of Object.entries(historyData)) {
-        const client = clientsData[item.clientId] || { name: "N/D", phone: "N/D" };
-        const dateStr = new Date(item.returnedAt).toLocaleDateString('it-IT');
-        csvContent += `"${dateStr}","${client.name}","${client.phone}","${item.type}",${(item.price || 0).toFixed(2)},"${item.cabinet}"\n`;
-    }
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `storico_lavanderia_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Storico esportato con successo!", "success");
-};
-
-window.resetAllStatistics = function() {
-    if (confirm("Sei sicuro di voler azzerare permanentemente tutto lo storico dei capi ritirati? L'operazione non è reversibile.")) {
+function resetAllStatistics() {
+    if (confirm("Sei sicuro di voler azzerare permanentemente tutto lo storico e le statistiche dei capi ritirati?")) {
         historyData = {};
         localStorage.removeItem('laundry_history');
         db.ref('history').remove();
         renderHistory();
-        showToast("Storico azzerato completamente", "success");
+        showToast("Storico statistiche azzerato!", "success");
     }
-};
+}
+
+function exportBackup() {
+    let csvContent = "data:text/csv;charset=utf-8,Data Ritiro,Cliente,Telefono,Tipo Capo,Prezzo,Armadio,Posizione\n";
+
+    for (let [id, item] of Object.entries(historyData)) {
+        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
+        const dateStr = new Date(item.returnedAt).toLocaleDateString('it-IT') + ' ' + new Date(item.returnedAt).toLocaleTimeString('it-IT');
+        csvContent += `"${dateStr}","${client.name}","${client.phone}","${item.type}","${item.price}","${item.cabinet}","${item.position}"\n`;
+    }
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Storico_Lavanderia_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Export CSV completato!", "success");
+}
+
+function showToast(msg, type = "success") {
+    const toast = document.getElementById('toastNotification');
+    const toastMsg = document.getElementById('toastMessage');
+    if (!toast || !toastMsg) return;
+
+    toastMsg.textContent = msg;
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+    }, 3000);
+}
