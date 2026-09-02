@@ -450,7 +450,7 @@
         </div>
     </div>
 
-    <!-- MODALI AVVISO E SCADENZA LICENZA -->
+    <!-- MODALI AVVISO, SCADENZA E SOSPENSIONE LICENZA -->
     <div id="licenseWarningModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-amber-900/50 text-center space-y-4 animate-modal">
             <div class="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
@@ -465,10 +465,12 @@
     <div id="licenseExpiredModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden">
         <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-rose-900/50 text-center space-y-4 animate-modal">
             <div class="w-12 h-12 bg-rose-500/20 text-rose-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
-                <i class="fa-solid fa-lock"></i>
+                <i class="fa-solid fa-ban"></i>
             </div>
-            <h2 class="text-lg font-bold text-white">Licenza Scaduta</h2>
-            <p class="text-xs text-slate-300 leading-relaxed">La licenza per questo dispositivo è scaduta. Inserisci un nuovo codice per continuare ad utilizzare il gestionale.</p>
+            <h2 class="text-lg font-bold text-white" id="licenseExpiredModalTitle">Licenza Sospesa / Non Attiva</h2>
+            <p class="text-xs text-slate-300 leading-relaxed" id="licenseExpiredModalText">
+                La licenza per questo dispositivo è stata sospesa o disattivata. Per ripristinare il servizio e rinnovare l'abbonamento, contattare il gestore del sistema.
+            </p>
             <button onclick="closeExpiredModalAndRelogin()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs cursor-pointer shadow-lg shadow-rose-600/20">Inserisci Nuovo Codice</button>
         </div>
     </div>
