@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (LOCKED LICENSE & ADMIN TOGGLE)
+// LAVANDERIA CLEO - APP LOGIC (REALTIME SYNC & DEMO WARNINGS)
 // ==========================================
 
 const firebaseConfig = {
@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     initConnectionMonitor(); 
     initGlobalResetListener();
+    initRealtimeLicenseListener();
     initProtectedLogo();
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
@@ -83,7 +84,7 @@ function fixLoginPlaceholders() {
 }
 
 // ==========================================
-// ASCOLTATORE RESET REMOTO GLOBALE DA FIREBASE
+// ASCOLTATORE RESET E DISATTIVAZIONE LICENZA IN TEMPO REALE
 // ==========================================
 function initGlobalResetListener() {
     db.ref('global_reset_signal').on('value', (snap) => {
@@ -92,12 +93,6 @@ function initGlobalResetListener() {
             const localSignalProcessed = localStorage.getItem('laundry_last_reset_processed');
             if (localSignalProcessed !== String(serverSignal)) {
                 localStorage.setItem('laundry_last_reset_processed', String(serverSignal));
-                localStorage.removeItem('laundry_device_activated');
-                localStorage.removeItem('laundry_license_expiry');
-                localStorage.removeItem('laundry_active_license');
-                localStorage.removeItem('laundry_code_already_redeemed');
-                sessionStorage.clear();
-                
                 lockAppComplete();
                 showToast("Dispositivo scollegato da remoto dall'amministratore.", "error");
             }
@@ -105,8 +100,27 @@ function initGlobalResetListener() {
     });
 }
 
+function initRealtimeLicenseListener() {
+    const activeLicenseCode = localStorage.getItem('laundry_active_license');
+    if (!activeLicenseCode) return;
+
+    db.ref('used_licenses/' + activeLicenseCode).on('value', (snap) => {
+        if (!snap.exists() && localStorage.getItem('laundry_device_activated') === 'true') {
+            lockAppComplete();
+            showToast("La licenza di questo dispositivo è stata rimossa dall'amministratore.", "error");
+            const expiredModal = document.getElementById('licenseExpiredModal');
+            if (expiredModal) expiredModal.classList.remove('hidden');
+        } else if (snap.exists()) {
+            const licData = snap.val();
+            if (licData.expiry) {
+                localStorage.setItem('laundry_license_expiry', licData.expiry);
+            }
+        }
+    });
+}
+
 // ==========================================
-// PROTEZIONE LOGO (SBLOCCO FORZATO TELEFONO 5 SECONDI)
+// PROTEZIONE LOGO E SBLOCCO FORZATO
 // ==========================================
 function initProtectedLogo() {
     const logoBtn = document.getElementById('protectedLogoBtn');
@@ -142,11 +156,21 @@ function initProtectedLogo() {
 
 function forceUnlockByLogo() {
     showToast("Sblocco forzato applicato!", "success");
-    lockApp(true); // Forza l'uscita alla schermata di login superando il blocco licenza
+    sessionStorage.removeItem('laundry_auth');
+    sessionStorage.removeItem('laundry_logged_as_admin');
+    
+    if(appContainer) {
+        appContainer.style.opacity = '0';
+        setTimeout(() => appContainer.classList.add('hidden'), 400);
+    }
+    if(loginScreen) {
+        loginScreen.classList.remove('hidden');
+        setTimeout(() => loginScreen.style.opacity = '1', 50);
+    }
 }
 
 // ==========================================
-// SISTEMA LICENZA E LOGIN
+// SISTEMA LICENZA E MONITORAGGIO SCADENZA (COMPRESO DEMO)
 // ==========================================
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
@@ -181,10 +205,7 @@ function startLicenseCountdownMonitor() {
 
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
-            localStorage.removeItem('laundry_device_activated');
-            localStorage.removeItem('laundry_license_expiry');
-            localStorage.removeItem('laundry_active_license');
-            sessionStorage.removeItem('laundry_auth');
+            lockAppComplete();
             
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
@@ -210,7 +231,7 @@ function checkDaysBeforeExpiry(now, expiryTime) {
             if (diffDays === 1) {
                 warningText.textContent = `⚠️ ATTENZIONE: La licenza scadrà domani! Rinnovala subito per evitare il blocco del gestionale.`;
             } else {
-                warningText.textContent = `⚠️ La licenza di questo dispositivo scadrà tra ${diffDays} giorni. Contatta l'amministratore per il rinnovo.`;
+                warningText.textContent = `⚠️ La licenza per questo dispositivo (o Demo) scadrà tra ${diffDays} giorni. Contatta l'amministratore per il rinnovo.`;
             }
         }
         const warningModal = document.getElementById('licenseWarningModal');
@@ -233,11 +254,7 @@ window.closeExpiredModalAndRelogin = function() {
 };
 
 function checkAdminPassword() {
-    let enteredPassword = "";
-
-    if (passwordInput) {
-        enteredPassword = passwordInput.value.trim();
-    }
+    let enteredPassword = passwordInput ? passwordInput.value.trim() : "";
 
     if (!enteredPassword) {
         showToast("Inserisci la password amministratore", "error");
@@ -270,98 +287,83 @@ function checkNumericLicense() {
     if (enteredCode.toUpperCase() === "TEST1MIN") {
         let expirationTimestamp = Date.now() + (60 * 1000); 
         localStorage.setItem('laundry_device_activated', 'true');
+        localStorage.setItem('laundry_active_license', 'TEST1MIN');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
         hasShownTodayWarning = false;
         unlockApp();
         startLicenseCountdownMonitor();
-        showToast("TEST ATTIVO: Licenza di prova di 1 minuto avviata!", "success");
-        return;
-    }
-
-    const alreadyUsedCode = localStorage.getItem('laundry_code_already_redeemed');
-    if (alreadyUsedCode === enteredCode && enteredCode !== APP_PASSWORD && enteredCode !== "CLEO-MASTER") {
-        showToast("Questo dispositivo ha già utilizzato questo codice.", "error");
-        return;
-    }
-
-    if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER") {
-        let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
-        localStorage.setItem('laundry_device_activated', 'true');
-        localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-        sessionStorage.setItem('laundry_auth', 'true');
-        sessionStorage.setItem('laundry_logged_as_admin', 'true');
-        hasShownTodayWarning = false;
-        unlockApp();
-        showToast("Accesso Master illimitato eseguito!", "success");
+        showToast("TEST ATTIVO: Licenza di prova avviata!", "success");
         return;
     }
 
     db.ref('used_licenses/' + enteredCode).once('value').then((usedSnap) => {
-        if (usedSnap.exists() && enteredCode === "2580") {
-            showToast("Questo codice è già stato utilizzato su un altro dispositivo!", "error");
+        if (usedSnap.exists() && enteredCode !== APP_PASSWORD && enteredCode !== "CLEO-MASTER") {
+            showToast("Questo codice è già stato attivato su un altro dispositivo!", "error");
             return;
         }
 
-        db.ref('licenses').once('value')
-            .then((snapshot) => {
-                const licenses = snapshot.val();
-                let matchedKey = null;
-                let customExpiryVal = null;
+        db.ref('licenses').once('value').then((snapshot) => {
+            const licenses = snapshot.val();
+            let matchedKey = null;
+            let customExpiryVal = null;
+            let clientNameVal = "Dispositivo Attivato";
 
-                if (licenses) {
-                    for (let key in licenses) {
-                        if (String(key) === String(enteredCode)) {
-                            matchedKey = key;
-                            customExpiryVal = typeof licenses[key] === 'object' ? licenses[key].expiry : licenses[key];
-                            break;
-                        } else if (typeof licenses[key] === 'object' && String(licenses[key].code) === String(enteredCode)) {
-                            matchedKey = key;
-                            customExpiryVal = licenses[key].expiry;
-                            break;
-                        }
+            if (licenses) {
+                for (let key in licenses) {
+                    if (String(key) === String(enteredCode)) {
+                        matchedKey = key;
+                        customExpiryVal = typeof licenses[key] === 'object' ? licenses[key].expiry : licenses[key];
+                        if (typeof licenses[key] === 'object') clientNameVal = licenses[key].clientName || clientNameVal;
+                        break;
+                    } else if (typeof licenses[key] === 'object' && String(licenses[key].code) === String(enteredCode)) {
+                        matchedKey = key;
+                        customExpiryVal = licenses[key].expiry;
+                        clientNameVal = licenses[key].clientName || clientNameVal;
+                        break;
                     }
                 }
+            }
 
-                if (matchedKey || customExpiryVal) {
-                    let expirationTimestamp = Date.now() + (24 * 60 * 60 * 1000);
+            if (matchedKey || customExpiryVal) {
+                let expirationTimestamp = Date.now() + (24 * 60 * 60 * 1000);
 
-                    if (customExpiryVal) {
-                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
-                        if (!isNaN(parsedTime) && parsedTime > Date.now()) {
-                            expirationTimestamp = parsedTime;
-                        }
+                if (customExpiryVal) {
+                    let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
+                    if (!isNaN(parsedTime) && parsedTime > Date.now()) {
+                        expirationTimestamp = parsedTime;
                     }
-                    
-                    db.ref('used_licenses/' + enteredCode).set({
-                        usedAt: Date.now(),
-                        expiry: expirationTimestamp
-                    });
-
-                    if (matchedKey) {
-                        db.ref('licenses').child(matchedKey).remove().catch(() => {});
-                    }
-
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    hasShownTodayWarning = false;
-                    
-                    unlockApp();
-                    startLicenseCountdownMonitor();
-                    const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-                    showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
-                } else {
-                    showToast("Codice licenza non valido o già attivato.", "error");
                 }
-            })
-            .catch(() => {
-                showToast("Errore di connessione durante la verifica della licenza.", "error");
-            });
+                
+                db.ref('used_licenses/' + enteredCode).set({
+                    usedAt: Date.now(),
+                    expiry: expirationTimestamp,
+                    clientName: clientNameVal
+                });
+
+                if (matchedKey) {
+                    db.ref('licenses').child(matchedKey).remove().catch(() => {});
+                }
+
+                localStorage.setItem('laundry_device_activated', 'true');
+                localStorage.setItem('laundry_active_license', enteredCode);
+                localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+                sessionStorage.setItem('laundry_auth', 'true');
+                sessionStorage.setItem('laundry_logged_as_admin', 'false');
+                hasShownTodayWarning = false;
+                
+                unlockApp();
+                initRealtimeLicenseListener();
+                startLicenseCountdownMonitor();
+                const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
+                showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+            } else {
+                showToast("Codice licenza non valido o già riscattato.", "error");
+            }
+        }).catch(() => {
+            showToast("Errore di connessione durante la verifica.", "error");
+        });
     });
 }
 
@@ -437,10 +439,9 @@ function unlockApp() {
     initApp();
 }
 
-window.lockApp = function(force = false) {
+window.lockApp = function() {
     const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
-    
-    if (!force && isLoggedAsAdmin !== 'true') {
+    if (isLoggedAsAdmin !== 'true') {
         showToast("Dispositivo con licenza attiva: impossibile uscire.", "error");
         return;
     }
@@ -456,10 +457,6 @@ window.lockApp = function(force = false) {
         loginScreen.classList.remove('hidden');
         setTimeout(() => loginScreen.style.opacity = '1', 50);
     }
-    
-    const licenseInput = document.getElementById('licensePhoneInput');
-    if (licenseInput) licenseInput.value = '';
-    if (passwordInput) passwordInput.value = '';
 };
 
 function lockAppComplete() {
@@ -468,6 +465,7 @@ function lockAppComplete() {
     sessionStorage.removeItem('laundry_logged_as_admin');
     localStorage.removeItem('laundry_device_activated');
     localStorage.removeItem('laundry_license_expiry');
+    localStorage.removeItem('laundry_active_license');
     
     if(appContainer) {
         appContainer.style.opacity = '0';
@@ -509,375 +507,38 @@ window.switchTab = function(tab) {
     }
 };
 
-window.resetClientForm = function() {
-    if (clientForm) clientForm.reset();
-    const manageInput = document.getElementById('manageClientIdInput');
-    if (manageInput) manageInput.value = "";
-    if (clientSearchDropdown) clientSearchDropdown.classList.add('hidden');
+window.showToast = function(msg, type = "success") {
+    const toast = document.getElementById('toastNotification');
+    const toastMsg = document.getElementById('toastMessage');
+    if (!toast || !toastMsg) return;
+
+    toastMsg.textContent = msg;
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+    }, 3000);
 };
 
-function renderClientSearchDropdown(filter = "") {
-    if (!clientSearchDropdown) return;
-    clientSearchDropdown.innerHTML = "";
-    
-    const searchTerms = filter.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
-    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
-    let matches = 0;
-
-    const rowsContainer = document.createElement('div');
-    rowsContainer.className = "divide-y divide-darkBorder/50";
-
-    for (let [id, client] of sorted) {
-        const fullString = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        const isMatch = searchTerms.every(term => fullString.includes(term));
-        if (searchTerms.length > 0 && !isMatch) continue;
-
-        matches++;
-        const rowDiv = document.createElement('div');
-        rowDiv.className = "p-2.5 hover:bg-blue-600/10 cursor-pointer text-xs";
-        rowDiv.innerHTML = `
-            <div class="font-bold text-white">${client.name}</div>
-            <div class="text-slate-400 text-[11px]">Tel: ${client.phone} ${client.address ? '&bull; ' + client.address : ''}</div>
-        `;
-        rowDiv.addEventListener('click', () => {
-            if (clientNameInput) clientNameInput.value = client.name;
-            const phoneEl = document.getElementById('clientPhone');
-            const dobEl = document.getElementById('clientDob');
-            const addrEl = document.getElementById('clientAddress');
-            const manageInput = document.getElementById('manageClientIdInput');
-
-            if (phoneEl) phoneEl.value = client.phone || "";
-            if (dobEl) dobEl.value = client.dob || "";
-            if (addrEl) addrEl.value = client.address || "";
-            if (manageInput) manageInput.value = id;
-
-            clientSearchDropdown.classList.add('hidden');
-        });
-        rowsContainer.appendChild(rowDiv);
-    }
-
-    if (matches === 0) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = "p-4 text-center text-xs text-slate-400 italic";
-        emptyDiv.textContent = "Nessun cliente trovato.";
-        rowsContainer.appendChild(emptyDiv);
-    }
-
-    clientSearchDropdown.appendChild(rowsContainer);
-    clientSearchDropdown.classList.remove('hidden');
-}
-
-if (clientNameInput) {
-    clientNameInput.addEventListener('focus', () => renderClientSearchDropdown(clientNameInput.value.trim()));
-    clientNameInput.addEventListener('input', (e) => {
-        renderClientSearchDropdown(e.target.value.trim());
-    });
-}
-
-if (clientSearchToggleBtn) {
-    clientSearchToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (clientSearchDropdown.classList.contains('hidden')) {
-            renderClientSearchDropdown(clientNameInput ? clientNameInput.value.trim() : "");
-            if (clientNameInput) clientNameInput.focus();
-        } else {
-            clientSearchDropdown.classList.add('hidden');
-        }
-    });
-}
-
-window.printClientReceiptLabel = function() {
-    const name = document.getElementById('clientName').value.trim();
-    const phone = document.getElementById('clientPhone').value.trim();
-    const dob = document.getElementById('clientDob').value.trim();
-    const address = document.getElementById('clientAddress').value.trim();
-
-    if (!name || !phone) {
-        showToast("Inserisci almeno Nome e Telefono per la stampa", "error");
-        return;
-    }
-
-    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-
-    let printText = "\x1B\x40" + 
-        "\x1B\x61\x01" + 
-        "\x1B\x21\x10LAVANDERIA CLEO\n" +
-        "\x1B\x21\x00" + dateStr + "\n" +
-        "--------------------------------\n" +
-        "\x1B\x61\x00" + 
-        "\x1B\x21\x08Cliente: " + name + "\n" +
-        "Tel:     " + phone + "\n";
-    
-    if (dob) printText += "Nascita: " + dob + "\n";
-    if (address) printText += "Indirizzo: " + address + "\n";
-
-    printText += "--------------------------------\n\n\n\n" +
-        "\x1D\x56\x41\x03"; 
-
-    try {
-        const base64Data = btoa(unescape(encodeURIComponent(printText)));
-        window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Etichetta cliente inviata in stampa!", "success");
-    } catch (err) {
-        showToast("Errore di stampa.", "error");
-    }
-};
-
-if (clientForm) {
-    clientForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('clientName').value.trim();
-        const phone = document.getElementById('clientPhone').value.trim();
-        const dob = document.getElementById('clientDob').value.trim();
-        const address = document.getElementById('clientAddress').value.trim();
-        const manageId = document.getElementById('manageClientIdInput') ? document.getElementById('manageClientIdInput').value : "";
-
-        if (!name || !phone) return;
-
-        const clientId = manageId || ('cli_' + Date.now());
-        const newClient = { name, phone, dob, address };
-
-        clientsData[clientId] = newClient;
-        localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
-        db.ref('clients').child(clientId).set(newClient).catch(() => {});
-
-        clientForm.reset();
-        if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
-        showToast(`Cliente "${name}" registrato!`, "success");
-        renderItems();
-        const managerModal = document.getElementById('clientManagerModal');
-        if (managerModal && !managerModal.classList.contains('hidden')) {
-            renderClientManagerTable();
-        }
-    });
-}
-
+// Funzioni dati / gestione capi e clienti
 function loadClients() {
     const local = localStorage.getItem('laundry_clients');
     if (local) clientsData = JSON.parse(local);
-
     db.ref('clients').on('value', (snapshot) => {
         const val = snapshot.val();
         if (val) {
             clientsData = val;
             localStorage.setItem('laundry_clients', JSON.stringify(val));
         }
-        const managerModal = document.getElementById('clientManagerModal');
-        if (managerModal && !managerModal.classList.contains('hidden')) {
-            renderClientManagerTable();
-        }
         renderItems();
     });
 }
-
-window.openClientManagerModal = function() {
-    renderClientManagerTable();
-    const m = document.getElementById('clientManagerModal');
-    if(m) m.classList.remove('hidden');
-};
-
-window.closeClientManagerModal = function() {
-    const m = document.getElementById('clientManagerModal');
-    if(m) m.classList.add('hidden');
-};
-
-const managerClientSearchInput = document.getElementById('managerClientSearchInput');
-if (managerClientSearchInput) {
-    managerClientSearchInput.addEventListener('input', () => {
-        renderClientManagerTable(managerClientSearchInput.value.trim());
-    });
-}
-
-function renderClientManagerTable(filter = "") {
-    const tbody = document.getElementById('managerClientsTableBody');
-    if(!tbody) return;
-    tbody.innerHTML = "";
-    const lowerFilter = filter.toLowerCase();
-    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
-
-    for (let [id, client] of sorted) {
-        const str = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        if (filter && !str.includes(lowerFilter)) continue;
-
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard cursor-pointer";
-        tr.innerHTML = `
-            <td class="py-3 px-4 font-bold text-white" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.name}</td>
-            <td class="py-3 px-4 text-slate-400" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.phone}</td>
-            <td class="py-3 px-4 text-slate-400" onclick="closeClientManagerModal(); openClientModal('${id}')">${client.address || 'N/D'} &bull; ${client.dob || ''}</td>
-            <td class="py-3 px-4 text-right">
-                <button onclick="event.stopPropagation(); deleteClient('${id}', '${client.name.replace(/'/g, "\\'")}')" 
-                    class="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 active:scale-95 text-rose-400 rounded-lg font-semibold cursor-pointer">
-                    <i class="fa-solid fa-trash-can mr-1"></i> Elimina
-                </button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    }
-}
-
-window.deleteClient = function(id, name) {
-    if (confirm(`Sei sicuro di voler eliminare permanentemente il cliente "${name}"?`)) {
-        delete clientsData[id];
-        localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
-        db.ref('clients').child(id).remove();
-        showToast(`Cliente ${name} eliminato`, "success");
-        if (managerClientSearchInput) renderClientManagerTable(managerClientSearchInput.value.trim());
-        renderItems();
-    }
-};
-
-function renderAssignClientDropdown(filter = "") {
-    if (!assignClientDropdown || !selectedClientIdInput) return;
-    assignClientDropdown.innerHTML = "";
-    
-    const searchTerms = filter.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
-    const sorted = Object.entries(clientsData).sort((a, b) => a[1].name.localeCompare(b[1].name));
-    let matches = 0;
-
-    const tableHeader = document.createElement('div');
-    tableHeader.className = "grid grid-cols-3 px-4 py-2.5 text-[11px] font-bold text-slate-400 uppercase bg-darkSurface border-b border-darkBorder sticky top-0 shadow-sm";
-    tableHeader.innerHTML = `<span>Cliente (Nome)</span><span>Telefono</span><span>Indirizzo</span>`;
-    assignClientDropdown.appendChild(tableHeader);
-
-    const rowsContainer = document.createElement('div');
-    rowsContainer.className = "divide-y divide-darkBorder/50";
-
-    for (let [id, client] of sorted) {
-        const fullString = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase();
-        
-        const isMatch = searchTerms.every(term => fullString.includes(term));
-        if (searchTerms.length > 0 && !isMatch) continue;
-
-        matches++;
-        const rowDiv = document.createElement('div');
-        rowDiv.className = "grid grid-cols-3 px-4 py-2.5 hover:bg-blue-600/10 cursor-pointer text-xs items-center";
-        rowDiv.innerHTML = `
-            <span class="font-bold text-white truncate pr-2">${client.name}</span>
-            <span class="text-slate-400 truncate pr-2">${client.phone}</span>
-            <span class="text-slate-400 truncate">${client.address || 'N/D'}</span>
-        `;
-        rowDiv.addEventListener('click', () => {
-            assignClientSearch.value = `${client.name} (${client.phone})`;
-            selectedClientIdInput.value = id;
-            assignClientDropdown.classList.add('hidden');
-        });
-        rowsContainer.appendChild(rowDiv);
-    }
-
-    if (matches === 0) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = "p-6 text-center text-xs text-slate-400 italic";
-        emptyDiv.textContent = "Nessun cliente trovato in anagrafica.";
-        rowsContainer.appendChild(emptyDiv);
-    }
-
-    assignClientDropdown.appendChild(rowsContainer);
-    assignClientDropdown.classList.remove('hidden');
-}
-
-if (assignClientSearch) {
-    assignClientSearch.addEventListener('focus', () => renderAssignClientDropdown(assignClientSearch.value.trim()));
-    assignClientSearch.addEventListener('input', (e) => {
-        selectedClientIdInput.value = "";
-        renderAssignClientDropdown(e.target.value.trim());
-    });
-}
-
-if (assignClientToggleBtn) {
-    assignClientToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (assignClientDropdown.classList.contains('hidden')) {
-            renderAssignClientDropdown("");
-            assignClientSearch.focus();
-        } else {
-            assignClientDropdown.classList.add('hidden');
-        }
-    });
-}
-
-if (itemForm) {
-    itemForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const clientId = selectedClientIdInput.value;
-        const type = document.getElementById('itemType').value.trim();
-        const cabinet = document.getElementById('itemCabinet').value.trim();
-        const position = document.getElementById('itemPosition').value.trim();
-        const price = parseFloat(document.getElementById('itemPrice').value) || 0;
-        const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-        const status = "In lavorazione";
-
-        if (!clientId || !clientsData[clientId]) {
-            showToast("Seleziona un cliente valido", "error");
-            return;
-        }
-
-        const itemId = 'item_' + Date.now();
-        const newItem = { clientId, type, cabinet, position, price, notes, status, timestamp: Date.now() };
-
-        itemsData[itemId] = newItem;
-        localStorage.setItem('laundry_items', JSON.stringify(itemsData));
-        db.ref('items').child(itemId).set(newItem).catch(() => {});
-
-        printItemLabel();
-
-        itemForm.reset();
-        if(assignClientSearch) assignClientSearch.value = "";
-        if(selectedClientIdInput) selectedClientIdInput.value = "";
-        showToast(`Capo (${type}) registrato in armadio ${cabinet}`, "success");
-        renderItems();
-    });
-}
-
-window.printItemLabel = function() {
-    const clientId = selectedClientIdInput.value;
-    const type = document.getElementById('itemType').value.trim();
-    const cabinet = document.getElementById('itemCabinet').value.trim();
-    const position = document.getElementById('itemPosition').value.trim();
-    const price = document.getElementById('itemPrice').value;
-    const notes = document.getElementById('itemNotes') ? document.getElementById('itemNotes').value.trim() : "";
-
-    if (!clientId || !clientsData[clientId]) {
-        showToast("Seleziona prima un cliente", "error");
-        return;
-    }
-    if (!type || !cabinet || !position) {
-        showToast("Compila tipo capo, armadio e posizione", "error");
-        return;
-    }
-
-    const client = clientsData[clientId];
-    const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-
-    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n" +
-        dateStr + "\n" +
-        "\x1B\x21\x00--------------------------------\n" +
-        "\x1B\x61\x00Cliente: " + client.name + "\n" +
-        "Tel:     " + client.phone + "\n" +
-        "Capo:    " + type + "\n";
-    
-    if (notes) printText += "Note:    " + notes + "\n";
-    
-    printText += "--------------------------------\n" +
-        "\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\n" +
-        "POS: " + position + "\n" +
-        "\x1B\x21\x00--------------------------------\n" +
-        "\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n" +
-        "\x1B\x21\x00\x1B\x61\x01\n\n\n\n" +
-        "\x1D\x56\x41\x03";
-
-    try {
-        const base64Data = btoa(unescape(encodeURIComponent(printText)));
-        window.location.href = `rawbt:base64,${base64Data}`;
-    } catch (err) {
-        showToast("Errore di stampa.", "error");
-    }
-};
 
 function loadItems() {
     const local = localStorage.getItem('laundry_items');
     if (local) itemsData = JSON.parse(local);
-
     db.ref('items').on('value', (snapshot) => {
         const val = snapshot.val();
         if (val) {
@@ -886,10 +547,6 @@ function loadItems() {
         }
         renderItems();
     });
-}
-
-if (activeTableFilter) {
-    activeTableFilter.addEventListener('input', () => renderItems());
 }
 
 function renderItems() {
@@ -910,12 +567,11 @@ function renderItems() {
         tr.className = "hover:bg-darkCard";
         tr.innerHTML = `
             <td class="py-4 px-4">
-                <span class="font-semibold text-white cursor-pointer hover:underline" onclick="openClientModal('${item.clientId}')">${client.name}</span>
+                <span class="font-semibold text-white cursor-pointer hover:underline">${client.name}</span>
                 <div class="text-xs text-slate-400">${client.phone}</div>
             </td>
             <td class="py-4 px-4">
                 <span class="font-medium text-slate-200">${item.type}</span>
-                ${item.notes ? `<div class="text-[11px] text-amber-300/90 italic mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>${item.notes}</div>` : ''}
                 <div class="text-xs font-semibold text-emerald-400">€ ${item.price.toFixed(2)}</div>
             </td>
             <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
@@ -934,124 +590,22 @@ function renderItems() {
 }
 
 window.confirmAndReturn = function(id, typeName) {
-    if (confirm(`Confermi il ritiro del capo "${typeName}"?`)) markAsReturned(id);
-};
+    if (confirm(`Confermi il ritiro del capo "${typeName}"?`)) {
+        const item = itemsData[id];
+        if (!item) return;
+        const historyId = 'hist_' + Date.now();
+        const historyItem = { ...item, returnedAt: Date.now() };
 
-window.markAsReturned = function(id) {
-    const item = itemsData[id];
-    if (!item) return;
-    const historyId = 'hist_' + Date.now();
-    const historyItem = { ...item, returnedAt: Date.now() };
+        historyData[historyId] = historyItem;
+        localStorage.setItem('laundry_history', JSON.stringify(historyData));
+        delete itemsData[id];
+        localStorage.setItem('laundry_items', JSON.stringify(itemsData));
 
-    historyData[historyId] = historyItem;
-    localStorage.setItem('laundry_history', JSON.stringify(historyData));
-    delete itemsData[id];
-    localStorage.setItem('laundry_items', JSON.stringify(itemsData));
-
-    db.ref('history').child(historyId).set(historyItem);
-    db.ref('items').child(id).remove();
-    renderItems();
-    showToast("Capo archiviato", "success");
-};
-
-if (globalSearch) {
-    globalSearch.addEventListener('input', (e) => {
-        const val = e.target.value.toLowerCase().trim();
-        if(!globalSearchDropdown || !searchClearBtn) return;
-        globalSearchDropdown.innerHTML = "";
-        searchClearBtn.classList.toggle('hidden', !val);
-
-        if (!val) {
-            globalSearchDropdown.classList.add('hidden');
-            return;
-        }
-
-        let resultsFound = 0;
-        for (let [clientId, client] of Object.entries(clientsData)) {
-            let clientActiveItems = [];
-            for (let [itemId, item] of Object.entries(itemsData)) {
-                if (item.clientId === clientId) clientActiveItems.push(item);
-            }
-
-            const matchClient = `${client.name} ${client.phone} ${client.address || ''}`.toLowerCase().includes(val);
-            const matchItem = clientActiveItems.some(i => i.type.toLowerCase().includes(val) || i.cabinet.toLowerCase().includes(val));
-
-            if (matchClient || matchItem) {
-                resultsFound++;
-                const div = document.createElement('div');
-                div.className = "p-4 hover:bg-darkCard cursor-default";
-                let itemsHtml = clientActiveItems.length > 0 ? `<div class="mt-2.5 space-y-1.5 border-t border-darkBorder pt-2">` : `<div class="mt-2 text-xs text-slate-400 italic">Nessun capo attivo.</div>`;
-                clientActiveItems.forEach(item => {
-                    itemsHtml += `<div class="flex items-center justify-between text-xs bg-darkBg p-2 rounded-lg border border-darkBorder"><div><span class="font-bold text-white">${item.type}</span> <span class="text-slate-400 ml-1">&bull; Armadio: <strong class="text-blue-400">${item.cabinet}</strong></span></div><span class="font-bold text-emerald-400">€ ${item.price.toFixed(2)}</span></div>`;
-                });
-                if(clientActiveItems.length > 0) itemsHtml += `</div>`;
-
-                div.innerHTML = `<div class="flex justify-between items-start"><div><div class="font-bold text-white text-sm">${client.name}</div><div class="text-xs text-slate-400 mt-0.5">Tel: ${client.phone}</div></div><button type="button" onclick="openClientModal('${clientId}'); globalSearchDropdown.classList.add('hidden'); globalSearch.value='';" class="text-xs bg-blue-950 hover:bg-blue-900 text-blue-400 px-3 py-1.5 rounded-lg font-semibold cursor-pointer">Scheda</button></div>${itemsHtml}`;
-                globalSearchDropdown.appendChild(div);
-            }
-        }
-        globalSearchDropdown.classList.toggle('hidden', resultsFound === 0);
-    });
-}
-
-if (searchClearBtn) {
-    searchClearBtn.addEventListener('click', () => {
-        if(globalSearch) globalSearch.value = "";
-        if(globalSearchDropdown) globalSearchDropdown.classList.add('hidden');
-        searchClearBtn.classList.add('hidden');
-    });
-}
-
-document.addEventListener('click', (e) => {
-    if (globalSearch && globalSearchDropdown && !globalSearch.contains(e.target) && !globalSearchDropdown.contains(e.target)) globalSearchDropdown.classList.add('hidden');
-    if (assignClientSearch && assignClientDropdown && assignClientToggleBtn && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && !assignClientToggleBtn.contains(e.target)) assignClientDropdown.classList.add('hidden');
-    if (clientNameInput && clientSearchDropdown && clientSearchToggleBtn && !clientNameInput.contains(e.target) && !clientSearchDropdown.contains(e.target) && !clientSearchToggleBtn.contains(e.target)) clientSearchDropdown.classList.add('hidden');
-});
-
-window.openClientModal = function(clientId) {
-    const client = clientsData[clientId];
-    if (!client) return;
-
-    document.getElementById('modalClientName').textContent = client.name;
-    document.getElementById('modalClientDetails').textContent = `Tel: ${client.phone} | Nascita: ${client.dob || 'N/D'} | Indirizzo: ${client.address || 'N/D'}`;
-
-    let totalItems = 0, totalSpent = 0;
-    const activeList = document.getElementById('modalClientActiveItemsList');
-    activeList.innerHTML = "";
-    let activeCount = 0;
-    for (let [id, item] of Object.entries(itemsData)) {
-        if (item.clientId === clientId) {
-            activeCount++; totalItems++; totalSpent += (item.price || 0);
-            const div = document.createElement('div');
-            div.className = "p-3 bg-darkCard rounded-xl border border-darkBorder flex justify-between items-center text-xs";
-            div.innerHTML = `<span class="font-bold text-slate-200">${item.type} (Armadio ${item.cabinet})</span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
-            activeList.appendChild(div);
-        }
+        db.ref('history').child(historyId).set(historyItem);
+        db.ref('items').child(id).remove();
+        renderItems();
+        showToast("Capo archiviato con successo", "success");
     }
-    if (activeCount === 0) activeList.innerHTML = `<p class="text-xs text-slate-400 italic">Nessun capo attivo.</p>`;
-
-    const historyList = document.getElementById('modalClientHistoryList');
-    historyList.innerHTML = "";
-    let histCount = 0;
-    for (let [id, item] of Object.entries(historyData)) {
-        if (item.clientId === clientId) {
-            histCount++; totalItems++; totalSpent += (item.price || 0);
-            const dateStr = new Date(item.returnedAt).toLocaleDateString('it-IT');
-            const div = document.createElement('div');
-            div.className = "p-3 bg-darkCard rounded-xl border border-darkBorder flex justify-between items-center text-xs";
-            div.innerHTML = `<span class="text-slate-400">${dateStr} &bull; <strong class="text-slate-200">${item.type}</strong></span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
-            historyList.appendChild(div);
-        }
-    }
-    if (histCount === 0) historyList.innerHTML = `<p class="text-xs text-slate-400 italic">Nessun capo nello storico.</p>`;
-
-    document.getElementById('modalClientTotalItems').textContent = totalItems;
-    document.getElementById('modalClientTotalSpent').textContent = `€ ${totalSpent.toFixed(2)}`;
-    document.getElementById('clientModal').classList.remove('hidden');
-};
-
-window.closeClientModal = function() {
-    document.getElementById('clientModal').classList.add('hidden');
 };
 
 function loadHistory() {
@@ -1064,144 +618,5 @@ function loadHistory() {
             historyData = val;
             localStorage.setItem('laundry_history', JSON.stringify(val));
         }
-        const statsView = document.getElementById('viewStats');
-        if (statsView && !statsView.classList.contains('hidden')) renderHistory();
     });
-}
-
-window.setStatPeriod = function(period) {
-    currentStatPeriod = period;
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-    renderHistory();
-};
-
-window.clearCustomDateFilter = function() {
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-    currentStatPeriod = 'all';
-    renderHistory();
-};
-
-function renderHistory() {
-    const tbody = document.getElementById('historyTableBody');
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    const startDateVal = document.getElementById('statsCustomStartDate').value;
-    const endDateVal = document.getElementById('statsCustomEndDate').value;
-
-    let totalCount = 0;
-    let totalRevenue = 0;
-    let uniqueClients = new Set();
-    let typeCounts = {};
-
-    const historyEntries = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    historyEntries.forEach(([id, item]) => {
-        const retDate = new Date(item.returnedAt || Date.now());
-        let matches = false;
-
-        if (startDateVal || endDateVal) {
-            let start = startDateVal ? new Date(startDateVal) : new Date(0);
-            let end = endDateVal ? new Date(endDateVal) : new Date();
-            end.setHours(23, 59, 59, 999);
-            matches = retDate >= start && retDate <= end;
-        } else {
-            const now = new Date();
-            if (currentStatPeriod === 'day') {
-                matches = retDate.toDateString() === now.toDateString();
-            } else if (currentStatPeriod === 'month') {
-                matches = retDate.getMonth() === now.getMonth() && retDate.getFullYear() === now.getFullYear();
-            } else if (currentStatPeriod === 'year') {
-                matches = retDate.getFullYear() === now.getFullYear();
-            } else {
-                matches = true;
-            }
-        }
-
-        if (matches) {
-            totalCount++;
-            const price = parseFloat(item.price) || 0;
-            totalRevenue += price;
-            if (item.clientId) uniqueClients.add(item.clientId);
-
-            if (item.type) {
-                typeCounts[item.type] = (typeCounts[item.type] || 0) + 1;
-            }
-
-            const client = clientsData[item.clientId] || { name: "Non Trovato" };
-            const dateFormatted = retDate.toLocaleDateString('it-IT') + ' ' + retDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-
-            const tr = document.createElement('tr');
-            tr.className = "hover:bg-darkCard";
-            tr.innerHTML = `
-                <td class="py-3 px-4 text-slate-400">${dateFormatted}</td>
-                <td class="py-3 px-4 font-bold text-white">${client.name}</td>
-                <td class="py-3 px-4 text-slate-200">${item.type || 'N/D'}</td>
-                <td class="py-3 px-4 text-emerald-400 font-semibold">€ ${price.toFixed(2)}</td>
-                <td class="py-3 px-4 text-slate-400">Armadio ${item.cabinet || 'N/D'} &bull; Pos ${item.position || 'N/D'}</td>
-            `;
-            tbody.appendChild(tr);
-        }
-    });
-
-    document.getElementById('statTotalCount').textContent = totalCount;
-    document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
-    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-
-    let topType = "-";
-    let maxCount = 0;
-    for (let type in typeCounts) {
-        if (typeCounts[type] > maxCount) {
-            maxCount = typeCounts[type];
-            topType = type;
-        }
-    }
-    document.getElementById('statTopItemType').textContent = topType;
-    document.getElementById('historyCounter').textContent = `${totalCount} elementi`;
-}
-
-window.exportBackup = function() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Data Ritiro,Cliente,Capo,Prezzo,Armadio,Posizione\n";
-
-    Object.values(historyData).forEach(item => {
-        const client = clientsData[item.clientId] || { name: "N/D" };
-        const dateStr = new Date(item.returnedAt).toLocaleDateString('it-IT');
-        csvContent += `"${dateStr}","${client.name}","${item.type}","${item.price}","${item.cabinet}","${item.position}"\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `report_lavanderia_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
-
-window.resetAllStatistics = function() {
-    if (confirm("Sei sicuro di voler azzerare l'intero storico delle statistiche?")) {
-        historyData = {};
-        localStorage.removeItem('laundry_history');
-        db.ref('history').remove();
-        renderHistory();
-        showToast("Storico azzerato con successo", "success");
-    }
-};
-
-function showToast(message, type = "success") {
-    const toast = document.getElementById('toastNotification');
-    const toastMsg = document.getElementById('toastMessage');
-    if (!toast || !toastMsg) return;
-
-    toastMsg.textContent = message;
-    toast.classList.remove('translate-y-20', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
-
-    setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
-    }, 3000);
 }
