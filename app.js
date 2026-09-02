@@ -74,6 +74,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function showToast(message, type = "success") {
+    const toast = document.getElementById('toastNotification');
+    const toastMessage = document.getElementById('toastMessage');
+    const toastIcon = document.getElementById('toastIcon');
+    if (!toast || !toastMessage) return;
+
+    toastMessage.textContent = message;
+    if (type === "error") {
+        toastIcon.className = "w-7 h-7 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center text-xs";
+        toastIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>`;
+    } else {
+        toastIcon.className = "w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-xs";
+        toastIcon.innerHTML = `<i class="fa-solid fa-check"></i>`;
+    }
+
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+    }, 3000);
+}
+
 function fixLoginPlaceholders() {
     const licenseInput = document.getElementById('licensePhoneInput');
     if (licenseInput) {
@@ -1098,129 +1122,106 @@ window.setStatPeriod = function(period) {
 window.clearCustomDateFilter = function() {
     document.getElementById('statsCustomStartDate').value = "";
     document.getElementById('statsCustomEndDate').value = "";
-    renderHistory();
-};
-
-window.resetAllStatistics = function() {
-    if (confirm("Vuoi azzerare tutte le statistiche?")) {
-        historyData = {};
-        localStorage.removeItem('laundry_history');
-        db.ref('history').remove();
-        showToast("Statistiche azzerate", "success");
-        renderHistory();
-    }
+    setStatPeriod('all');
 };
 
 function renderHistory() {
-    const historyTableBody = document.getElementById('historyTableBody');
-    if(!historyTableBody) return;
-    historyTableBody.innerHTML = "";
-    let count = 0, totalRevenue = 0;
-    let uniqueClients = new Set(), typeCounts = {};
+    const tbody = document.getElementById('historyTableBody');
+    if(!tbody) return;
+    tbody.innerHTML = "";
 
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentMonth = now.getMonth(), currentYear = now.getFullYear();
+    const customStart = document.getElementById('statsCustomStartDate').value;
+    const customEnd = document.getElementById('statsCustomEndDate').value;
 
-    const customStartEl = document.getElementById('statsCustomStartDate');
-    const customEndEl = document.getElementById('statsCustomEndDate');
-    let customStart = customStartEl && customStartEl.value ? new Date(customStartEl.value + "T00:00:00") : null;
-    let customEnd = customEndEl && customEndEl.value ? new Date(customEndEl.value + "T23:59:59") : null;
+    let startMs = 0;
+    let endMs = Infinity;
 
-    const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sorted) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        const retDateStr = retDate.toISOString().split('T')[0];
-
-        if (customStart || customEnd) {
-            if (customStart && retDate < customStart) continue;
-            if (customEnd && retDate > customEnd) continue;
-        } else {
-            if (currentStatPeriod === 'day' && retDateStr !== todayStr) continue;
-            if (currentStatPeriod === 'month' && (retDate.getMonth() !== currentMonth || retDate.getFullYear() !== currentYear)) continue;
-            if (currentStatPeriod === 'year' && retDate.getFullYear() !== currentYear) continue;
+    if (customStart || customEnd) {
+        if (customStart) startMs = new Date(customStart + "T00:00:00").getTime();
+        if (customEnd) endMs = new Date(customEnd + "T23:59:59").getTime();
+    } else {
+        const now = new Date();
+        if (currentStatPeriod === 'day') {
+            startMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        } else if (currentStatPeriod === 'month') {
+            startMs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        } else if (currentStatPeriod === 'year') {
+            startMs = new Date(now.getFullYear(), 0, 1).getTime();
         }
-
-        count++;
-        totalRevenue += (item.price || 0);
-        uniqueClients.add(item.clientId);
-        const tLower = (item.type || "Altro").toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
-
-        const client = clientsData[item.clientId] || { name: "Non trovato" };
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard text-sm";
-        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
-        historyTableBody.appendChild(tr);
     }
 
-    document.getElementById('statTotalCount').textContent = count;
-    document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
-    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-    document.getElementById('historyCounter').textContent = `${count} elementi`;
+    let totalRev = 0;
+    let itemCount = 0;
+    let uniqueClients = new Set();
+    let itemTypesCount = {};
 
-    let topType = "-", maxC = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxC) { maxC = c; topType = t.charAt(0).toUpperCase() + t.slice(1); }
+    const sortedHist = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
+
+    for (let [id, item] of sortedHist) {
+        const retMs = item.returnedAt || 0;
+        if (retMs >= startMs && retMs <= endMs) {
+            itemCount++;
+            totalRev += (item.price || 0);
+            if(item.clientId) uniqueClients.add(item.clientId);
+
+            const tName = item.type || "Altro";
+            itemTypesCount[tName] = (itemTypesCount[tName] || 0) + 1;
+
+            const client = clientsData[item.clientId] || { name: "N/D" };
+            const dateFormatted = new Date(retMs).toLocaleDateString('it-IT') + ' ' + new Date(retMs).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-darkCard";
+            tr.innerHTML = `
+                <td class="py-3 px-4 text-slate-400">${dateFormatted}</td>
+                <td class="py-3 px-4 font-bold text-white">${client.name}</td>
+                <td class="py-3 px-4 text-slate-200">${item.type}</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</td>
+                <td class="py-3 px-4 text-slate-400">Armadio ${item.cabinet || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        }
+    }
+
+    document.getElementById('statTotalCount').textContent = itemCount;
+    document.getElementById('statTotalRevenue').textContent = `€ ${totalRev.toFixed(2)}`;
+    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
+
+    let topType = "-";
+    let maxCount = 0;
+    for (let type in itemTypesCount) {
+        if (itemTypesCount[type] > maxCount) {
+            maxCount = itemTypesCount[type];
+            topType = type;
+        }
     }
     document.getElementById('statTopItemType').textContent = topType;
+    document.getElementById('historyCounter').textContent = `${itemCount} elementi`;
 }
 
 window.exportBackup = function() {
-    const generationDate = new Date().toLocaleDateString('it-IT');
-    const startDateInput = document.getElementById('statsCustomStartDate');
-    const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDate) endDate.setHours(23, 59, 59, 999);
-
-    let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
-    const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sortedHistory) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        if (startDate && retDate < startDate) continue;
-        if (endDate && retDate > endDate) continue;
-
-        filteredHistory.push({ id, item, retDate });
-        totalItemsCount++;
-        grandTotalRevenue += (item.price || 0);
-        const tLower = (item.type || "Altro").trim().toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
+    let csvContent = "data:text/csv;charset=utf-8,Data Ritiro,Cliente,Telefono,Capo,Prezzo,Armadio\n";
+    for (let [id, item] of Object.entries(historyData)) {
+        const client = clientsData[item.clientId] || { name: "N/D", phone: "N/D" };
+        const dateStr = new Date(item.returnedAt).toLocaleDateString('it-IT');
+        csvContent += `"${dateStr}","${client.name}","${client.phone}","${item.type}",${(item.price || 0).toFixed(2)},"${item.cabinet}"\n`;
     }
-
-    let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
-    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
-    
-    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
-    for (let entry of filteredHistory) {
-        const item = entry.item;
-        const retDateStr = entry.retDate.toLocaleDateString('it-IT');
-        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
-    }
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `storico_lavanderia_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("Report esportato!", "success");
-}
+    showToast("Storico esportato con successo!", "success");
+};
 
-function showToast(message, type = "success") {
-    const toast = document.getElementById('toastNotification');
-    const toastMsg = document.getElementById('toastMessage');
-    if(!toast || !toastMsg) return;
-    toastMsg.textContent = message;
-    toast.classList.remove('translate-y-25', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
-    setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-25', 'opacity-0');
-    }, 3500);
-}
+window.resetAllStatistics = function() {
+    if (confirm("Sei sicuro di voler azzerare permanentemente tutto lo storico dei capi ritirati? L'operazione non è reversibile.")) {
+        historyData = {};
+        localStorage.removeItem('laundry_history');
+        db.ref('history').remove();
+        renderHistory();
+        showToast("Storico azzerato completamente", "success");
+    }
+};
