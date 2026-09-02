@@ -126,8 +126,8 @@ function initProtectedLogo() {
                     if (elapsed >= holdDuration) {
                         clearInterval(logoPressTimer);
                         if(progressFill) progressFill.style.height = '0%';
-                        showToast("Sblocco forzato attivato!", "success");
-                        lockApp(); 
+                        showToast("Sblocco forzato eseguito!", "success");
+                        forceLogout(); // Uscita forzata diretta
                     }
                 }, 100);
             });
@@ -140,6 +140,26 @@ function initProtectedLogo() {
             });
         });
     }
+}
+
+// ==========================================
+// USO INTERNO: LOGOUT FORZATO PER PRESSIONE LOGO
+// ==========================================
+function forceLogout() {
+    sessionStorage.removeItem('laundry_auth');
+    sessionStorage.removeItem('laundry_logged_as_admin');
+    
+    if(appContainer) {
+        appContainer.style.opacity = '0';
+        setTimeout(() => appContainer.classList.add('hidden'), 400);
+    }
+    if(loginScreen) {
+        loginScreen.classList.remove('hidden');
+        setTimeout(() => loginScreen.style.opacity = '1', 50);
+    }
+    
+    const inputs = document.querySelectorAll('#loginScreen input');
+    inputs.forEach(input => input.value = '');
 }
 
 // ==========================================
