@@ -78,7 +78,7 @@ function fixLoginPlaceholders() {
     const inputs = document.querySelectorAll('#loginScreen input');
     if (inputs.length > 0) {
         inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+        inputs[0].placeholder = "Inserisci codice licenza (es. DEMO15-XXX)...";
     }
 }
 
@@ -95,6 +95,7 @@ function initGlobalResetListener() {
                 localStorage.removeItem('laundry_device_activated');
                 localStorage.removeItem('laundry_license_expiry');
                 localStorage.removeItem('laundry_active_license');
+                localStorage.removeItem('laundry_is_demo');
                 localStorage.removeItem('laundry_code_already_redeemed');
                 sessionStorage.clear();
                 
@@ -181,10 +182,14 @@ function startLicenseCountdownMonitor() {
             localStorage.removeItem('laundry_device_activated');
             localStorage.removeItem('laundry_license_expiry');
             localStorage.removeItem('laundry_active_license');
+            localStorage.removeItem('laundry_is_demo');
             sessionStorage.removeItem('laundry_auth');
             
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
+
+            const demoModal = document.getElementById('demoActivatedModal');
+            if (demoModal) demoModal.classList.add('hidden');
 
             const expiredModal = document.getElementById('licenseExpiredModal');
             if (expiredModal) expiredModal.classList.remove('hidden');
@@ -221,6 +226,11 @@ function checkDaysBeforeExpiry(now, expiryTime) {
 window.closeWarningModal = function() {
     const warningModal = document.getElementById('licenseWarningModal');
     if (warningModal) warningModal.classList.add('hidden');
+};
+
+window.closeDemoModal = function() {
+    const demoModal = document.getElementById('demoActivatedModal');
+    if (demoModal) demoModal.classList.add('hidden');
 };
 
 window.closeExpiredModalAndRelogin = function() {
@@ -263,15 +273,42 @@ function checkNumericLicense() {
     let enteredCode = "";
 
     if (inputs.length > 0) {
-        enteredCode = inputs[0].value.trim();
+        enteredCode = inputs[0].value.trim().toUpperCase();
     }
 
     if (!enteredCode) {
-        showToast("Inserisci il codice numerico della licenza", "error");
+        showToast("Inserisci il codice numerico o Demo della licenza", "error");
         return;
     }
 
-    if (enteredCode.toUpperCase() === "TEST1MIN") {
+    // GESTIONE ATTIVAZIONE DEMO 15 GIORNI
+    if (enteredCode.startsWith("DEMO15") || enteredCode === "DEMO-15") {
+        let fifteenDaysMs = 15 * 24 * 60 * 60 * 1000;
+        let expirationTimestamp = Date.now() + fifteenDaysMs;
+
+        localStorage.setItem('laundry_device_activated', 'true');
+        localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+        localStorage.setItem('laundry_active_license', enteredCode);
+        localStorage.setItem('laundry_is_demo', 'true');
+        sessionStorage.setItem('laundry_auth', 'true');
+        sessionStorage.setItem('laundry_logged_as_admin', 'false');
+        hasShownTodayWarning = false;
+
+        unlockApp();
+        startLicenseCountdownMonitor();
+
+        const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
+        const demoExpiryDate = document.getElementById('demoExpiryDate');
+        if (demoExpiryDate) demoExpiryDate.textContent = expiryDateFormatted;
+
+        const demoModal = document.getElementById('demoActivatedModal');
+        if (demoModal) demoModal.classList.remove('hidden');
+
+        showToast("Licenza Demo a 15 giorni attivata con successo!", "success");
+        return;
+    }
+
+    if (enteredCode === "TEST1MIN") {
         let expirationTimestamp = Date.now() + (60 * 1000); 
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
@@ -316,11 +353,11 @@ function checkNumericLicense() {
 
                 if (licenses) {
                     for (let key in licenses) {
-                        if (String(key) === String(enteredCode)) {
+                        if (String(key).toUpperCase() === String(enteredCode)) {
                             matchedKey = key;
                             customExpiryVal = licenses[key];
                             break;
-                        } else if (String(licenses[key]) === String(enteredCode)) {
+                        } else if (String(licenses[key]).toUpperCase() === String(enteredCode)) {
                             matchedKey = key;
                             break;
                         }
