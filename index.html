@@ -105,7 +105,7 @@
         <!-- HEADER -->
         <header class="flex flex-wrap items-center justify-between gap-4 bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm">
             <div class="flex items-center gap-3">
-                <div id="protectedLogoBtn" class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm cursor-pointer select-none relative overflow-hidden" title="Tieni premuto 5 secondi per sblocco/reset schermata">
+                <div id="protectedLogoBtn" class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm cursor-pointer select-none relative overflow-hidden" title="Tieni premuto 5 secondi per sblocco/logout">
                     <i class="fa-solid fa-shirt"></i>
                     <div id="logoProgressFill" class="absolute bottom-0 left-0 w-full bg-blue-400/40 h-0 transition-all duration-75"></div>
                 </div>
@@ -122,7 +122,7 @@
             <div class="relative flex-1 max-w-md mx-auto w-full">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
-                    <input type="text" id="globalSearch" placeholder="Cerca cliente (nome, tel) o capo (tipo, armadio)..." class="w-full pl-9 pr-16 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="globalSearch" placeholder="Cerca cliente (nome, tel, email) o capo (tipo, armadio)..." class="w-full pl-9 pr-16 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <button id="searchClearBtn" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs hidden cursor-pointer">
                         <i class="fa-solid fa-xmark"></i> Pulisci
                     </button>
@@ -182,6 +182,11 @@
                                 <label class="block text-[11px] font-semibold text-slate-400 mb-1">Telefono (obbligatorio) *</label>
                                 <input type="tel" id="clientPhone" placeholder="Telefono" required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Email</label>
+                                <input type="email" id="clientEmail" placeholder="es. cliente@email.it" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
                             
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
@@ -192,6 +197,11 @@
                                     <label class="block text-[11px] font-semibold text-slate-400 mb-1">Indirizzo</label>
                                     <input type="text" id="clientAddress" placeholder="Indirizzo" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Esigenze / Note Cliente</label>
+                                <textarea id="clientNotes" rows="2" placeholder="Es. Allergico ai lavaggi profumati, piega speciale..." class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-2 pt-1">
@@ -214,7 +224,7 @@
                                 <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
-                                    <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono cliente..." autocomplete="off" class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="assignClientSearch" placeholder="Cerca nome, telefono o email..." autocomplete="off" class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <input type="hidden" id="selectedClientIdInput" required>
                                     <button type="button" id="assignClientToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
                                         <i class="fa-solid fa-chevron-down"></i>
@@ -245,7 +255,7 @@
                             </div>
 
                             <div>
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Note opzionali</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Note opzionali capo</label>
                                 <textarea id="itemNotes" rows="2" placeholder="Es. Con cintura..." class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
                             </div>
 
@@ -356,19 +366,21 @@
 
     </div>
 
-    <!-- MODALE AVVISO LICENZA DEMO -->
-    <div id="licenseDemoModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-amber-500/50 text-center space-y-4 animate-modal">
-            <div class="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg shadow-amber-500/10">
-                <i class="fa-solid fa-vial"></i>
+    <!-- MODALE GESTIONE CLIENTI -->
+    <div id="clientManagerModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-2xl border border-darkBorder space-y-4 animate-modal">
+            <div class="flex justify-between items-center border-b border-darkBorder pb-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-users text-blue-400"></i> Rubrica Clienti</h3>
+                <button onclick="closeClientManagerModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <h2 class="text-lg font-bold text-white">Modalità DEMO Attiva</h2>
-            <p id="licenseDemoText" class="text-xs text-slate-300 leading-relaxed"></p>
-            <button onclick="closeDemoModal()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer shadow-lg shadow-amber-500/20">Ho Capito, Continua</button>
+            <div class="relative">
+                <input type="text" id="clientManagerSearch" onkeyup="renderClientManagerList()" placeholder="Cerca cliente per nome, telefono, email..." class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none">
+            </div>
+            <div class="max-h-80 overflow-y-auto space-y-2" id="clientManagerList"></div>
         </div>
     </div>
 
-    <!-- MODALI BLOCCO E AVVISO SCADENZA -->
+    <!-- MODALI BLOCCO E AVVISO -->
     <div id="licenseWarningModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-amber-900/50 text-center space-y-4 animate-modal">
             <div class="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
