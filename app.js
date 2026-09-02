@@ -74,6 +74,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toastNotification');
+    const toastMsg = document.getElementById('toastMessage');
+    const toastIcon = document.getElementById('toastIcon');
+    const iconContainer = document.getElementById('toastIconContainer');
+
+    if (!toast || !toastMsg) return;
+
+    toastMsg.textContent = message;
+
+    if (type === 'error') {
+        iconContainer.className = "w-7 h-7 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center text-xs";
+        toastIcon.className = "fa-solid fa-xmark";
+    } else {
+        iconContainer.className = "w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-xs";
+        toastIcon.className = "fa-solid fa-check";
+    }
+
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+    }, 3000);
+}
+
 function fixLoginPlaceholders() {
     const licenseInput = document.getElementById('licensePhoneInput');
     if (licenseInput) {
@@ -106,53 +133,73 @@ function initGlobalResetListener() {
 }
 
 // ==========================================
-// PROTEZIONE LOGO (SBLOCCO FORZATO TELEFONO 5 SECONDI)
+// PROTEZIONE LOGO (RESET COMPLETO TELEFONO PREMENDO 5 SECONDI)
 // ==========================================
 function initProtectedLogo() {
     const logoBtn = document.getElementById('protectedLogoBtn');
     const progressFill = document.getElementById('logoProgressFill');
     let logoPressTimer = null;
+    let startTime = 0;
     const holdDuration = 5000;
     
     if (logoBtn) {
-        ['mousedown', 'touchstart'].forEach(evt => {
-            logoBtn.addEventListener(evt, (e) => {
-                let startTime = Date.now();
-                if(progressFill) progressFill.style.height = '100%';
+        const startPress = (e) => {
+            e.preventDefault();
+            startTime = Date.now();
+            
+            if (logoPressTimer) clearInterval(logoPressTimer);
+            
+            logoPressTimer = setInterval(() => {
+                let elapsed = Date.now() - startTime;
+                let percent = Math.min((elapsed / holdDuration) * 100, 100);
                 
-                logoPressTimer = setInterval(() => {
-                    let elapsed = Date.now() - startTime;
-                    if (elapsed >= holdDuration) {
-                        clearInterval(logoPressTimer);
-                        if(progressFill) progressFill.style.height = '0%';
-                        forceUnlockByLogo();
-                    }
-                }, 100);
-            });
-        });
+                if (progressFill) {
+                    progressFill.style.height = percent + '%';
+                }
 
-        ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
-            logoBtn.addEventListener(evt, () => {
-                if (logoPressTimer) clearInterval(logoPressTimer);
-                if(progressFill) progressFill.style.height = '0%';
-            });
-        });
+                if (elapsed >= holdDuration) {
+                    clearInterval(logoPressTimer);
+                    logoPressTimer = null;
+                    if (progressFill) progressFill.style.height = '0%';
+                    forceUnlockByLogo();
+                }
+            }, 50);
+        };
+
+        const cancelPress = () => {
+            if (logoPressTimer) {
+                clearInterval(logoPressTimer);
+                logoPressTimer = null;
+            }
+            if (progressFill) {
+                progressFill.style.height = '0%';
+            }
+        };
+
+        logoBtn.addEventListener('mousedown', startPress);
+        logoBtn.addEventListener('touchstart', startPress, { passive: false });
+
+        logoBtn.addEventListener('mouseup', cancelPress);
+        logoBtn.addEventListener('mouseleave', cancelPress);
+        logoBtn.addEventListener('touchend', cancelPress);
+        logoBtn.addEventListener('touchcancel', cancelPress);
     }
 }
 
 function forceUnlockByLogo() {
-    showToast("Sblocco forzato applicato!", "success");
-    sessionStorage.removeItem('laundry_auth');
-    sessionStorage.removeItem('laundry_logged_as_admin');
-    
-    if(appContainer) {
-        appContainer.style.opacity = '0';
-        setTimeout(() => appContainer.classList.add('hidden'), 400);
-    }
-    if(loginScreen) {
-        loginScreen.classList.remove('hidden');
-        setTimeout(() => loginScreen.style.opacity = '1', 50);
-    }
+    showToast("Reset dispositivo completato. Disconnessione in corso...", "error");
+
+    localStorage.removeItem('laundry_device_activated');
+    localStorage.removeItem('laundry_license_expiry');
+    localStorage.removeItem('laundry_active_license');
+    localStorage.removeItem('laundry_code_already_redeemed');
+    sessionStorage.clear();
+
+    if (licenseCheckInterval) clearInterval(licenseCheckInterval);
+
+    setTimeout(() => {
+        lockAppComplete();
+    }, 1000);
 }
 
 // ==========================================
@@ -1088,7 +1135,7 @@ window.setStatPeriod = function(period) {
         const btn = document.getElementById(`btnPeriod${p}`);
         if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
     });
-    
+
     const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
     if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95";
 
@@ -1098,129 +1145,107 @@ window.setStatPeriod = function(period) {
 window.clearCustomDateFilter = function() {
     document.getElementById('statsCustomStartDate').value = "";
     document.getElementById('statsCustomEndDate').value = "";
-    renderHistory();
-};
-
-window.resetAllStatistics = function() {
-    if (confirm("Vuoi azzerare tutte le statistiche?")) {
-        historyData = {};
-        localStorage.removeItem('laundry_history');
-        db.ref('history').remove();
-        showToast("Statistiche azzerate", "success");
-        renderHistory();
-    }
+    setStatPeriod('all');
 };
 
 function renderHistory() {
-    const historyTableBody = document.getElementById('historyTableBody');
-    if(!historyTableBody) return;
-    historyTableBody.innerHTML = "";
-    let count = 0, totalRevenue = 0;
-    let uniqueClients = new Set(), typeCounts = {};
+    const tbody = document.getElementById('historyTableBody');
+    if(!tbody) return;
+    tbody.innerHTML = "";
 
+    const startInput = document.getElementById('statsCustomStartDate').value;
+    const endInput = document.getElementById('statsCustomEndDate').value;
+
+    let filtered = Object.entries(historyData);
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentMonth = now.getMonth(), currentYear = now.getFullYear();
 
-    const customStartEl = document.getElementById('statsCustomStartDate');
-    const customEndEl = document.getElementById('statsCustomEndDate');
-    let customStart = customStartEl && customStartEl.value ? new Date(customStartEl.value + "T00:00:00") : null;
-    let customEnd = customEndEl && customEndEl.value ? new Date(customEndEl.value + "T23:59:59") : null;
+    if (startInput || endInput) {
+        const startTime = startInput ? new Date(startInput).setHours(0,0,0,0) : 0;
+        const endTime = endInput ? new Date(endInput).setHours(23,59,59,999) : Infinity;
 
-    const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
+        filtered = filtered.filter(([id, item]) => {
+            const time = item.returnedAt || 0;
+            return time >= startTime && time <= endTime;
+        });
+    } else {
+        if (currentStatPeriod === 'day') {
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            filtered = filtered.filter(([id, item]) => (item.returnedAt || 0) >= startOfDay);
+        } else if (currentStatPeriod === 'month') {
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            filtered = filtered.filter(([id, item]) => (item.returnedAt || 0) >= startOfMonth);
+        } else if (currentStatPeriod === 'year') {
+            const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+            filtered = filtered.filter(([id, item]) => (item.returnedAt || 0) >= startOfYear);
+        }
+    }
 
-    for (let [id, item] of sorted) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        const retDateStr = retDate.toISOString().split('T')[0];
+    filtered.sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
-        if (customStart || customEnd) {
-            if (customStart && retDate < customStart) continue;
-            if (customEnd && retDate > customEnd) continue;
-        } else {
-            if (currentStatPeriod === 'day' && retDateStr !== todayStr) continue;
-            if (currentStatPeriod === 'month' && (retDate.getMonth() !== currentMonth || retDate.getFullYear() !== currentYear)) continue;
-            if (currentStatPeriod === 'year' && retDate.getFullYear() !== currentYear) continue;
+    let totalRevenue = 0;
+    let uniqueClientsSet = new Set();
+    let itemTypesCount = {};
+
+    filtered.forEach(([id, item]) => {
+        totalRevenue += (item.price || 0);
+        if(item.clientId) uniqueClientsSet.add(item.clientId);
+        
+        if(item.type) {
+            itemTypesCount[item.type] = (itemTypesCount[item.type] || 0) + 1;
         }
 
-        count++;
-        totalRevenue += (item.price || 0);
-        uniqueClients.add(item.clientId);
-        const tLower = (item.type || "Altro").toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
-
         const client = clientsData[item.clientId] || { name: "Non trovato" };
+        const dateStr = item.returnedAt ? new Date(item.returnedAt).toLocaleDateString('it-IT') + ' ' + new Date(item.returnedAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard text-sm";
-        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
-        historyTableBody.appendChild(tr);
+        tr.className = "hover:bg-darkCard";
+        tr.innerHTML = `
+            <td class="py-3 px-4 text-slate-400">${dateStr}</td>
+            <td class="py-3 px-4 font-semibold text-white">${client.name}</td>
+            <td class="py-3 px-4 text-slate-200">${item.type}</td>
+            <td class="py-3 px-4 text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</td>
+            <td class="py-3 px-4 text-slate-400">Armadio ${item.cabinet || 'N/D'} &bull; Pos ${item.position || 'N/D'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    let topType = "-";
+    let maxCount = 0;
+    for(let t in itemTypesCount) {
+        if(itemTypesCount[t] > maxCount) {
+            maxCount = itemTypesCount[t];
+            topType = t;
+        }
     }
 
-    document.getElementById('statTotalCount').textContent = count;
+    document.getElementById('statTotalCount').textContent = filtered.length;
     document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
-    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-    document.getElementById('historyCounter').textContent = `${count} elementi`;
-
-    let topType = "-", maxC = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxC) { maxC = c; topType = t.charAt(0).toUpperCase() + t.slice(1); }
-    }
+    document.getElementById('statUniqueClients').textContent = uniqueClientsSet.size;
     document.getElementById('statTopItemType').textContent = topType;
+    document.getElementById('historyCounter').textContent = `${filtered.length} elementi`;
 }
 
 window.exportBackup = function() {
-    const generationDate = new Date().toLocaleDateString('it-IT');
-    const startDateInput = document.getElementById('statsCustomStartDate');
-    const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDate) endDate.setHours(23, 59, 59, 999);
-
-    let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
-    const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sortedHistory) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        if (startDate && retDate < startDate) continue;
-        if (endDate && retDate > endDate) continue;
-
-        filteredHistory.push({ id, item, retDate });
-        totalItemsCount++;
-        grandTotalRevenue += (item.price || 0);
-        const tLower = (item.type || "Altro").trim().toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
+    let csv = "Data Ritiro,Cliente,Telefono,Tipo Capo,Prezzo,Armadio,Posizione\n";
+    for(let [id, item] of Object.entries(historyData)) {
+        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "" };
+        const dateStr = item.returnedAt ? new Date(item.returnedAt).toLocaleDateString('it-IT') : "";
+        csv += `"${dateStr}","${client.name}","${client.phone}","${item.type}","${item.price}","${item.cabinet}","${item.position}"\n`;
     }
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Storico_Lavanderia_${Date.now()}.csv`;
+    a.click();
+};
 
-    let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
-    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
-    
-    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
-    for (let entry of filteredHistory) {
-        const item = entry.item;
-        const retDateStr = entry.retDate.toLocaleDateString('it-IT');
-        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
+window.resetAllStatistics = function() {
+    if(confirm("Sei sicuro di voler azzerare l'intero storico ritiri? L'operazione non può essere annullata.")) {
+        historyData = {};
+        localStorage.removeItem('laundry_history');
+        db.ref('history').remove();
+        renderHistory();
+        showToast("Storico completamente azzerato.", "success");
     }
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Report esportato!", "success");
-}
-
-function showToast(message, type = "success") {
-    const toast = document.getElementById('toastNotification');
-    const toastMsg = document.getElementById('toastMessage');
-    if(!toast || !toastMsg) return;
-    toastMsg.textContent = message;
-    toast.classList.remove('translate-y-25', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
-    setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-25', 'opacity-0');
-    }, 3500);
-}
+};
