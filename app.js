@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (CORRETTA E COMPLETA)
+// LAVANDERIA CLEO - APP LOGIC (IDENTIFICAZIONE NOME PROPRIETARIO E DISPOSITIVO)
 // ==========================================
 
 const firebaseConfig = {
@@ -21,9 +21,20 @@ db.goOnline();
 
 const APP_PASSWORD = "BAUBAU06";
 
-let loginScreen, appContainer, loginForm, passwordInput, loginError;
-let clientForm, itemForm, clientDobInput;
-let itemsTableBody, noItemsMessage, itemsCounterBadge, activeTableFilter;
+const loginScreen = document.getElementById('loginScreen');
+const appContainer = document.getElementById('appContainer');
+const loginForm = document.getElementById('loginForm');
+const passwordInput = document.getElementById('passwordInput');
+const loginError = document.getElementById('loginError');
+
+const clientForm = document.getElementById('clientForm');
+const itemForm = document.getElementById('itemForm');
+const clientDobInput = document.getElementById('clientDob');
+
+const itemsTableBody = document.getElementById('itemsTableBody');
+const noItemsMessage = document.getElementById('noItemsMessage');
+const itemsCounterBadge = document.getElementById('itemsCounterBadge');
+const activeTableFilter = document.getElementById('activeTableFilter');
 
 let clientsData = {};
 let itemsData = {};
@@ -33,21 +44,6 @@ let licenseCheckInterval = null;
 let hasShownTodayWarning = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-    loginScreen = document.getElementById('loginScreen');
-    appContainer = document.getElementById('appContainer');
-    loginForm = document.getElementById('loginForm');
-    passwordInput = document.getElementById('passwordInput');
-    loginError = document.getElementById('loginError');
-
-    clientForm = document.getElementById('clientForm');
-    itemForm = document.getElementById('itemForm');
-    clientDobInput = document.getElementById('clientDob');
-
-    itemsTableBody = document.getElementById('itemsTableBody');
-    noItemsMessage = document.getElementById('noItemsMessage');
-    itemsCounterBadge = document.getElementById('itemsCounterBadge');
-    activeTableFilter = document.getElementById('activeTableFilter');
-
     initLicenseSystem();
     initTheme();
     initConnectionMonitor(); 
@@ -56,6 +52,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initProtectedLogo();
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            checkAdminPassword();
+        });
+    }
 });
 
 function getDeviceModelName() {
@@ -240,7 +243,7 @@ window.closeExpiredModalAndRelogin = function() {
     lockAppComplete();
 };
 
-window.checkAdminPassword = function() {
+function checkAdminPassword() {
     let enteredPassword = passwordInput ? passwordInput.value.trim() : "";
 
     if (!enteredPassword) {
@@ -260,9 +263,9 @@ window.checkAdminPassword = function() {
             loginError.classList.remove('hidden');
         }
     }
-};
+}
 
-window.checkNumericLicense = function() {
+function checkNumericLicense() {
     const licenseInput = document.getElementById('licensePhoneInput');
     let enteredCode = licenseInput ? licenseInput.value.trim() : "";
 
@@ -362,7 +365,7 @@ window.checkNumericLicense = function() {
             showToast("Errore di connessione.", "error");
         });
     });
-};
+}
 
 function initConnectionMonitor() {
     const statusDot = document.getElementById('statusDot');
@@ -413,6 +416,15 @@ function updateThemeUI(isDark) {
     if (icon) {
         icon.className = isDark ? "fa-solid fa-moon" : "fa-solid fa-sun";
     }
+}
+
+if (clientDobInput) {
+    clientDobInput.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/\D/g, '');
+        if (val.length > 2) val = val.substring(0, 2) + '/' + val.substring(2);
+        if (val.length > 5) val = val.substring(0, 5) + '/' + val.substring(5, 9);
+        e.target.value = val;
+    });
 }
 
 function unlockApp() {
@@ -536,18 +548,16 @@ function loadItems() {
     });
 }
 
-window.renderItems = function() {
-    itemsTableBody = document.getElementById('itemsTableBody');
+function renderItems() {
     if(!itemsTableBody) return;
     itemsTableBody.innerHTML = "";
     let count = 0, visibleCount = 0;
-    const activeFilterInput = document.getElementById('activeTableFilter');
-    const filterVal = activeFilterInput ? activeFilterInput.value.toLowerCase().trim() : "";
+    const filterVal = activeTableFilter ? activeTableFilter.value.toLowerCase().trim() : "";
     const sorted = Object.entries(itemsData).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
 
     for (let [id, item] of sorted) {
         count++;
-        const client = clientsData[item.clientId] || { name: item.clientId || "Non trovato", phone: "N/D" };
+        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
         const rowStr = `${client.name} ${client.phone} ${item.type} ${item.cabinet} ${item.position}`.toLowerCase();
         if (filterVal && !rowStr.includes(filterVal)) continue;
 
@@ -561,7 +571,7 @@ window.renderItems = function() {
             </td>
             <td class="py-4 px-4">
                 <span class="font-medium text-slate-200">${item.type}</span>
-                <div class="text-xs font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</div>
+                <div class="text-xs font-semibold text-emerald-400">€ ${item.price.toFixed(2)}</div>
             </td>
             <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
             <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
@@ -571,16 +581,12 @@ window.renderItems = function() {
         `;
         itemsTableBody.appendChild(tr);
     }
-    
-    itemsCounterBadge = document.getElementById('itemsCounterBadge');
-    noItemsMessage = document.getElementById('noItemsMessage');
-    
     if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
     if(noItemsMessage) {
         noItemsMessage.classList.toggle('hidden', visibleCount > 0);
         noItemsMessage.classList.toggle('flex', visibleCount === 0);
     }
-};
+}
 
 window.confirmAndReturn = function(id, typeName) {
     if (confirm(`Confermi il ritiro del capo "${typeName}"?`)) {
@@ -611,29 +617,5 @@ function loadHistory() {
             historyData = val;
             localStorage.setItem('laundry_history', JSON.stringify(val));
         }
-    });
-}
-
-function renderHistory() {
-    const tbody = document.getElementById('historyTableBody');
-    const counter = document.getElementById('historyCounter');
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-    const entries = Object.entries(historyData);
-    if (counter) counter.textContent = `${entries.length} elementi`;
-
-    entries.sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0)).forEach(([id, item]) => {
-        const client = clientsData[item.clientId] || { name: item.clientId || "Sconosciuto" };
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard";
-        tr.innerHTML = `
-            <td class="py-3 px-4 text-slate-400">${item.returnedAt ? new Date(item.returnedAt).toLocaleDateString('it-IT') : 'N/D'}</td>
-            <td class="py-3 px-4 text-white font-medium">${client.name}</td>
-            <td class="py-3 px-4 text-slate-200">${item.type}</td>
-            <td class="py-3 px-4 text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</td>
-            <td class="py-3 px-4 text-slate-400">${item.cabinet || 'N/D'} / ${item.position || 'N/D'}</td>
-        `;
-        tbody.appendChild(tr);
     });
 }
