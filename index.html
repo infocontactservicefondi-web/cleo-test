@@ -105,7 +105,7 @@
         <!-- HEADER -->
         <header class="flex flex-wrap items-center justify-between gap-4 bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm">
             <div class="flex items-center gap-3">
-                <div id="protectedLogoBtn" class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm cursor-pointer select-none relative overflow-hidden" title="Tieni premuto 5 secondi per sblocco/logout">
+                <div id="protectedLogoBtn" class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm cursor-pointer select-none relative overflow-hidden" title="Tieni premuto 5 secondi per sblocco/reset schermata">
                     <i class="fa-solid fa-shirt"></i>
                     <div id="logoProgressFill" class="absolute bottom-0 left-0 w-full bg-blue-400/40 h-0 transition-all duration-75"></div>
                 </div>
@@ -356,7 +356,19 @@
 
     </div>
 
-    <!-- MODALI BLOCCO E AVVISO -->
+    <!-- MODALE AVVISO LICENZA DEMO -->
+    <div id="licenseDemoModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-amber-500/50 text-center space-y-4 animate-modal">
+            <div class="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg shadow-amber-500/10">
+                <i class="fa-solid fa-vial"></i>
+            </div>
+            <h2 class="text-lg font-bold text-white">Modalità DEMO Attiva</h2>
+            <p id="licenseDemoText" class="text-xs text-slate-300 leading-relaxed"></p>
+            <button onclick="closeDemoModal()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer shadow-lg shadow-amber-500/20">Ho Capito, Continua</button>
+        </div>
+    </div>
+
+    <!-- MODALI BLOCCO E AVVISO SCADENZA -->
     <div id="licenseWarningModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-amber-900/50 text-center space-y-4 animate-modal">
             <div class="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
