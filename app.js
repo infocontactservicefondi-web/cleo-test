@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (REALTIME SYNC & DEMO WARNINGS)
+// LAVANDERIA CLEO - APP LOGIC (REALTIME SYNC & DEVICE IDENTIFICATION)
 // ==========================================
 
 const firebaseConfig = {
@@ -75,6 +75,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function getDeviceModelName() {
+    const ua = navigator.userAgent;
+    if (/iPad/i.test(ua)) return "iPad";
+    if (/iPhone/i.test(ua)) return "iPhone";
+    if (/Android/i.test(ua)) {
+        if (/Tablet|Tab/i.test(ua)) return "Tablet Android";
+        return "Smartphone Android";
+    }
+    if (/Macintosh/i.test(ua)) return "Mac Computer";
+    if (/Windows/i.test(ua)) return "PC Windows";
+    return "Dispositivo Generico";
+}
+
 function fixLoginPlaceholders() {
     const licenseInput = document.getElementById('licensePhoneInput');
     if (licenseInput) {
@@ -107,7 +120,7 @@ function initRealtimeLicenseListener() {
     db.ref('used_licenses/' + activeLicenseCode).on('value', (snap) => {
         if (!snap.exists() && localStorage.getItem('laundry_device_activated') === 'true') {
             lockAppComplete();
-            showToast("La licenza di questo dispositivo è stata rimossa dall'amministratore.", "error");
+            showToast("Licenza sospesa o rimossa dall'amministratore.", "error");
             const expiredModal = document.getElementById('licenseExpiredModal');
             if (expiredModal) expiredModal.classList.remove('hidden');
         } else if (snap.exists()) {
@@ -170,7 +183,7 @@ function forceUnlockByLogo() {
 }
 
 // ==========================================
-// SISTEMA LICENZA E MONITORAGGIO SCADENZA (COMPRESO DEMO)
+// SISTEMA LICENZA E MONITORAGGIO SCADENZA
 // ==========================================
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
@@ -231,7 +244,7 @@ function checkDaysBeforeExpiry(now, expiryTime) {
             if (diffDays === 1) {
                 warningText.textContent = `⚠️ ATTENZIONE: La licenza scadrà domani! Rinnovala subito per evitare il blocco del gestionale.`;
             } else {
-                warningText.textContent = `⚠️ La licenza per questo dispositivo (o Demo) scadrà tra ${diffDays} giorni. Contatta l'amministratore per il rinnovo.`;
+                warningText.textContent = `⚠️ La licenza per questo dispositivo scadrà tra ${diffDays} giorni. Contatta il gestore per il rinnovo.`;
             }
         }
         const warningModal = document.getElementById('licenseWarningModal');
@@ -284,6 +297,8 @@ function checkNumericLicense() {
         return;
     }
 
+    const deviceName = getDeviceModelName();
+
     if (enteredCode.toUpperCase() === "TEST1MIN") {
         let expirationTimestamp = Date.now() + (60 * 1000); 
         localStorage.setItem('laundry_device_activated', 'true');
@@ -308,19 +323,21 @@ function checkNumericLicense() {
             const licenses = snapshot.val();
             let matchedKey = null;
             let customExpiryVal = null;
-            let clientNameVal = "Dispositivo Attivato";
+            let clientNameVal = "Lavanderia Cliente";
 
             if (licenses) {
                 for (let key in licenses) {
                     if (String(key) === String(enteredCode)) {
                         matchedKey = key;
                         customExpiryVal = typeof licenses[key] === 'object' ? licenses[key].expiry : licenses[key];
-                        if (typeof licenses[key] === 'object') clientNameVal = licenses[key].clientName || clientNameVal;
+                        if (typeof licenses[key] === 'object' && licenses[key].clientName) {
+                            clientNameVal = licenses[key].clientName;
+                        }
                         break;
                     } else if (typeof licenses[key] === 'object' && String(licenses[key].code) === String(enteredCode)) {
                         matchedKey = key;
                         customExpiryVal = licenses[key].expiry;
-                        clientNameVal = licenses[key].clientName || clientNameVal;
+                        if (licenses[key].clientName) clientNameVal = licenses[key].clientName;
                         break;
                     }
                 }
@@ -339,12 +356,9 @@ function checkNumericLicense() {
                 db.ref('used_licenses/' + enteredCode).set({
                     usedAt: Date.now(),
                     expiry: expirationTimestamp,
-                    clientName: clientNameVal
+                    clientName: clientNameVal,
+                    deviceInfo: deviceName
                 });
-
-                if (matchedKey) {
-                    db.ref('licenses').child(matchedKey).remove().catch(() => {});
-                }
 
                 localStorage.setItem('laundry_device_activated', 'true');
                 localStorage.setItem('laundry_active_license', enteredCode);
@@ -357,9 +371,9 @@ function checkNumericLicense() {
                 initRealtimeLicenseListener();
                 startLicenseCountdownMonitor();
                 const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-                showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+                showToast(`Licenza attivata su ${deviceName} fino al ${expiryDateFormatted}!`, "success");
             } else {
-                showToast("Codice licenza non valido o già riscattato.", "error");
+                showToast("Codice licenza non valido o bloccato dal gestore.", "error");
             }
         }).catch(() => {
             showToast("Errore di connessione durante la verifica.", "error");
