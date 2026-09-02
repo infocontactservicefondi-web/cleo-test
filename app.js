@@ -448,6 +448,13 @@ function unlockApp() {
 }
 
 window.lockApp = function() {
+    const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
+    
+    if (isLoggedAsAdmin !== 'true') {
+        showToast("Dispositivo con licenza attiva: impossibile uscire.", "error");
+        return;
+    }
+
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     
@@ -463,8 +470,6 @@ window.lockApp = function() {
     const licenseInput = document.getElementById('licensePhoneInput');
     if (licenseInput) licenseInput.value = '';
     if (passwordInput) passwordInput.value = '';
-    
-    showToast("Disconnessione effettuata con successo.", "success");
 };
 
 function lockAppComplete() {
