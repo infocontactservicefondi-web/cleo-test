@@ -68,7 +68,7 @@
 </head>
 <body class="bg-darkBg text-slate-100 min-h-screen font-sans selection:bg-blue-500 selection:text-white pb-20">
 
-    <!-- LOGIN SCREEN -->
+    <!-- SCHERMATA LOGIN E ATTIVAZIONE -->
     <div id="loginScreen" class="fixed inset-0 z-50 bg-darkBg/90 backdrop-blur-xl flex items-center justify-center p-4 opacity-100 transition-opacity duration-500">
         <div class="bg-darkSurface p-8 rounded-3xl shadow-2xl w-full max-w-md border border-darkBorder text-center space-y-6">
             <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg shadow-blue-500/10">
@@ -78,20 +78,20 @@
             
             <div id="licenseRegisterArea" class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-left space-y-3">
                 <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-white uppercase tracking-wider">Licenza Dispositivo</span>
+                    <span class="text-xs font-bold text-white uppercase tracking-wider">Attivazione Dispositivo</span>
                     <span id="licenseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In attesa</span>
                 </div>
-                <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo dispositivo.</p>
+                <p class="text-[11px] text-slate-400">Inserisci il codice licenza per abilitare questo dispositivo.</p>
                 <div class="flex gap-2">
-                    <input type="text" id="licensePhoneInput" placeholder="Inserisci codice licenza..." class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    <input type="text" id="licensePhoneInput" placeholder="Codice licenza o TEST1MIN..." class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                     <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
                 </div>
             </div>
 
             <div class="border-t border-darkBorder pt-4">
-                <p class="text-xs text-slate-400 mb-4">Inserisci la password amministratore per accedere</p>
+                <p class="text-xs text-slate-400 mb-4">Password Amministratore</p>
                 <form id="loginForm" class="space-y-4">
-                    <input type="password" id="passwordInput" placeholder="Password amministratore" class="w-full px-4 py-3 bg-darkCard border border-darkBorder rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="passwordInput" placeholder="Inserisci password..." class="w-full px-4 py-3 bg-darkCard border border-darkBorder rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm cursor-pointer shadow-lg shadow-blue-600/20">Accedi al Gestionale</button>
                 </form>
             </div>
@@ -99,7 +99,7 @@
         </div>
     </div>
 
-    <!-- MAIN APP CONTAINER -->
+    <!-- CONTENUTO APP -->
     <div id="appContainer" class="hidden max-w-7xl mx-auto p-4 sm:p-6 space-y-6 opacity-0 transition-opacity duration-500">
 
         <!-- HEADER -->
@@ -166,7 +166,7 @@
                         </div>
                         <form id="clientForm" class="space-y-3">
                             <div class="relative">
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome e Cognome (Cerca con lente) *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome e Cognome *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
                                     <input type="text" id="clientName" placeholder="Nome e Cognome..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -185,11 +185,11 @@
                             
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Nascita (Facoltativa)</label>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Nascita</label>
                                     <input type="text" id="clientDob" placeholder="GG/MM/AAAA" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Indirizzo (Facoltativo)</label>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Indirizzo</label>
                                     <input type="text" id="clientAddress" placeholder="Indirizzo" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                             </div>
@@ -211,7 +211,7 @@
                         </h2>
                         <form id="itemForm" class="space-y-3">
                             <div class="relative">
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente (Cerca con lente) *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
                                     <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono cliente..." autocomplete="off" class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -263,7 +263,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                         <div>
                             <h2 class="text-sm font-bold text-white">Capi Attivi in Deposito</h2>
-                            <p class="text-xs text-slate-400">Elenco completo dei capi attualmente in lavorazione</p>
+                            <p class="text-xs text-slate-400">Elenco completo dei capi in lavorazione</p>
                         </div>
                         <div class="flex items-center gap-2">
                             <span id="itemsCounterBadge" class="px-2.5 py-1 bg-blue-950 text-blue-400 border border-blue-900 rounded-lg text-xs font-semibold">0 capi</span>
@@ -286,7 +286,7 @@
                         </table>
                         <div id="noItemsMessage" class="hidden flex-col items-center justify-center py-16 text-slate-400 space-y-2">
                             <i class="fa-solid fa-box-open text-3xl"></i>
-                            <p class="text-xs">Nessun capo attivo registrato al momento.</p>
+                            <p class="text-xs">Nessun capo attivo presente al momento.</p>
                         </div>
                     </div>
                 </div>
@@ -298,7 +298,7 @@
         <div id="viewStats" class="space-y-6 hidden">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                    <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati (Periodo)</div>
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati</div>
                     <div id="statTotalCount" class="text-2xl font-bold text-white">0</div>
                 </div>
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
@@ -306,11 +306,11 @@
                     <div id="statTotalRevenue" class="text-2xl font-bold text-emerald-400">€ 0.00</div>
                 </div>
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                    <div class="text-slate-400 text-xs font-medium mb-1">Clienti Unici Serviti</div>
+                    <div class="text-slate-400 text-xs font-medium mb-1">Clienti Serviti</div>
                     <div id="statUniqueClients" class="text-2xl font-bold text-white">0</div>
                 </div>
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                    <div class="text-slate-400 text-xs font-medium mb-1">Capo più frequente</div>
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capo Frequente</div>
                     <div id="statTopItemType" class="text-2xl font-bold text-white truncate">-</div>
                 </div>
             </div>
@@ -318,36 +318,15 @@
             <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
-                        <button id="btnPeriodDay" onclick="setStatPeriod('day')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Oggi</button>
-                        <button id="btnPeriodMonth" onclick="setStatPeriod('month')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Questo Mese</button>
-                        <button id="btnPeriodYear" onclick="setStatPeriod('year')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95">Quest'Anno</button>
-                        <button id="btnPeriodAll" onclick="setStatPeriod('all')" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95">Tutti</button>
-                    </div>
-                    
-                    <div class="flex items-center gap-2 bg-darkCard border border-darkBorder rounded-2xl p-1.5">
-                        <div class="flex items-center gap-1.5 px-2">
-                            <span class="text-xs font-bold text-slate-400">Da:</span>
-                            <input type="date" id="statsCustomStartDate" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
-                        </div>
-                        <div class="w-[1px] h-5 bg-darkBorder"></div>
-                        <div class="flex items-center gap-1.5 px-2">
-                            <span class="text-xs font-bold text-slate-400">A:</span>
-                            <input type="date" id="statsCustomEndDate" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
-                        </div>
-                        <button onclick="renderHistory()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-sm">
-                            <i class="fa-solid fa-check"></i> Cerca
-                        </button>
-                        <button onclick="clearCustomDateFilter()" class="p-2 bg-darkSurface hover:bg-zinc-800 rounded-xl text-xs text-slate-300 border border-darkBorder cursor-pointer" title="Resetta Date">
-                            <i class="fa-solid fa-rotate-left"></i>
-                        </button>
+                        <button id="btnPeriodDay" onclick="setStatPeriod('day')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer">Oggi</button>
+                        <button id="btnPeriodMonth" onclick="setStatPeriod('month')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer">Questo Mese</button>
+                        <button id="btnPeriodYear" onclick="setStatPeriod('year')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer">Quest'Anno</button>
+                        <button id="btnPeriodAll" onclick="setStatPeriod('all')" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer">Tutti</button>
                     </div>
 
                     <div class="flex items-center gap-2">
                         <button onclick="exportBackup()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm">
                             <i class="fa-solid fa-file-excel"></i> Esporta Excel
-                        </button>
-                        <button onclick="resetAllStatistics()" class="p-2.5 bg-rose-950/60 hover:bg-rose-900 text-rose-400 border border-rose-900 rounded-xl text-xs cursor-pointer" title="Azzera Statistiche">
-                            <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -377,80 +356,7 @@
 
     </div>
 
-    <!-- MODALE GESTIONE ANAGRAFICA -->
-    <div id="clientManagerModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-4xl border border-darkBorder space-y-5 max-h-[90vh] overflow-y-auto flex flex-col animate-modal">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-base font-bold text-white">Anagrafica Clienti</h2>
-                    <p class="text-xs text-slate-400">Visualizza o elimina i clienti registrati</p>
-                </div>
-                <button onclick="closeClientManagerModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <div class="relative">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
-                <input type="text" id="managerClientSearchInput" placeholder="Filtra clienti..." class="w-full pl-9 pr-3 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div class="overflow-x-auto flex-1 max-h-96">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase sticky top-0 bg-darkSurface">
-                            <th class="py-3 px-4">Nominativo</th>
-                            <th class="py-3 px-4">Telefono</th>
-                            <th class="py-3 px-4">Indirizzo & Nascita</th>
-                            <th class="py-3 px-4 text-right">Azioni</th>
-                        </tr>
-                    </thead>
-                    <tbody id="managerClientsTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
-                </table>
-            </div>
-            <div class="flex justify-end pt-2 border-t border-darkBorder">
-                <button onclick="closeClientManagerModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-semibold cursor-pointer">Chiudi</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODALE DETTAGLIO CLIENTE -->
-    <div id="clientModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-2xl border border-darkBorder space-y-5 max-h-[90vh] overflow-y-auto flex flex-col animate-modal">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h2 id="modalClientName" class="text-lg font-bold text-white">Nome Cliente</h2>
-                    <p id="modalClientDetails" class="text-xs text-slate-400 mt-0.5">Dettagli cliente...</p>
-                </div>
-                <button onclick="closeClientModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-darkCard p-3 rounded-2xl border border-darkBorder">
-                    <div class="text-slate-400 text-[11px] font-medium">Totale Capi Portati</div>
-                    <div id="modalClientTotalItems" class="text-xl font-bold text-white mt-1">0</div>
-                </div>
-                <div class="bg-darkCard p-3 rounded-2xl border border-darkBorder">
-                    <div class="text-slate-400 text-[11px] font-medium">Totale Speso</div>
-                    <div id="modalClientTotalSpent" class="text-xl font-bold text-emerald-400 mt-1">€ 0.00</div>
-                </div>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Capi in lavorazione</h3>
-                    <div id="modalClientActiveItemsList" class="space-y-2 max-h-40 overflow-y-auto"></div>
-                </div>
-                <div>
-                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Storico Capi Ritirati</h3>
-                    <div id="modalClientHistoryList" class="space-y-2 max-h-40 overflow-y-auto"></div>
-                </div>
-            </div>
-            <div class="flex justify-end pt-2 border-t border-darkBorder">
-                <button onclick="closeClientModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-semibold cursor-pointer">Chiudi</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODALI AVVISO E SCADENZA LICENZA -->
+    <!-- MODALI BLOCCO E AVVISO -->
     <div id="licenseWarningModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-amber-900/50 text-center space-y-4 animate-modal">
             <div class="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
@@ -465,10 +371,12 @@
     <div id="licenseExpiredModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden">
         <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-rose-900/50 text-center space-y-4 animate-modal">
             <div class="w-12 h-12 bg-rose-500/20 text-rose-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
-                <i class="fa-solid fa-lock"></i>
+                <i class="fa-solid fa-ban"></i>
             </div>
-            <h2 class="text-lg font-bold text-white">Licenza Scaduta</h2>
-            <p class="text-xs text-slate-300 leading-relaxed">La licenza per questo dispositivo è scaduta. Inserisci un nuovo codice per continuare ad utilizzare il gestionale.</p>
+            <h2 class="text-lg font-bold text-white">Licenza Sospesa / Non Attiva</h2>
+            <p class="text-xs text-slate-300 leading-relaxed">
+                La licenza per questo dispositivo è stata sospesa o disattivata. Per ripristinare il servizio e rinnovare l'abbonamento, contattare il gestore del sistema.
+            </p>
             <button onclick="closeExpiredModalAndRelogin()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs cursor-pointer shadow-lg shadow-rose-600/20">Inserisci Nuovo Codice</button>
         </div>
     </div>
