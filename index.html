@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lavanderia Cleo - Gestionale</title>
     <script>
-        // Applica subito il tema salvato prima del rendering per evitare sfarfallii
         if (localStorage.getItem('laundry_theme') === 'light') {
             document.documentElement.classList.remove('dark');
         } else {
@@ -45,30 +44,25 @@
             animation: modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Regole Tema Chiaro - ALTO CONTRASTO */
         html:not(.dark) .bg-darkBg { background-color: #f8fafc !important; }
         html:not(.dark) .bg-darkSurface { background-color: #ffffff !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         html:not(.dark) .bg-darkCard { background-color: #f1f5f9 !important; }
         html:not(.dark) .border-darkBorder { border-color: #cbd5e1 !important; }
         
-        /* Testi principali e secondari ad alta leggibilità */
         html:not(.dark) .text-white { color: #0f172a !important; }
         html:not(.dark) .text-slate-100 { color: #1e293b !important; }
         html:not(.dark) .text-slate-200 { color: #334155 !important; }
         html:not(.dark) .text-slate-300 { color: #475569 !important; }
         html:not(.dark) .text-slate-400 { color: #475569 !important; font-weight: 600; }
         
-        /* Colori accento e icone intensificati per il bianco */
         html:not(.dark) .text-blue-400 { color: #2563eb !important; }
         html:not(.dark) .text-emerald-400 { color: #059669 !important; }
         html:not(.dark) .text-rose-400 { color: #e11d48 !important; }
         html:not(.dark) .text-amber-400 { color: #d97706 !important; }
         
-        /* Badge adattati alla modalità chiara */
         html:not(.dark) .bg-blue-950 { background-color: #dbeafe !important; border-color: #bfdbfe !important; }
         html:not(.dark) .bg-amber-950 { background-color: #fef3c7 !important; border-color: #fde68a !important; }
         
-        /* Placeholder sempre nitidi */
         html:not(.dark) input::placeholder, html:not(.dark) textarea::placeholder { color: #64748b !important; }
     </style>
 </head>
@@ -89,7 +83,7 @@
                 </div>
                 <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
                 <div class="flex gap-2">
-                    <input type="text" id="licensePhoneInput" placeholder="Es. CLEO-TEST-01" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    <input type="text" id="licensePhoneInput" placeholder="Inserisci codice licenza annuale o TEST1MIN..." class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                     <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
                 </div>
             </div>
@@ -111,7 +105,6 @@
         <!-- HEADER -->
         <header class="flex flex-wrap items-center justify-between gap-4 bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm">
             <div class="flex items-center gap-3">
-                <!-- LOGO PROTETTO: Richiede 5 secondi di pressione continuata -->
                 <div id="protectedLogoBtn" class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm cursor-pointer select-none relative overflow-hidden" title="Tieni premuto 5 secondi">
                     <i class="fa-solid fa-shirt"></i>
                     <div id="logoProgressFill" class="absolute bottom-0 left-0 w-full bg-blue-400/40 h-0 transition-all duration-75"></div>
@@ -167,7 +160,6 @@
                 <!-- Colonna Sinistra -->
                 <div class="lg:col-span-1 space-y-6">
                     
-                    <!-- Nuovo Cliente con Tabella integrata -->
                     <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
                         <div class="flex items-center justify-between">
                             <h2 class="text-sm font-bold text-white flex items-center gap-2">
@@ -215,7 +207,6 @@
                         </form>
                     </div>
 
-                    <!-- Inserimento Capo in Armadio -->
                     <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
                         <h2 class="text-sm font-bold text-white flex items-center gap-2">
                             <i class="fa-solid fa-shirt text-blue-400"></i> Accetta Capo in Armadio
@@ -270,7 +261,7 @@
 
                 </div>
 
-                <!-- Colonna Destra (Tabella Capi Attivi) -->
+                <!-- Colonna Destra -->
                 <div class="lg:col-span-2 bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm flex flex-col">
                     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                         <div>
@@ -308,7 +299,6 @@
 
         <!-- VIEW STATS -->
         <div id="viewStats" class="space-y-6 hidden">
-            <!-- 1. Blocco Statistiche Superiori -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                     <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati (Periodo)</div>
@@ -328,7 +318,6 @@
                 </div>
             </div>
 
-            <!-- 2. BARRA DEI FILTRI CON "DA" E "A" -->
             <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
@@ -367,7 +356,6 @@
                 </div>
             </div>
 
-            <!-- 3. Blocco Storico Capi Ritirati -->
             <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-sm font-bold text-white">Storico Capi Ritirati</h2>
