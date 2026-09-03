@@ -122,7 +122,6 @@ function listenActiveLicenseRealtime(licenseCode) {
         if (!snap.exists()) {
             db.ref('licenses/' + licenseCode).once('value').then((licSnap) => {
                 if (!licSnap.exists()) {
-                    // MOSTRA AVVISO A SCHERMO PER LA REVOCA
                     const expiredModal = document.getElementById('licenseExpiredModal');
                     const titleEl = document.getElementById('expiredModalTitle');
                     const textEl = document.getElementById('expiredModalText');
@@ -132,7 +131,6 @@ function listenActiveLicenseRealtime(licenseCode) {
                     
                     if (expiredModal) expiredModal.classList.remove('hidden');
 
-                    // Sblocca il form di login in background così appena chiudono il popup possono inserire un nuovo codice
                     sessionStorage.removeItem('laundry_auth');
                     sessionStorage.removeItem('laundry_logged_as_admin');
                     localStorage.removeItem('laundry_device_activated');
@@ -274,9 +272,7 @@ function startLicenseCountdownMonitor() {
             return;
         }
 
-        if (!hasShownTodayWarning) {
-            checkDaysBeforeExpiry(now, expiryTime);
-        }
+        checkDaysBeforeExpiry(now, expiryTime);
     }, 1000); 
 }
 
@@ -284,22 +280,19 @@ function checkDaysBeforeExpiry(now, expiryTime) {
     const diffMs = expiryTime - now;
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    // Intercetta esattamente 15 giorni, 1 giorno o meno
-    if (diffDays === 15 || diffDays === 1 || (diffDays > 0 && diffDays <= 5)) {
+    // MOSTRA AVVISO SOLO NEGLI ULTIMI 5 GIORNI (DA 5 FINO A 0)
+    if (diffDays >= 0 && diffDays <= 5) {
         const warningText = document.getElementById('licenseWarningText');
         if (warningText) {
-            if (diffDays === 15) {
-                warningText.textContent = `⚠️ ATTENZIONE: La licenza scadrà tra 15 giorni. Vi invitiamo a pianificare il rinnovo.`;
-            } else if (diffDays === 1) {
-                warningText.textContent = `⚠️ ATTENZIONE: La licenza scadrà DOMANI! Rinnovate tempestivamente per evitare interruzioni.`;
+            if (diffDays === 0) {
+                warningText.textContent = `⚠️ ATTENZIONE: La licenza scade OGGI a mezzanotte!`;
             } else {
-                warningText.textContent = `⚠️ Avviso: La licenza scadrà tra ${diffDays} giorni.`;
+                warningText.textContent = `⚠️ ATTENZIONE: La licenza sta per scadere. Mancano ${diffDays} giorni al termine.`;
             }
         }
         const warningModal = document.getElementById('licenseWarningModal');
         if (warningModal) {
             warningModal.classList.remove('hidden');
-            hasShownTodayWarning = true;
         }
     }
 }
@@ -357,7 +350,6 @@ function checkNumericLicense() {
         return;
     }
 
-    // GESTIONE LICENZA DEMO TEST (ES. TEST1MIN o codici demo)
     if (enteredCode.toUpperCase() === "TEST1MIN") {
         let expirationTimestamp = Date.now() + (60 * 1000); 
         localStorage.setItem('laundry_device_activated', 'true');
@@ -368,13 +360,12 @@ function checkNumericLicense() {
         unlockApp();
         startLicenseCountdownMonitor();
         
-        // MOSTRA AVVISO A SCHERMO PER LA DEMO
         const expiredModal = document.getElementById('licenseExpiredModal');
         const titleEl = document.getElementById('expiredModalTitle');
         const textEl = document.getElementById('expiredModalText');
         
-        if (titleEl) titleEl.textContent = "Modalità Licenza Demo Attiva";
-        if (textEl) textEl.textContent = "È stata attivata con successo una licenza dimostrativa (Demo) a scopo di valutazione. Tutte le funzionalità del gestionale sono attive per la durata del periodo di prova.";
+        if (titleEl) titleEl.textContent = "Licenza Demo Attiva";
+        if (textEl) textEl.textContent = "È stata attivata una Licenza Demo di prova.";
         
         if (expiredModal) expiredModal.classList.remove('hidden');
         showToast("Licenza Demo avviata con successo!", "success");
@@ -443,17 +434,15 @@ function checkNumericLicense() {
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
 
-            // SE È UNA LICENZA DEMO REGISTRATA NEL DB, MOSTRA IL POPUP DEMO DEDICATO
-            if (isDemoLicense || enteredCode.toUpperCase().includes("DEMO")) {
-                const expiredModal = document.getElementById('licenseExpiredModal');
-                const titleEl = document.getElementById('expiredModalTitle');
-                const textEl = document.getElementById('expiredModalText');
-                
-                if (titleEl) titleEl.textContent = "Licenza Demo Attivata";
-                if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo con scadenza al ${expiryDateFormatted}. Potrai testare tutte le funzionalità del gestionale fino a tale data.`;
-                
-                if (expiredModal) expiredModal.classList.remove('hidden');
-            }
+            // MOSTRA SEMPRE IL POPUP "LICENZA DEMO" ALL'ATTIVAZIONE INIZIALE
+            const expiredModal = document.getElementById('licenseExpiredModal');
+            const titleEl = document.getElementById('expiredModalTitle');
+            const textEl = document.getElementById('expiredModalText');
+            
+            if (titleEl) titleEl.textContent = "Licenza Demo";
+            if (textEl) textEl.textContent = `Stai utilizzando una Licenza Demo attiva fino al ${expiryDateFormatted}.`;
+            
+            if (expiredModal) expiredModal.classList.remove('hidden');
 
             showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
         })
