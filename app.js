@@ -59,7 +59,7 @@ let activeLicenseRef = null;
 let hasShownTodayWarning = false;
 
 // ==========================================
-// UTILITY PARSER DATE LICENZA (FORZATURA GIORNI)
+// UTILITY PARSER DATE LICENZA
 // ==========================================
 function parseDateToTimestamp(val) {
     if (!val) return null;
@@ -71,28 +71,13 @@ function parseDateToTimestamp(val) {
             const day = parseInt(parts[0], 10);
             const month = parseInt(parts[1], 10) - 1;
             const year = parseInt(parts[2], 10);
-            const d = new Date(year, month, day, 23, 59, 59, 999);
+            const d = new Date(year, month, day);
             if (!isNaN(d.getTime())) return d.getTime();
         }
     }
     
-    const numericDays = parseInt(val, 10);
-    if (!isNaN(numericDays) && String(val).trim() === String(numericDays)) {
-        const targetDate = new Date();
-        targetDate.setHours(0, 0, 0, 0); // Azzera l'orario odierno per partire dall'inizio pulito della giornata
-        targetDate.setDate(targetDate.getDate() + numericDays);
-        targetDate.setHours(23, 59, 59, 999);
-        return targetDate.getTime();
-    }
-    
     const parsed = new Date(val).getTime();
-    if (!isNaN(parsed)) {
-        const d = new Date(parsed);
-        d.setHours(23, 59, 59, 999);
-        return d.getTime();
-    }
-    
-    return null;
+    return isNaN(parsed) ? null : parsed;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -116,7 +101,7 @@ function fixLoginPlaceholders() {
     const inputs = document.querySelectorAll('#loginScreen input');
     if (inputs.length > 0) {
         inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+        inputs[0].placeholder = "Inserisci codice licenza o TEST1MIN...";
     }
 }
 
@@ -369,59 +354,52 @@ function checkNumericLicense() {
         return;
     }
 
-    db.ref('used_licenses/' + enteredCode).once('value').then((usedSnap) => {
-        db.ref('licenses').once('value')
-            .then((snapshot) => {
-                const licenses = snapshot.val();
-                let matchedKey = null;
-                let customExpiryVal = null;
+    db.ref('licenses/' + enteredCode).once('value')
+        .then((snapshot) => {
+            const licenseData = snapshot.val();
 
-                if (licenses) {
-                    for (let key in licenses) {
-                        if (String(key) === String(enteredCode)) {
-                            matchedKey = key;
-                            customExpiryVal = licenses[key];
-                            break;
-                        } else if (String(licenses[key]) === String(enteredCode)) {
-                            matchedKey = key;
-                            break;
-                        }
-                    }
-                }
+            if (!licenseData) {
+                showToast("Codice licenza non valido o inesistente.", "error");
+                return;
+            }
 
-                if (matchedKey) {
-                    let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000);
+            // Estrae la data di scadenza reale creata dalla Dashboard (può essere un oggetto con .expiry o direttamente il valore numerico)[cite: 4]
+            let expirationTimestamp = null;
+            if (typeof licenseData === 'object' && licenseData !== null) {
+                expirationTimestamp = parseDateToTimestamp(licenseData.expiry);
+            } else {
+                expirationTimestamp = parseDateToTimestamp(licenseData);
+            }
 
-                    if (customExpiryVal) {
-                        let parsedTime = parseDateToTimestamp(customExpiryVal);
-                        if (parsedTime) {
-                            expirationTimestamp = parsedTime;
-                        }
-                    }
-                    
-                    db.ref('used_licenses/' + enteredCode).set(true);
+            if (!expirationTimestamp || isNaN(expirationTimestamp)) {
+                expirationTimestamp = Date.now() + (24 * 60 * 60 * 1000); // Fallback sicuro 1 giorno
+            }
 
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    hasShownTodayWarning = false;
-                    
-                    listenActiveLicenseRealtime(enteredCode);
-                    unlockApp();
-                    startLicenseCountdownMonitor();
-                    const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-                    showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
-                } else {
-                    showToast("Codice licenza non valido o già utilizzato.", "error");
-                }
-            })
-            .catch(() => {
-                showToast("Errore di connessione e codice non riconosciuto offline.", "error");
+            db.ref('used_licenses/' + enteredCode).set({
+                usedAt: Date.now(),
+                deviceInfo: "Dispositivo Web",
+                expiry: expirationTimestamp,
+                isDemo: (typeof licenseData === 'object' && licenseData.isDemo) ? licenseData.isDemo : false
             });
-    });
+
+            localStorage.setItem('laundry_device_activated', 'true');
+            localStorage.setItem('laundry_active_license', enteredCode);
+            localStorage.setItem('laundry_code_already_redeemed', enteredCode);
+            localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+            sessionStorage.setItem('laundry_auth', 'true');
+            sessionStorage.setItem('laundry_logged_as_admin', 'false');
+            hasShownTodayWarning = false;
+            
+            listenActiveLicenseRealtime(enteredCode);
+            unlockApp();
+            startLicenseCountdownMonitor();
+            
+            const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
+            showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+        })
+        .catch((err) => {
+            showToast("Errore di connessione al database.", "error");
+        });
 }
 
 function initConnectionMonitor() {
@@ -535,6 +513,7 @@ function lockAppComplete() {
     localStorage.removeItem('laundry_device_activated');
     localStorage.removeItem('laundry_license_expiry');
     localStorage.removeItem('laundry_active_license');
+    localStorage.removeItem('laundry_code_already_redeemed');
     
     if(appContainer) {
         appContainer.style.opacity = '0';
@@ -1274,7 +1253,7 @@ function showToast(message, type = "success") {
     if(!toast || !toastMsg) return;
     toastMsg.textContent = message;
     toast.classList.remove('translate-y-25', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
+    toast.classList.et('translate-y-0', 'opacity-100'); // Corretto
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
         toast.classList.add('translate-y-25', 'opacity-0');
