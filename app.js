@@ -55,6 +55,7 @@ let historyData = {};
 
 let currentStatPeriod = 'all';
 let licenseCheckInterval = null;
+let activeLicenseRef = null;
 let hasShownTodayWarning = false;
 
 // ==========================================
@@ -64,7 +65,6 @@ function parseDateToTimestamp(val) {
     if (!val) return null;
     if (typeof val === 'number') return val;
     
-    // Se è una stringa in formato GG/MM/AAAA o GG-MM-AAAA
     if (typeof val === 'string' && val.includes('/')) {
         const parts = val.split('/');
         if (parts.length === 3) {
@@ -103,6 +103,33 @@ function fixLoginPlaceholders() {
         inputs[0].value = "";
         inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
     }
+}
+
+// ==========================================
+// MONITORAGGIO ELIMINAZIONE LICENZA IN TEMPO REALE
+// ==========================================
+function listenActiveLicenseRealtime(licenseCode) {
+    if (!licenseCode || licenseCode === APP_PASSWORD || licenseCode === "CLEO-MASTER" || licenseCode.toUpperCase() === "TEST1MIN") {
+        return;
+    }
+
+    if (activeLicenseRef) {
+        activeLicenseRef.off();
+    }
+
+    // Monitora la presenza del codice sia nel nodo 'licenses' sia in 'used_licenses'
+    activeLicenseRef = db.ref('used_licenses/' + licenseCode);
+    activeLicenseRef.on('value', (snap) => {
+        // Se la licenza usata non esiste più nel database (è stata eliminata dalla dashboard)
+        if (!snap.exists()) {
+            db.ref('licenses/' + licenseCode).once('value').then((licSnap) => {
+                if (!licSnap.exists()) {
+                    lockAppComplete();
+                    showToast("La licenza è stata eliminata dalla dashboard. Dispositivo disconnesso.", "error");
+                }
+            });
+        }
+    });
 }
 
 // ==========================================
@@ -149,7 +176,6 @@ function initProtectedLogo() {
                         clearInterval(logoPressTimer);
                         if(progressFill) progressFill.style.height = '0%';
                         
-                        // Sblocco forzato completo
                         lockAppComplete();
                         showToast("Sblocco forzato attivato! Sessione e licenza resettate.", "success");
                     }
@@ -172,6 +198,7 @@ function initProtectedLogo() {
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
     const licenseExpiry = localStorage.getItem('laundry_license_expiry');
+    const activeLicense = localStorage.getItem('laundry_active_license');
 
     if (deviceActivated === 'true' && licenseExpiry) {
         const now = Date.now();
@@ -180,6 +207,9 @@ function initLicenseSystem() {
         if (now < expiryTime) {
             checkDaysBeforeExpiry(now, expiryTime);
             sessionStorage.setItem('laundry_auth', 'true');
+            if (activeLicense) {
+                listenActiveLicenseRealtime(activeLicense);
+            }
             unlockApp();
             return;
         } else {
@@ -362,9 +392,6 @@ function checkNumericLicense() {
                     }
                     
                     db.ref('used_licenses/' + enteredCode).set(true);
-                    if (matchedKey) {
-                        db.ref('licenses').child(matchedKey).remove().catch(() => {});
-                    }
 
                     localStorage.setItem('laundry_device_activated', 'true');
                     localStorage.setItem('laundry_active_license', enteredCode);
@@ -374,6 +401,7 @@ function checkNumericLicense() {
                     sessionStorage.setItem('laundry_logged_as_admin', 'false');
                     hasShownTodayWarning = false;
                     
+                    listenActiveLicenseRealtime(enteredCode);
                     unlockApp();
                     startLicenseCountdownMonitor();
                     const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
@@ -393,6 +421,7 @@ function checkNumericLicense() {
                     hasShownTodayWarning = false;
                     sessionStorage.setItem('laundry_auth', 'true');
                     sessionStorage.setItem('laundry_logged_as_admin', 'false');
+                    listenActiveLicenseRealtime(enteredCode);
                     unlockApp();
                     showToast("Licenza attivata con successo!", "success");
                 } else {
@@ -503,6 +532,11 @@ window.lockApp = function() {
 
 function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
+    if (activeLicenseRef) {
+        activeLicenseRef.off();
+        activeLicenseRef = null;
+    }
+    
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
     localStorage.removeItem('laundry_device_activated');
