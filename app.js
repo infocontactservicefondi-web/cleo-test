@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (FORZATURA DEFINITIVA FLUSSO)
+// LAVANDERIA CLEO - APP LOGIC (CORREZIONE EXPORT & STORICO)
 // ==========================================
 
 const firebaseConfig = {
@@ -1065,7 +1065,10 @@ function renderHistory() {
     const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sorted) {
-        const retDate = new Date(item.returnedAt || Date.now());
+        if (!item || !item.returnedAt) continue; // Salta elementi corrotti o senza data
+        const retDate = new Date(item.returnedAt);
+        if (isNaN(retDate.getTime())) continue;
+
         const retDateStr = retDate.toISOString().split('T')[0];
 
         if (customStart || customEnd) {
@@ -1114,7 +1117,10 @@ window.exportBackup = function() {
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sortedHistory) {
-        const retDate = new Date(item.returnedAt || Date.now());
+        if (!item || !item.returnedAt) continue; // Evita righe fantasma o corrotte
+        const retDate = new Date(item.returnedAt);
+        if (isNaN(retDate.getTime())) continue;
+
         if (startDate && retDate < startDate) continue;
         if (endDate && retDate > endDate) continue;
 
@@ -1123,16 +1129,19 @@ window.exportBackup = function() {
         grandTotalRevenue += (item.price || 0);
     }
 
+    // Struttura CSV pulita e priva di celle con formule o caratteri speciali corrotti
     let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
-    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
+    csvContent += `"LAVANDERIA CLEO - REPORT"\n`;
+    csvContent += `"Data generazione:","${generationDate}"\n`;
+    csvContent += `"Totale Capi:","${totalItemsCount}"\n`;
+    csvContent += `"Incasso Totale (EUR):","${grandTotalRevenue.toFixed(2).replace('.', ',')}"\n\n`;
     
-    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
+    csvContent += `"Data Ritiro","Cliente","Tel","Capo","Prezzo (EUR)","Armadio","Posizione"\n`;
     for (let entry of filteredHistory) {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
         const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
+        csvContent += `"${retDateStr}","${client.name}","${client.phone}","${item.type}","${(item.price || 0).toFixed(2).replace('.', ',')}","${item.cabinet}","${item.position}"\n`;
     }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
