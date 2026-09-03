@@ -1,9 +1,9 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (LOCKED LICENSE & ADMIN TOGGLE)
+// LAVANDERIA CLEO - APP LOGIC (LOCKED LICENSE & DYNAMIC EXPIRY)
 // ==========================================
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD-tuo-firebase-api-key-da-completare",
+    apiKey: "AIzaSyCDpsHwHCJ6WAgUWeW77LD7WTPHEBRgwGo",
     authDomain: "lavanderia-d9c29.firebaseapp.com",
     databaseURL: "https://lavanderia-d9c29-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "lavanderia-d9c29",
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     initConnectionMonitor(); 
     initGlobalResetListener(); // Monitoraggio reset remoto
-    initProtectedLogo(); // Gestione pressione 5 secondi sul logo
+    initProtectedLogo(); // Gestione pressione 5 secondi sul logo per sblocco/uscita
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
 
@@ -78,7 +78,7 @@ function fixLoginPlaceholders() {
     const inputs = document.querySelectorAll('#loginScreen input');
     if (inputs.length > 0) {
         inputs[0].value = "";
-        inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
+        inputs[0].placeholder = "Inserisci codice licenza...";
     }
 }
 
@@ -127,7 +127,7 @@ function initProtectedLogo() {
                         clearInterval(logoPressTimer);
                         if(progressFill) progressFill.style.height = '0%';
                         showToast("Sblocco forzato attivato!", "success");
-                        lockApp(); 
+                        lockApp(true); // Consente l'uscita forzata solo col logo
                     }
                 }, 100);
             });
@@ -312,32 +312,44 @@ function checkNumericLicense() {
             .then((snapshot) => {
                 const licenses = snapshot.val();
                 let matchedKey = null;
-                let customExpiryVal = null;
+                let licenseObj = null;
 
                 if (licenses) {
                     for (let key in licenses) {
                         if (String(key) === String(enteredCode)) {
                             matchedKey = key;
-                            customExpiryVal = licenses[key];
+                            licenseObj = licenses[key];
                             break;
-                        } else if (String(licenses[key]) === String(enteredCode)) {
+                        } else if (typeof licenses[key] === 'object' && String(licenses[key].code) === String(enteredCode)) {
                             matchedKey = key;
+                            licenseObj = licenses[key];
                             break;
                         }
                     }
                 }
 
                 if (enteredCode === "2580" || matchedKey) {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
+                    let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000); // Valore di riserva 1 anno se privo di data
 
-                    if (customExpiryVal) {
-                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
-                        if (!isNaN(parsedTime)) {
-                            expirationTimestamp = parsedTime;
+                    if (licenseObj) {
+                        if (typeof licenseObj === 'object' && licenseObj.expiry) {
+                            expirationTimestamp = parseInt(licenseObj.expiry, 10);
+                        } else if (typeof licenseObj === 'number') {
+                            expirationTimestamp = licenseObj;
+                        } else if (typeof licenseObj === 'string' && !isNaN(Number(licenseObj))) {
+                            expirationTimestamp = parseInt(licenseObj, 10);
                         }
                     }
                     
-                    db.ref('used_licenses/' + enteredCode).set(true);
+                    const usedData = {
+                        usedAt: Date.now(),
+                        deviceInfo: "Tablet Client",
+                        expiry: expirationTimestamp,
+                        isDemo: (typeof licenseObj === 'object' && licenseObj.isDemo) ? licenseObj.isDemo : false,
+                        clientName: (typeof licenseObj === 'object' && licenseObj.clientName) ? licenseObj.clientName : "Cliente"
+                    };
+
+                    db.ref('used_licenses/' + enteredCode).set(usedData);
                     if (matchedKey) {
                         db.ref('licenses').child(matchedKey).remove().catch(() => {});
                     }
@@ -353,27 +365,13 @@ function checkNumericLicense() {
                     unlockApp();
                     startLicenseCountdownMonitor();
                     const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-                    showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+                    showToast(`Licenza attiva fino al ${expiryDateFormatted}`, "success");
                 } else {
                     showToast("Codice licenza non valido o già utilizzato.", "error");
                 }
             })
-            .catch(() => {
-                if (enteredCode === "2580") {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
-                    db.ref('used_licenses/' + enteredCode).set(true);
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    hasShownTodayWarning = false;
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    unlockApp();
-                    showToast("Licenza attivata con successo!", "success");
-                } else {
-                    showToast("Errore di connessione e codice non riconosciuto offline.", "error");
-                }
+            .catch((err) => {
+                showToast("Errore di connessione e codice non riconosciuto offline.", "error");
             });
     });
 }
@@ -453,11 +451,13 @@ function unlockApp() {
     initApp();
 }
 
-window.lockApp = function() {
-    const isLoggedAsAdmin = sessionStorage.getItem('laundry_logged_as_admin');
-    
-    if (isLoggedAsAdmin !== 'true') {
-        showToast("Dispositivo con licenza attiva: impossibile uscire.", "error");
+// ==========================================
+// ESCI / LOCK APP (BLOCCATO SIA DA ADMIN CHE LICENZA)
+// ==========================================
+window.lockApp = function(force = false) {
+    // Impedisce sempre l'uscita tramite pulsante rosso in alto a destra
+    if (!force) {
+        showToast("dispositivo con licenza attiva impossibile uscire", "error");
         return;
     }
 
