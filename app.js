@@ -363,7 +363,6 @@ function checkNumericLicense() {
                 return;
             }
 
-            // Estrae la data di scadenza reale creata dalla Dashboard (può essere un oggetto con .expiry o direttamente il valore numerico)[cite: 4]
             let expirationTimestamp = null;
             if (typeof licenseData === 'object' && licenseData !== null) {
                 expirationTimestamp = parseDateToTimestamp(licenseData.expiry);
@@ -372,7 +371,7 @@ function checkNumericLicense() {
             }
 
             if (!expirationTimestamp || isNaN(expirationTimestamp)) {
-                expirationTimestamp = Date.now() + (24 * 60 * 60 * 1000); // Fallback sicuro 1 giorno
+                expirationTimestamp = Date.now() + (24 * 60 * 60 * 1000); 
             }
 
             db.ref('used_licenses/' + enteredCode).set({
@@ -1252,8 +1251,14 @@ function showToast(message, type = "success") {
     const toastMsg = document.getElementById('toastMessage');
     if(!toast || !toastMsg) return;
     toastMsg.textContent = message;
+    toast.className = toast.className.replace(/bg-\w+-\d+/g, '');
+    if (type === "error") {
+        toast.classList.add('bg-rose-600');
+    } else {
+        toast.classList.add('bg-emerald-600');
+    }
     toast.classList.remove('translate-y-25', 'opacity-0');
-    toast.classList.et('translate-y-0', 'opacity-100'); // Corretto
+    toast.classList.add('translate-y-0', 'opacity-100');
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
         toast.classList.add('translate-y-25', 'opacity-0');
