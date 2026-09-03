@@ -52,6 +52,7 @@ const activeTableFilter = document.getElementById('activeTableFilter');
 let clientsData = {};
 let itemsData = {};
 let historyData = {};
+let currentStatPeriod = 'all';
 
 let licenseCheckInterval = null;
 let activeLicenseRef = null;
@@ -202,7 +203,6 @@ function startLicenseCountdownMonitor() {
         const now = Date.now();
         const expiryTime = parseInt(licenseExpiry, 10);
 
-        // SCADENZA EFFETTIVA: BLOCCO TOTALE
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
             localStorage.clear();
@@ -211,13 +211,12 @@ function startLicenseCountdownMonitor() {
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
 
-            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta a mezzanotte.");
+            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta.");
             return;
         }
 
         if (!isDemo) return;
 
-        // AVVISO ARANCIONE SOLO NEGLI ULTIMI 5 GIORNI
         const diffMs = expiryTime - now;
         const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
@@ -270,7 +269,7 @@ function checkAdminPassword() {
     }
 }
 
-function checkNumericLicense() {
+window.checkNumericLicense = function() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredCode = inputs.length > 0 ? inputs[0].value.trim() : "";
 
@@ -287,12 +286,11 @@ function checkNumericLicense() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
         
-        unlockApp(); // SBLOCCA SUBITO L'APP
+        unlockApp();
         startLicenseCountdownMonitor();
         
         const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
         
-        // FORZATURA MESSAGGIO DI BENVENUTO DEMO (USA IL MODALE ARANCIONE/WARNING)
         const warningModal = document.getElementById('licenseWarningModal');
         const warningText = document.getElementById('licenseWarningText');
         if (warningText) {
@@ -357,7 +355,7 @@ function checkNumericLicense() {
             sessionStorage.setItem('laundry_logged_as_admin', 'false');
             
             listenActiveLicenseRealtime(enteredCode);
-            unlockApp(); // SBLOCCA SUBITO L'APP
+            unlockApp();
             startLicenseCountdownMonitor();
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
@@ -374,7 +372,7 @@ function checkNumericLicense() {
         .catch(() => {
             showToast("Errore di connessione al database.", "error");
         });
-}
+};
 
 function initConnectionMonitor() {
     const statusDot = document.getElementById('statusDot');
@@ -383,10 +381,10 @@ function initConnectionMonitor() {
     db.ref('.info/connected').on('value', (snap) => {
         if (snap.val() === true) {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]";
-            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400"; }
+            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400 font-medium"; }
         } else {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
-            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400"; }
+            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400 font-medium"; }
         }
     });
 }
@@ -444,6 +442,10 @@ function unlockApp() {
     initApp();
 }
 
+window.lockApp = function() {
+    lockAppComplete();
+};
+
 function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
     if (activeLicenseRef) {
@@ -482,13 +484,13 @@ window.switchTab = function(tab) {
     if (tab === 'active') {
         if(viewStats) viewStats.classList.add('hidden');
         if(viewActive) viewActive.classList.remove('hidden');
-        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95";
-        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95";
+        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
+        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
     } else {
         if(viewActive) viewActive.classList.add('hidden');
         if(viewStats) viewStats.classList.remove('hidden');
-        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95";
-        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95";
+        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
+        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
         renderHistory();
     }
 };
@@ -1019,11 +1021,11 @@ window.setStatPeriod = function(period) {
 
     ['Day', 'Month', 'Year', 'All'].forEach(p => {
         const btn = document.getElementById(`btnPeriod${p}`);
-        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
+        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer";
     });
     
     const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
-    if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95";
+    if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer";
 
     renderHistory();
 };
@@ -1091,7 +1093,7 @@ function renderHistory() {
     document.getElementById('statTotalCount').textContent = count;
     document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
     document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-    document.getElementById('historyCounter').textContent = `${count} elements`;
+    document.getElementById('historyCounter').textContent = `${count} elementi`;
 
     let topType = "-", maxC = 0;
     for (let [t, c] of Object.entries(typeCounts)) {
@@ -1137,7 +1139,7 @@ window.exportBackup = function() {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.getElementById('toastNotification') ? document.body.appendChild(link) : null; // safe trigger
+    if(document.getElementById('toastNotification')) document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     showToast("Report esportato!", "success");
@@ -1154,10 +1156,10 @@ function showToast(message, type = "success") {
     } else {
         toast.classList.add('bg-emerald-600');
     }
-    toast.classList.remove('translate-y-25', 'opacity-0');
+    toast.classList.remove('translate-y-20', 'opacity-0');
     toast.classList.add('translate-y-0', 'opacity-100');
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-25', 'opacity-0');
+        toast.classList.add('translate-y-20', 'opacity-0');
     }, 3500);
 }
