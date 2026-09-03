@@ -82,6 +82,23 @@ function fixLoginPlaceholders() {
     }
 }
 
+// Helper universale per parsing date
+function parseExpiryTimestamp(value) {
+    if (!value) return null;
+    if (typeof value === 'number') return value;
+    
+    // Gestione formato italiano GG/MM/AAAA
+    if (typeof value === 'string' && value.includes('/')) {
+        const parts = value.split('/');
+        if (parts.length === 3) {
+            value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+    }
+    
+    const parsed = new Date(value).getTime();
+    return isNaN(parsed) ? null : parsed;
+}
+
 // ==========================================
 // ASCOLTATORE RESET REMOTO GLOBALE DA FIREBASE
 // ==========================================
@@ -134,7 +151,7 @@ function initProtectedLogo() {
         });
 
         ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
-            logoBtn.addEventListener(() => {
+            logoBtn.addEventListener(evt, () => {
                 if (logoPressTimer) clearInterval(logoPressTimer);
                 if(progressFill) progressFill.style.height = '0%';
             });
@@ -151,9 +168,9 @@ function initLicenseSystem() {
 
     if (deviceActivated === 'true' && licenseExpiry) {
         const now = Date.now();
-        const expiryTime = parseInt(licenseExpiry, 10);
+        const expiryTime = parseExpiryTimestamp(licenseExpiry);
 
-        if (now < expiryTime) {
+        if (expiryTime && now < expiryTime) {
             checkDaysBeforeExpiry(now, expiryTime);
             sessionStorage.setItem('laundry_auth', 'true');
             unlockApp();
@@ -174,9 +191,9 @@ function startLicenseCountdownMonitor() {
         if (!licenseExpiry) return;
 
         const now = Date.now();
-        const expiryTime = parseInt(licenseExpiry, 10);
+        const expiryTime = parseExpiryTimestamp(licenseExpiry);
 
-        if (now >= expiryTime) {
+        if (!expiryTime || now >= expiryTime) {
             clearInterval(licenseCheckInterval);
             localStorage.removeItem('laundry_device_activated');
             localStorage.removeItem('laundry_license_expiry');
@@ -331,8 +348,8 @@ function checkNumericLicense() {
                     let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
 
                     if (customExpiryVal) {
-                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
-                        if (!isNaN(parsedTime)) {
+                        let parsedTime = parseExpiryTimestamp(customExpiryVal);
+                        if (parsedTime) {
                             expirationTimestamp = parsedTime;
                         }
                     }
