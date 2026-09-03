@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (CORREZIONE EXPORT & STORICO)
+// LAVANDERIA CLEO - APP LOGIC
 // ==========================================
 
 const firebaseConfig = {
@@ -109,7 +109,7 @@ function listenActiveLicenseRealtime(licenseCode) {
         if (!snap.exists()) {
             db.ref('licenses/' + licenseCode).once('value').then((licSnap) => {
                 if (!licSnap.exists()) {
-                    triggerHardLock("Licenza Revocata", "ATTENZIONE: La licenza associata a questo terminale è stata revocata o eliminata dall'amministrazione.");
+                    triggerHardLock("Licenza Revocata", "ATTENZIONE: La licenza associata a questo terminale è stata revocata o eliminata.");
                 }
             });
         }
@@ -123,7 +123,7 @@ function initGlobalResetListener() {
             const localSignalProcessed = localStorage.getItem('laundry_last_reset_processed');
             if (localSignalProcessed !== String(serverSignal)) {
                 localStorage.setItem('laundry_last_reset_processed', String(serverSignal));
-                triggerHardLock("Dispositivo Disconnesso", "Il terminale è stato disconnesso da remoto dall'amministratore di sistema.");
+                triggerHardLock("Dispositivo Disconnesso", "Il terminale è stato disconnesso da remoto dall'amministratore.");
             }
         }
     });
@@ -186,7 +186,7 @@ function initLicenseSystem() {
             if (activeLicense) listenActiveLicenseRealtime(activeLicense);
             unlockApp();
         } else {
-            triggerHardLock("Periodo di Prova Terminato", "La licenza associata a questo dispositivo è giunta a termine. Inserisci un nuovo codice valido per continuare.");
+            triggerHardLock("Periodo di Prova Terminato", "La licenza associata a questo dispositivo è giunta a termine.");
         }
     }
 }
@@ -211,7 +211,7 @@ function startLicenseCountdownMonitor() {
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
 
-            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta.");
+            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza è scaduta.");
             return;
         }
 
@@ -224,9 +224,9 @@ function startLicenseCountdownMonitor() {
             const warningText = document.getElementById('licenseWarningText');
             if (warningText) {
                 if (diffDays === 0) {
-                    warningText.textContent = `⚠️ ATTENZIONE: La licenza demo scade OGGI a mezzanotte!`;
+                    warningText.textContent = "ATTENZIONE: La licenza demo scade OGGI a mezzanotte!";
                 } else {
-                    warningText.textContent = `⚠️ ATTENZIONE: Mancano ${diffDays} giorni alla scadenza della licenza demo.`;
+                    warningText.textContent = `ATTENZIONE: Mancano ${diffDays} giorni alla scadenza della licenza demo.`;
                 }
             }
             const warningModal = document.getElementById('licenseWarningModal');
@@ -294,7 +294,7 @@ window.checkNumericLicense = function() {
         const warningModal = document.getElementById('licenseWarningModal');
         const warningText = document.getElementById('licenseWarningText');
         if (warningText) {
-            warningText.textContent = `✅ Licenza Demo attivata con successo fino al ${expiryDateFormatted}. Clicca sotto per iniziare a lavorare!`;
+            warningText.textContent = `Licenza Demo attivata con successo fino al ${expiryDateFormatted}.`;
         }
         if (warningModal) warningModal.classList.remove('hidden');
         
@@ -363,7 +363,7 @@ window.checkNumericLicense = function() {
             const warningModal = document.getElementById('licenseWarningModal');
             const warningText = document.getElementById('licenseWarningText');
             if (warningText) {
-                warningText.textContent = `✅ Licenza attivata con successo fino al ${expiryDateFormatted}. Buon lavoro!`;
+                warningText.textContent = `Licenza attivata con successo fino al ${expiryDateFormatted}.`;
             }
             if (warningModal) warningModal.classList.remove('hidden');
             
@@ -380,10 +380,10 @@ function initConnectionMonitor() {
 
     db.ref('.info/connected').on('value', (snap) => {
         if (snap.val() === true) {
-            if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]";
+            if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
             if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400 font-medium"; }
         } else {
-            if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
+            if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
             if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400 font-medium"; }
         }
     });
@@ -577,7 +577,7 @@ window.printClientReceiptLabel = function() {
     const address = document.getElementById('clientAddress').value.trim();
 
     if (!name || !phone) {
-        showToast("Inserisci almeno Nome e Telefono per la stampa", "error");
+        showToast("Inserisci almeno Nome e Telefono", "error");
         return;
     }
 
@@ -590,9 +590,9 @@ window.printClientReceiptLabel = function() {
     try {
         const base64Data = btoa(unescape(encodeURIComponent(printText)));
         window.location.href = `rawbt:base64,${base64Data}`;
-        showToast("Etichetta cliente inviata in stampa!", "success");
+        showToast("Etichetta inviata in stampa", "success");
     } catch (err) {
-        showToast("Errore di stampa.", "error");
+        showToast("Errore di stampa", "error");
     }
 };
 
@@ -616,7 +616,7 @@ if (clientForm) {
 
         clientForm.reset();
         if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
-        showToast(`Cliente "${name}" registrato!`, "success");
+        showToast(`Cliente "${name}" registrato`, "success");
         renderItems();
         const managerModal = document.getElementById('clientManagerModal');
         if (managerModal && !managerModal.classList.contains('hidden')) renderClientManagerTable();
@@ -675,7 +675,7 @@ function renderClientManagerTable(filter = "") {
             <td class="py-3 px-4 text-right">
                 <button onclick="event.stopPropagation(); deleteClient('${id}', '${client.name.replace(/'/g, "\\'")}')" 
                     class="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-400 rounded-lg font-semibold cursor-pointer">
-                    <i class="fa-solid fa-trash-can mr-1"></i> Elimina
+                    Elimina
                 </button>
             </td>
         `;
@@ -684,11 +684,11 @@ function renderClientManagerTable(filter = "") {
 }
 
 window.deleteClient = function(id, name) {
-    if (confirm(`Sei sicuro di voler eliminare permanentemente il cliente "${name}"?`)) {
+    if (confirm(`Eliminare permanentemente il cliente "${name}"?`)) {
         delete clientsData[id];
         localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
         db.ref('clients').child(id).remove();
-        showToast(`Cliente ${name} eliminato`, "success");
+        showToast("Cliente eliminato", "success");
         if (managerClientSearchInput) renderClientManagerTable(managerClientSearchInput.value.trim());
         renderItems();
     }
@@ -704,7 +704,7 @@ function renderAssignClientDropdown(filter = "") {
 
     const tableHeader = document.createElement('div');
     tableHeader.className = "grid grid-cols-3 px-4 py-2.5 text-[11px] font-bold text-slate-400 uppercase bg-darkSurface border-b border-darkBorder sticky top-0 shadow-sm";
-    tableHeader.innerHTML = `<span>Cliente (Nome)</span><span>Telefono</span><span>Indirizzo</span>`;
+    tableHeader.innerHTML = `<span>Cliente</span><span>Telefono</span><span>Indirizzo</span>`;
     assignClientDropdown.appendChild(tableHeader);
 
     const rowsContainer = document.createElement('div');
@@ -734,7 +734,7 @@ function renderAssignClientDropdown(filter = "") {
     if (matches === 0) {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = "p-6 text-center text-xs text-slate-400 italic";
-        emptyDiv.textContent = "Nessun cliente trovato in anagrafica.";
+        emptyDiv.textContent = "Nessun cliente trovato.";
         rowsContainer.appendChild(emptyDiv);
     }
 
@@ -790,7 +790,7 @@ if (itemForm) {
         itemForm.reset();
         if(assignClientSearch) assignClientSearch.value = "";
         if(selectedClientIdInput) selectedClientIdInput.value = "";
-        showToast(`Capo (${type}) registrato in armadio ${cabinet}`, "success");
+        showToast("Capo registrato", "success");
         renderItems();
     });
 }
@@ -811,7 +811,7 @@ window.printItemLabel = function() {
 
     let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel:     " + client.phone + "\nCapo:    " + type + "\n";
     if (notes) printText += "Note:    " + notes + "\n";
-    printText += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n\n\n\n\x1D\x56\x41\x03";
+    printText += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: € " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n\n\n\n\x1D\x56\x41\x03";
 
     try {
         const base64Data = btoa(unescape(encodeURIComponent(printText)));
@@ -860,18 +860,18 @@ function renderItems() {
             </td>
             <td class="py-4 px-4">
                 <span class="font-medium text-slate-200">${item.type}</span>
-                ${item.notes ? `<div class="text-[11px] text-amber-300/90 italic mt-0.5"><i class="fa-solid fa-circle-exclamation mr-1"></i>${item.notes}</div>` : ''}
+                ${item.notes ? `<div class="text-[11px] text-amber-300/90 italic mt-0.5">${item.notes}</div>` : ''}
                 <div class="text-xs font-semibold text-emerald-400">€ ${item.price.toFixed(2)}</div>
             </td>
             <td class="py-4 px-4 text-xs font-semibold text-slate-300">Armadio ${item.cabinet} &bull; Pos. ${item.position}</td>
             <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-900">In lavorazione</span></td>
             <td class="py-4 px-4 text-right">
-                <button onclick="confirmAndReturn('${id}', '${item.type.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer shadow-sm">Segna Ritirato</button>
+                <button onclick="confirmAndReturn('${id}', '${item.type.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 text-rose-300 rounded-xl text-xs font-semibold cursor-pointer">Segna Ritirato</button>
             </td>
         `;
         itemsTableBody.appendChild(tr);
     }
-    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} capi attivi`;
+    if(itemsCounterBadge) itemsCounterBadge.textContent = `${count} attivi`;
     if(noItemsMessage) {
         noItemsMessage.classList.toggle('hidden', visibleCount > 0);
         noItemsMessage.classList.toggle('flex', visibleCount === 0);
@@ -879,7 +879,7 @@ function renderItems() {
 }
 
 window.confirmAndReturn = function(id, typeName) {
-    if (confirm(`Confermi il ritiro del capo "${typeName}"?`)) markAsReturned(id);
+    if (confirm(`Confermi il ritiro di "${typeName}"?`)) markAsReturned(id);
 };
 
 window.markAsReturned = function(id) {
@@ -927,7 +927,7 @@ if (globalSearch) {
                 div.className = "p-4 hover:bg-darkCard cursor-default";
                 let itemsHtml = clientActiveItems.length > 0 ? `<div class="mt-2.5 space-y-1.5 border-t border-darkBorder pt-2">` : `<div class="mt-2 text-xs text-slate-400 italic">Nessun capo attivo.</div>`;
                 clientActiveItems.forEach(item => {
-                    itemsHtml += `<div class="flex items-center justify-between text-xs bg-darkBg p-2 rounded-lg border border-darkBorder"><div><span class="font-bold text-white">${item.type}</span> <span class="text-slate-400 ml-1">&bull; Armadio: <strong class="text-blue-400">${item.cabinet}</strong></span></div><span class="font-bold text-emerald-400">€ ${item.price.toFixed(2)}</span></div>`;
+                    itemsHtml += `<div class="flex items-center justify-between text-xs bg-darkBg p-2 rounded-lg border border-darkBorder"><div><span class="font-bold text-white">${item.type}</span> <span class="text-slate-400 ml-1">Armadio: <strong class="text-blue-400">${item.cabinet}</strong></span></div><span class="font-bold text-emerald-400">€ ${item.price.toFixed(2)}</span></div>`;
                 });
                 if(clientActiveItems.length > 0) itemsHtml += `</div>`;
 
@@ -1065,7 +1065,7 @@ function renderHistory() {
     const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sorted) {
-        if (!item || !item.returnedAt) continue; // Salta elementi corrotti o senza data
+        if (!item || !item.returnedAt) continue; 
         const retDate = new Date(item.returnedAt);
         if (isNaN(retDate.getTime())) continue;
 
@@ -1117,7 +1117,7 @@ window.exportBackup = function() {
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sortedHistory) {
-        if (!item || !item.returnedAt) continue; // Evita righe fantasma o corrotte
+        if (!item || !item.returnedAt) continue; 
         const retDate = new Date(item.returnedAt);
         if (isNaN(retDate.getTime())) continue;
 
@@ -1129,19 +1129,18 @@ window.exportBackup = function() {
         grandTotalRevenue += (item.price || 0);
     }
 
-    // Struttura CSV pulita e priva di celle con formule o caratteri speciali corrotti
     let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT"\n`;
-    csvContent += `"Data generazione:","${generationDate}"\n`;
-    csvContent += `"Totale Capi:","${totalItemsCount}"\n`;
-    csvContent += `"Incasso Totale (EUR):","${grandTotalRevenue.toFixed(2).replace('.', ',')}"\n\n`;
+    csvContent += "LAVANDERIA CLEO - REPORT\n";
+    csvContent += "Data generazione:;" + generationDate + "\n";
+    csvContent += "Totale Capi:;" + totalItemsCount + "\n";
+    csvContent += "Incasso Totale (€):;" + grandTotalRevenue.toFixed(2).replace('.', ',') + "\n\n";
     
-    csvContent += `"Data Ritiro","Cliente","Tel","Capo","Prezzo (EUR)","Armadio","Posizione"\n`;
+    csvContent += "Data Ritiro;Cliente;Tel;Capo;Incasso (€);Armadio;Posizione\n";
     for (let entry of filteredHistory) {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
         const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}","${client.name}","${client.phone}","${item.type}","${(item.price || 0).toFixed(2).replace('.', ',')}","${item.cabinet}","${item.position}"\n`;
+        csvContent += retDateStr + ";" + client.name + ";" + client.phone + ";" + item.type + ";" + (item.price || 0).toFixed(2).replace('.', ',') + ";" + item.cabinet + ";" + item.position + "\n";
     }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1151,7 +1150,7 @@ window.exportBackup = function() {
     if(document.getElementById('toastNotification')) document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("Report esportato!", "success");
+    showToast("Report esportato", "success");
 }
 
 function showToast(message, type = "success") {
