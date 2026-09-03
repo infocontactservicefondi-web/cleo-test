@@ -57,6 +57,29 @@ let currentStatPeriod = 'all';
 let licenseCheckInterval = null;
 let hasShownTodayWarning = false;
 
+// ==========================================
+// UTILITY PARSER DATE LICENZA
+// ==========================================
+function parseDateToTimestamp(val) {
+    if (!val) return null;
+    if (typeof val === 'number') return val;
+    
+    // Se è una stringa in formato GG/MM/AAAA o GG-MM-AAAA
+    if (typeof val === 'string' && val.includes('/')) {
+        const parts = val.split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            const d = new Date(year, month, day);
+            if (!isNaN(d.getTime())) return d.getTime();
+        }
+    }
+    
+    const parsed = new Date(val).getTime();
+    return isNaN(parsed) ? null : parsed;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initLicenseSystem();
     initTheme();
@@ -80,23 +103,6 @@ function fixLoginPlaceholders() {
         inputs[0].value = "";
         inputs[0].placeholder = "Inserisci codice licenza annuale o TEST1MIN...";
     }
-}
-
-// Helper universale per parsing date
-function parseExpiryTimestamp(value) {
-    if (!value) return null;
-    if (typeof value === 'number') return value;
-    
-    // Gestione formato italiano GG/MM/AAAA
-    if (typeof value === 'string' && value.includes('/')) {
-        const parts = value.split('/');
-        if (parts.length === 3) {
-            value = `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-    }
-    
-    const parsed = new Date(value).getTime();
-    return isNaN(parsed) ? null : parsed;
 }
 
 // ==========================================
@@ -168,9 +174,9 @@ function initLicenseSystem() {
 
     if (deviceActivated === 'true' && licenseExpiry) {
         const now = Date.now();
-        const expiryTime = parseExpiryTimestamp(licenseExpiry);
+        const expiryTime = parseInt(licenseExpiry, 10);
 
-        if (expiryTime && now < expiryTime) {
+        if (now < expiryTime) {
             checkDaysBeforeExpiry(now, expiryTime);
             sessionStorage.setItem('laundry_auth', 'true');
             unlockApp();
@@ -191,9 +197,9 @@ function startLicenseCountdownMonitor() {
         if (!licenseExpiry) return;
 
         const now = Date.now();
-        const expiryTime = parseExpiryTimestamp(licenseExpiry);
+        const expiryTime = parseInt(licenseExpiry, 10);
 
-        if (!expiryTime || now >= expiryTime) {
+        if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
             localStorage.removeItem('laundry_device_activated');
             localStorage.removeItem('laundry_license_expiry');
@@ -345,10 +351,11 @@ function checkNumericLicense() {
                 }
 
                 if (enteredCode === "2580" || matchedKey) {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
+                    // Default fallback 1 anno da oggi in caso la data non sia definita su Firebase
+                    let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000);
 
                     if (customExpiryVal) {
-                        let parsedTime = parseExpiryTimestamp(customExpiryVal);
+                        let parsedTime = parseDateToTimestamp(customExpiryVal);
                         if (parsedTime) {
                             expirationTimestamp = parsedTime;
                         }
@@ -377,7 +384,7 @@ function checkNumericLicense() {
             })
             .catch(() => {
                 if (enteredCode === "2580") {
-                    let expirationTimestamp = new Date("2027-08-07T00:00:00").getTime();
+                    let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000);
                     db.ref('used_licenses/' + enteredCode).set(true);
                     localStorage.setItem('laundry_device_activated', 'true');
                     localStorage.setItem('laundry_active_license', enteredCode);
