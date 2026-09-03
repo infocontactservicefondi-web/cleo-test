@@ -59,7 +59,7 @@ let activeLicenseRef = null;
 let hasShownTodayWarning = false;
 
 // ==========================================
-// UTILITY PARSER DATE LICENZA
+// UTILITY PARSER DATE LICENZA (FORZATURA GIORNI)
 // ==========================================
 function parseDateToTimestamp(val) {
     if (!val) return null;
@@ -71,13 +71,27 @@ function parseDateToTimestamp(val) {
             const day = parseInt(parts[0], 10);
             const month = parseInt(parts[1], 10) - 1;
             const year = parseInt(parts[2], 10);
-            const d = new Date(year, month, day);
+            const d = new Date(year, month, day, 23, 59, 59, 999);
             if (!isNaN(d.getTime())) return d.getTime();
         }
     }
     
+    const numericDays = parseInt(val, 10);
+    if (!isNaN(numericDays) && String(val).trim() === String(numericDays)) {
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + numericDays);
+        targetDate.setHours(23, 59, 59, 999);
+        return targetDate.getTime();
+    }
+    
     const parsed = new Date(val).getTime();
-    return isNaN(parsed) ? null : parsed;
+    if (!isNaN(parsed)) {
+        const d = new Date(parsed);
+        d.setHours(23, 59, 59, 999);
+        return d.getTime();
+    }
+    
+    return null;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -380,9 +394,7 @@ function checkNumericLicense() {
                     if (customExpiryVal) {
                         let parsedTime = parseDateToTimestamp(customExpiryVal);
                         if (parsedTime) {
-                            const expDateObj = new Date(parsedTime);
-                            expDateObj.setHours(23, 59, 59, 999);
-                            expirationTimestamp = expDateObj.getTime();
+                            expirationTimestamp = parsedTime;
                         }
                     }
                     
