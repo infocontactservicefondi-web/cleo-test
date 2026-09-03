@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE DEFINITIVA CORRETTA)
+// LAVANDERIA CLEO - APP LOGIC (FORZATURA DEFINITIVA FLUSSO)
 // ==========================================
 
 const firebaseConfig = {
@@ -53,14 +53,12 @@ let clientsData = {};
 let itemsData = {};
 let historyData = {};
 
-let currentStatPeriod = 'all';
 let licenseCheckInterval = null;
 let activeLicenseRef = null;
 
 function parseDateToTimestamp(val) {
     if (!val) return null;
     if (typeof val === 'number') return val;
-    
     if (typeof val === 'string' && val.includes('/')) {
         const parts = val.split('/');
         if (parts.length === 3) {
@@ -71,7 +69,6 @@ function parseDateToTimestamp(val) {
             if (!isNaN(d.getTime())) return d.getTime();
         }
     }
-    
     const parsed = new Date(val).getTime();
     return isNaN(parsed) ? null : parsed;
 }
@@ -102,34 +99,16 @@ function fixLoginPlaceholders() {
 }
 
 function listenActiveLicenseRealtime(licenseCode) {
-    if (!licenseCode || licenseCode === APP_PASSWORD || licenseCode === "CLEO-MASTER") {
-        return;
-    }
+    if (!licenseCode || licenseCode === APP_PASSWORD || licenseCode === "CLEO-MASTER") return;
 
-    if (activeLicenseRef) {
-        activeLicenseRef.off();
-    }
+    if (activeLicenseRef) activeLicenseRef.off();
 
     activeLicenseRef = db.ref('used_licenses/' + licenseCode);
     activeLicenseRef.on('value', (snap) => {
         if (!snap.exists()) {
             db.ref('licenses/' + licenseCode).once('value').then((licSnap) => {
                 if (!licSnap.exists()) {
-                    const expiredModal = document.getElementById('licenseExpiredModal');
-                    const titleEl = document.getElementById('expiredModalTitle');
-                    const textEl = document.getElementById('expiredModalText');
-                    
-                    if (titleEl) titleEl.textContent = "Licenza Revocata";
-                    if (textEl) textEl.textContent = "ATTENZIONE: La licenza associata a questo terminale è stata revocata o eliminata dall'amministrazione.";
-                    
-                    if (expiredModal) expiredModal.classList.remove('hidden');
-
-                    sessionStorage.clear();
-                    localStorage.removeItem('laundry_device_activated');
-                    localStorage.removeItem('laundry_license_expiry');
-                    localStorage.removeItem('laundry_active_license');
-                    localStorage.removeItem('laundry_code_already_redeemed');
-                    localStorage.removeItem('laundry_is_demo_license');
+                    triggerHardLock("Licenza Revocata", "ATTENZIONE: La licenza associata a questo terminale è stata revocata o eliminata dall'amministrazione.");
                 }
             });
         }
@@ -143,18 +122,20 @@ function initGlobalResetListener() {
             const localSignalProcessed = localStorage.getItem('laundry_last_reset_processed');
             if (localSignalProcessed !== String(serverSignal)) {
                 localStorage.setItem('laundry_last_reset_processed', String(serverSignal));
-                lockAppComplete();
-                
-                const titleEl = document.getElementById('expiredModalTitle');
-                const textEl = document.getElementById('expiredModalText');
-                if (titleEl) titleEl.textContent = "Dispositivo Disconnesso";
-                if (textEl) textEl.textContent = "Il terminale è stato disconnesso da remoto dall'amministratore di sistema.";
-
-                const expiredModal = document.getElementById('licenseExpiredModal');
-                if (expiredModal) expiredModal.classList.remove('hidden');
+                triggerHardLock("Dispositivo Disconnesso", "Il terminale è stato disconnesso da remoto dall'amministratore di sistema.");
             }
         }
     });
+}
+
+function triggerHardLock(title, message) {
+    lockAppComplete();
+    const expiredModal = document.getElementById('licenseExpiredModal');
+    const titleEl = document.getElementById('expiredModalTitle');
+    const textEl = document.getElementById('expiredModalText');
+    if (titleEl) titleEl.textContent = title;
+    if (textEl) textEl.textContent = message;
+    if (expiredModal) expiredModal.classList.remove('hidden');
 }
 
 function initProtectedLogo() {
@@ -204,14 +185,7 @@ function initLicenseSystem() {
             if (activeLicense) listenActiveLicenseRealtime(activeLicense);
             unlockApp();
         } else {
-            lockAppComplete();
-            const titleEl = document.getElementById('expiredModalTitle');
-            const textEl = document.getElementById('expiredModalText');
-            if (titleEl) titleEl.textContent = "Periodo di Prova Terminato";
-            if (textEl) textEl.textContent = "La licenza associata a questo dispositivo è giunta a termine. Inserisci un nuovo codice valido per continuare.";
-
-            const expiredModal = document.getElementById('licenseExpiredModal');
-            if (expiredModal) expiredModal.classList.remove('hidden');
+            triggerHardLock("Periodo di Prova Terminato", "La licenza associata a questo dispositivo è giunta a termine. Inserisci un nuovo codice valido per continuare.");
         }
     }
 }
@@ -228,7 +202,7 @@ function startLicenseCountdownMonitor() {
         const now = Date.now();
         const expiryTime = parseInt(licenseExpiry, 10);
 
-        // 1. BLOCCO ROSSO DEFINITIVO ALLO SCADERE (A MEZZANOTTE O FINE TEMPO)
+        // SCADENZA EFFETTIVA: BLOCCO TOTALE
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
             localStorage.clear();
@@ -237,20 +211,13 @@ function startLicenseCountdownMonitor() {
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
 
-            const titleEl = document.getElementById('expiredModalTitle');
-            const textEl = document.getElementById('expiredModalText');
-            if (titleEl) titleEl.textContent = "Periodo di Prova Terminato";
-            if (textEl) textEl.textContent = "Il periodo di prova o la licenza associata a questo dispositivo è scaduta.";
-
-            const expiredModal = document.getElementById('licenseExpiredModal');
-            if (expiredModal) expiredModal.classList.remove('hidden');
+            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta a mezzanotte.");
             return;
         }
 
-        // 2. SE NON È UNA DEMO, NESSUN AVVISO ARANCIONE
         if (!isDemo) return;
 
-        // 3. AVVISO ARANCIONE SOLO A MENO DI 5 GIORNI ALLA SCADENZA
+        // AVVISO ARANCIONE SOLO NEGLI ULTIMI 5 GIORNI
         const diffMs = expiryTime - now;
         const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
@@ -258,15 +225,13 @@ function startLicenseCountdownMonitor() {
             const warningText = document.getElementById('licenseWarningText');
             if (warningText) {
                 if (diffDays === 0) {
-                    warningText.textContent = `⚠️ ATTENZIONE: La licenza demo scade OGGI! Rinnovate tempestivamente per evitare il blocco.`;
+                    warningText.textContent = `⚠️ ATTENZIONE: La licenza demo scade OGGI a mezzanotte!`;
                 } else {
-                    warningText.textContent = `⚠️ ATTENZIONE: La licenza demo sta per scadere. Mancano ${diffDays} giorni al termine.`;
+                    warningText.textContent = `⚠️ ATTENZIONE: Mancano ${diffDays} giorni alla scadenza della licenza demo.`;
                 }
             }
             const warningModal = document.getElementById('licenseWarningModal');
-            if (warningModal) {
-                warningModal.classList.remove('hidden');
-            }
+            if (warningModal) warningModal.classList.remove('hidden');
         }
     }, 1000); 
 }
@@ -321,20 +286,21 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_is_demo_license', 'true');
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
-        unlockApp();
+        
+        unlockApp(); // SBLOCCA SUBITO L'APP
         startLicenseCountdownMonitor();
         
         const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
         
-        // USA IL MODALE ARANCIONE PER DIRE CHE È UNA DEMO E LASCIARE LAVORARE
+        // FORZATURA MESSAGGIO DI BENVENUTO DEMO (USA IL MODALE ARANCIONE/WARNING)
         const warningModal = document.getElementById('licenseWarningModal');
         const warningText = document.getElementById('licenseWarningText');
         if (warningText) {
-            warningText.textContent = `✅ Licenza Demo Attivata con successo fino al ${expiryDateFormatted}. Clicca "Ho capito" per iniziare a lavorare!`;
+            warningText.textContent = `✅ Licenza Demo attivata con successo fino al ${expiryDateFormatted}. Clicca sotto per iniziare a lavorare!`;
         }
         if (warningModal) warningModal.classList.remove('hidden');
         
-        showToast("Licenza Demo avviata con successo!", "success");
+        showToast("Licenza Demo avviata!", "success");
         return;
     }
 
@@ -364,16 +330,7 @@ function checkNumericLicense() {
 
             if (typeof licenseData === 'object' && licenseData !== null) {
                 expirationTimestamp = parseDateToTimestamp(licenseData.expiry);
-                if (licenseData.isDemo === true) {
-                    isDemoLicense = true;
-                } else {
-                    const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
-                    if (diffDaysCalc <= 16) {
-                        isDemoLicense = true;
-                    } else {
-                        isDemoLicense = false; 
-                    }
-                }
+                isDemoLicense = licenseData.isDemo === true;
             } else {
                 expirationTimestamp = parseDateToTimestamp(licenseData);
                 const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
@@ -394,30 +351,25 @@ function checkNumericLicense() {
 
             localStorage.setItem('laundry_device_activated', 'true');
             localStorage.setItem('laundry_active_license', enteredCode);
-            localStorage.setItem('laundry_code_already_redeemed', enteredCode);
             localStorage.setItem('laundry_license_expiry', expirationTimestamp);
             localStorage.setItem('laundry_is_demo_license', isDemoLicense ? 'true' : 'false');
             sessionStorage.setItem('laundry_auth', 'true');
             sessionStorage.setItem('laundry_logged_as_admin', 'false');
             
             listenActiveLicenseRealtime(enteredCode);
-            unlockApp();
+            unlockApp(); // SBLOCCA SUBITO L'APP
             startLicenseCountdownMonitor();
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
 
-            // USA IL MODALE ARANCIONE PER DARE IL BENVENUTO E FAR LAVORARE
             const warningModal = document.getElementById('licenseWarningModal');
             const warningText = document.getElementById('licenseWarningText');
-            
-            if (isDemoLicense) {
-                if (warningText) warningText.textContent = `✅ Licenza Demo Attivata con successo fino al ${expiryDateFormatted}. Clicca "Ho capito" per iniziare a lavorare.`;
-            } else {
-                if (warningText) warningText.textContent = `✅ Licenza Ufficiale attivata con successo fino al ${expiryDateFormatted}. Buon lavoro!`;
+            if (warningText) {
+                warningText.textContent = `✅ Licenza attivata con successo fino al ${expiryDateFormatted}. Buon lavoro!`;
             }
-            
             if (warningModal) warningModal.classList.remove('hidden');
-            showToast(`Licenza attivata con successo!`, "success");
+            
+            showToast("Licenza attivata con successo!", "success");
         })
         .catch(() => {
             showToast("Errore di connessione al database.", "error");
@@ -1185,7 +1137,7 @@ window.exportBackup = function() {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
+    document.getElementById('toastNotification') ? document.body.appendChild(link) : null; // safe trigger
     link.click();
     document.body.removeChild(link);
     showToast("Report esportato!", "success");
