@@ -81,7 +81,7 @@
                     <span class="text-xs font-bold text-white uppercase tracking-wider">Licenza Dispositivo</span>
                     <span id="licenseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In attesa</span>
                 </div>
-                <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
+                <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet[cite: 8].</p>
                 <div class="flex gap-2">
                     <input type="text" id="licensePhoneInput" placeholder="Inserisci codice licenza annuale o TEST1MIN..." class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                     <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
@@ -89,10 +89,10 @@
             </div>
 
             <div class="border-t border-darkBorder pt-4">
-                <p class="text-xs text-slate-400 mb-4">Inserisci la password amministratore per accedere</p>
+                <p class="text-xs text-slate-400 mb-4">Inserisci la password amministratore per accedere[cite: 8]</p>
                 <form id="loginForm" class="space-y-4">
                     <input type="password" id="passwordInput" placeholder="Password amministratore" class="w-full px-4 py-3 bg-darkCard border border-darkBorder rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm cursor-pointer shadow-lg shadow-blue-600/20">Accedi al Gestionale</button>
+                    <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm cursor-pointer shadow-lg shadow-blue-600/20">Accedi al Gestionale[cite: 8]</button>
                 </form>
             </div>
             <p id="loginError" class="text-rose-500 text-xs mt-3 hidden font-medium animate-pulse"></p>
@@ -470,8 +470,8 @@
             <div class="w-12 h-12 bg-rose-500/20 text-rose-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
                 <i class="fa-solid fa-lock"></i>
             </div>
-            <h2 class="text-lg font-bold text-white">Licenza Scaduta</h2>
-            <p class="text-xs text-slate-300 leading-relaxed">La licenza per questo dispositivo è scaduta. Inserisci un nuovo codice per continuare a utilizzare il gestionale.</p>
+            <h2 id="expiredModalTitle" class="text-lg font-bold text-white">Licenza Scaduta</h2>
+            <p id="expiredModalText" class="text-xs text-slate-300 leading-relaxed">La licenza per questo dispositivo è scaduta. Inserisci un nuovo codice per continuare a utilizzare il gestionale.</p>
             <button onclick="closeExpiredModalAndRelogin()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs cursor-pointer shadow-lg shadow-rose-600/20">Inserisci Nuovo Codice</button>
         </div>
     </div>
