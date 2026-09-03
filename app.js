@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (LICENZA CORRETTA)
+// LAVANDERIA CLEO - APP LOGIC (LICENZE DEMO VS UFFICIALI)
 // ==========================================
 
 const firebaseConfig = {
@@ -136,6 +136,7 @@ function listenActiveLicenseRealtime(licenseCode) {
                     localStorage.removeItem('laundry_license_expiry');
                     localStorage.removeItem('laundry_active_license');
                     localStorage.removeItem('laundry_code_already_redeemed');
+                    localStorage.removeItem('laundry_is_demo_license');
                 }
             });
         }
@@ -156,6 +157,7 @@ function initGlobalResetListener() {
                 localStorage.removeItem('laundry_license_expiry');
                 localStorage.removeItem('laundry_active_license');
                 localStorage.removeItem('laundry_code_already_redeemed');
+                localStorage.removeItem('laundry_is_demo_license');
                 sessionStorage.clear();
                 
                 lockAppComplete();
@@ -221,8 +223,6 @@ function initLicenseSystem() {
         const expiryTime = parseInt(licenseExpiry, 10);
 
         if (now < expiryTime) {
-            // NON chiamiamo checkDaysBeforeExpiry qui all'avvio: 
-            // lasciamo che sia il monitor continuo a valutare l'avviso arancione solo nei giorni giusti
             sessionStorage.setItem('laundry_auth', 'true');
             if (activeLicense) {
                 listenActiveLicenseRealtime(activeLicense);
@@ -247,7 +247,10 @@ function startLicenseCountdownMonitor() {
 
     licenseCheckInterval = setInterval(() => {
         const licenseExpiry = localStorage.getItem('laundry_license_expiry');
-        if (!licenseExpiry) return;
+        const isDemo = localStorage.getItem('laundry_is_demo_license') === 'true';
+        
+        // Se non c'è scadenza o NON è una licenza demo (è ufficiale: 1 mese, 6 mesi, 1 anno, 2 anni), ignora gli avvisi/scadenze demo
+        if (!licenseExpiry || !isDemo) return;
 
         const now = Date.now();
         const expiryTime = parseInt(licenseExpiry, 10);
@@ -257,6 +260,7 @@ function startLicenseCountdownMonitor() {
             localStorage.removeItem('laundry_device_activated');
             localStorage.removeItem('laundry_license_expiry');
             localStorage.removeItem('laundry_active_license');
+            localStorage.removeItem('laundry_is_demo_license');
             sessionStorage.removeItem('laundry_auth');
             
             const warningModal = document.getElementById('licenseWarningModal');
@@ -265,7 +269,7 @@ function startLicenseCountdownMonitor() {
             const titleEl = document.getElementById('expiredModalTitle');
             const textEl = document.getElementById('expiredModalText');
             if (titleEl) titleEl.textContent = "Periodo di Prova Terminato";
-            if (textEl) textEl.textContent = "Il periodo di prova o la licenza associata a questo dispositivo è scaduta.";
+            if (textEl) textEl.textContent = "Il periodo di prova o la licenza demo associata a questo dispositivo è scaduta.";
 
             const expiredModal = document.getElementById('licenseExpiredModal');
             if (expiredModal) expiredModal.classList.remove('hidden');
@@ -277,19 +281,22 @@ function startLicenseCountdownMonitor() {
 }
 
 function checkDaysBeforeExpiry(now, expiryTime) {
+    const isDemo = localStorage.getItem('laundry_is_demo_license') === 'true';
+    if (!isDemo) return; // Le licenze ufficiali non hanno avvisi arancioni di prova
+
     const diffMs = expiryTime - now;
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    // REGOLE RICHIESTE:
-    // - Primi 10 giorni (da 15 a 6 giorni rimanenti): NESSUN AVVISO
-    // - Dal 9° giorno fino al giorno della scadenza (da 5 giorni a 0 giorni rimanenti): AVVISO ARANCIONE
-    if (diffDays >= 0 && diffDays <= 5) {
+    // REGOLE RICHIESTE PER LE DEMO:
+    // - Primi giorni (più di 9 giorni rimanenti, es. licenza da 15 giorni nei primi giorni): NESSUN AVVISO
+    // - Dal 9° giorno fino al giorno della scadenza (da 9 giorni rimanenti a 0): AVVISO ARANCIONE
+    if (diffDays >= 0 && diffDays <= 9) {
         const warningText = document.getElementById('licenseWarningText');
         if (warningText) {
             if (diffDays === 0) {
-                warningText.textContent = `⚠️ ATTENZIONE: La licenza scade OGGI a mezzanotte! Rinnovate tempestivamente.`;
+                warningText.textContent = `⚠️ ATTENZIONE: La licenza demo scade OGGI a mezzanotte! Rinnovate tempestivamente.`;
             } else {
-                warningText.textContent = `⚠️ ATTENZIONE: La licenza sta per scadere. Mancano ${diffDays} giorni al termine.`;
+                warningText.textContent = `⚠️ ATTENZIONE: La licenza demo sta per scadere. Mancano ${diffDays} giorni al termine.`;
             }
         }
         const warningModal = document.getElementById('licenseWarningModal');
@@ -356,6 +363,7 @@ function checkNumericLicense() {
         let expirationTimestamp = Date.now() + (60 * 1000); 
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+        localStorage.setItem('laundry_is_demo_license', 'true'); // È una demo di test
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
         unlockApp();
@@ -384,6 +392,7 @@ function checkNumericLicense() {
         let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+        localStorage.setItem('laundry_is_demo_license', 'false'); // Licenza ufficiale illimitata
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         unlockApp();
@@ -408,10 +417,16 @@ function checkNumericLicense() {
                 isDemoLicense = licenseData.isDemo === true;
             } else {
                 expirationTimestamp = parseDateToTimestamp(licenseData);
+                // Se il dato è solo una data senza oggetto, consideriamo demo se dura 1 o 15 giorni
+                const diffDaysCalc = Math.ceil((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
+                if (diffDaysCalc <= 15) {
+                    isDemoLicense = true;
+                }
             }
 
             if (!expirationTimestamp || isNaN(expirationTimestamp)) {
                 expirationTimestamp = Date.now() + (15 * 24 * 60 * 60 * 1000); 
+                isDemoLicense = true;
             }
 
             db.ref('used_licenses/' + enteredCode).set({
@@ -425,6 +440,7 @@ function checkNumericLicense() {
             localStorage.setItem('laundry_active_license', enteredCode);
             localStorage.setItem('laundry_code_already_redeemed', enteredCode);
             localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+            localStorage.setItem('laundry_is_demo_license', isDemoLicense ? 'true' : 'false');
             sessionStorage.setItem('laundry_auth', 'true');
             sessionStorage.setItem('laundry_logged_as_admin', 'false');
             
@@ -434,13 +450,18 @@ function checkNumericLicense() {
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
 
-            // MOSTRA ESATTAMENTE IL POPUP VIOLA/BLU DI ATTIVAZIONE DEMO (MAI QUELLO ROSSO)
+            // MOSTRA IL POPUP DI ATTIVAZIONE (SE È DEMO MOSTRA IL TESTO SPECIFICO)
             const expiredModal = document.getElementById('licenseExpiredModal');
             const titleEl = document.getElementById('expiredModalTitle');
             const textEl = document.getElementById('expiredModalText');
             
-            if (titleEl) titleEl.textContent = "Licenza Demo Attivata";
-            if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo con scadenza al ${expiryDateFormatted}. Potrai testare tutte le funzionalità del gestionale fino a tale data.`;
+            if (isDemoLicense) {
+                if (titleEl) titleEl.textContent = "Licenza Demo Attivata";
+                if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo con scadenza al ${expiryDateFormatted}. Potrai testare tutte le funzionalità del gestionale fino a tale data.`;
+            } else {
+                if (titleEl) titleEl.textContent = "Licenza Ufficiale Attivata";
+                if (textEl) textEl.textContent = `La licenza ufficiale è stata attivata con successo fino al ${expiryDateFormatted}. Buon lavoro!`;
+            }
             
             if (expiredModal) expiredModal.classList.remove('hidden');
 
@@ -560,6 +581,7 @@ function lockAppComplete() {
     localStorage.removeItem('laundry_license_expiry');
     localStorage.removeItem('laundry_active_license');
     localStorage.removeItem('laundry_code_already_redeemed');
+    localStorage.removeItem('laundry_is_demo_license');
     
     if(appContainer) {
         appContainer.style.opacity = '0';
