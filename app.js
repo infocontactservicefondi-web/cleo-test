@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA DEFINITIVA)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE DEFINITIVA CORRETTA)
 // ==========================================
 
 const firebaseConfig = {
@@ -228,7 +228,7 @@ function startLicenseCountdownMonitor() {
         const now = Date.now();
         const expiryTime = parseInt(licenseExpiry, 10);
 
-        // BLOCCO ROSSO DEFINITIVO ALLO SCADERE
+        // 1. BLOCCO ROSSO DEFINITIVO ALLO SCADERE (A MEZZANOTTE O FINE TEMPO)
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
             localStorage.clear();
@@ -247,10 +247,10 @@ function startLicenseCountdownMonitor() {
             return;
         }
 
-        // SE NON È UNA DEMO, NESSUN AVVISO ARANCIONE
+        // 2. SE NON È UNA DEMO, NESSUN AVVISO ARANCIONE
         if (!isDemo) return;
 
-        // AVVISO ARANCIONE SOLO DA 5 GIORNI O MENO ALLA SCADENZA
+        // 3. AVVISO ARANCIONE SOLO A MENO DI 5 GIORNI ALLA SCADENZA
         const diffMs = expiryTime - now;
         const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
@@ -325,13 +325,15 @@ function checkNumericLicense() {
         startLicenseCountdownMonitor();
         
         const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-        const expiredModal = document.getElementById('licenseExpiredModal');
-        const titleEl = document.getElementById('expiredModalTitle');
-        const textEl = document.getElementById('expiredModalText');
         
-        if (titleEl) titleEl.textContent = "Licenza Demo Attivata";
-        if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo di test con scadenza al ${expiryDateFormatted}. Clicca chiudi per iniziare a lavorare.`;
-        if (expiredModal) expiredModal.classList.remove('hidden');
+        // USA IL MODALE ARANCIONE PER DIRE CHE È UNA DEMO E LASCIARE LAVORARE
+        const warningModal = document.getElementById('licenseWarningModal');
+        const warningText = document.getElementById('licenseWarningText');
+        if (warningText) {
+            warningText.textContent = `✅ Licenza Demo Attivata con successo fino al ${expiryDateFormatted}. Clicca "Ho capito" per iniziare a lavorare!`;
+        }
+        if (warningModal) warningModal.classList.remove('hidden');
+        
         showToast("Licenza Demo avviata con successo!", "success");
         return;
     }
@@ -404,19 +406,17 @@ function checkNumericLicense() {
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
 
-            const expiredModal = document.getElementById('licenseExpiredModal');
-            const titleEl = document.getElementById('expiredModalTitle');
-            const textEl = document.getElementById('expiredModalText');
+            // USA IL MODALE ARANCIONE PER DARE IL BENVENUTO E FAR LAVORARE
+            const warningModal = document.getElementById('licenseWarningModal');
+            const warningText = document.getElementById('licenseWarningText');
             
             if (isDemoLicense) {
-                if (titleEl) titleEl.textContent = "Licenza Demo Attivata";
-                if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo (1 o 15 giorni) con scadenza al ${expiryDateFormatted}. Clicca per iniziare a lavorare.`;
+                if (warningText) warningText.textContent = `✅ Licenza Demo Attivata con successo fino al ${expiryDateFormatted}. Clicca "Ho capito" per iniziare a lavorare.`;
             } else {
-                if (titleEl) titleEl.textContent = "Licenza Ufficiale Attivata";
-                if (textEl) textEl.textContent = `La licenza ufficiale è stata attivata con successo fino al ${expiryDateFormatted}. Buon lavoro!`;
+                if (warningText) warningText.textContent = `✅ Licenza Ufficiale attivata con successo fino al ${expiryDateFormatted}. Buon lavoro!`;
             }
             
-            if (expiredModal) expiredModal.classList.remove('hidden');
+            if (warningModal) warningModal.classList.remove('hidden');
             showToast(`Licenza attivata con successo!`, "success");
         })
         .catch(() => {
