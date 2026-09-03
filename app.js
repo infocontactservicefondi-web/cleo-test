@@ -117,10 +117,8 @@ function listenActiveLicenseRealtime(licenseCode) {
         activeLicenseRef.off();
     }
 
-    // Monitora la presenza del codice sia nel nodo 'licenses' sia in 'used_licenses'
     activeLicenseRef = db.ref('used_licenses/' + licenseCode);
     activeLicenseRef.on('value', (snap) => {
-        // Se la licenza usata non esiste più nel database (è stata eliminata dalla dashboard)
         if (!snap.exists()) {
             db.ref('licenses/' + licenseCode).once('value').then((licSnap) => {
                 if (!licSnap.exists()) {
@@ -357,11 +355,6 @@ function checkNumericLicense() {
     }
 
     db.ref('used_licenses/' + enteredCode).once('value').then((usedSnap) => {
-        if (usedSnap.exists() && enteredCode === "2580") {
-            showToast("Questo codice 2580 è già stato utilizzato su un altro dispositivo!", "error");
-            return;
-        }
-
         db.ref('licenses').once('value')
             .then((snapshot) => {
                 const licenses = snapshot.val();
@@ -381,13 +374,15 @@ function checkNumericLicense() {
                     }
                 }
 
-                if (enteredCode === "2580" || matchedKey) {
+                if (matchedKey) {
                     let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000);
 
                     if (customExpiryVal) {
                         let parsedTime = parseDateToTimestamp(customExpiryVal);
                         if (parsedTime) {
-                            expirationTimestamp = parsedTime;
+                            const expDateObj = new Date(parsedTime);
+                            expDateObj.setHours(23, 59, 59, 999);
+                            expirationTimestamp = expDateObj.getTime();
                         }
                     }
                     
@@ -411,22 +406,7 @@ function checkNumericLicense() {
                 }
             })
             .catch(() => {
-                if (enteredCode === "2580") {
-                    let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000);
-                    db.ref('used_licenses/' + enteredCode).set(true);
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_code_already_redeemed', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    hasShownTodayWarning = false;
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    listenActiveLicenseRealtime(enteredCode);
-                    unlockApp();
-                    showToast("Licenza attivata con successo!", "success");
-                } else {
-                    showToast("Errore di connessione e codice non riconosciuto offline.", "error");
-                }
+                showToast("Errore di connessione e codice non riconosciuto offline.", "error");
             });
     });
 }
