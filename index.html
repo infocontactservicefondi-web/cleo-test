@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lavanderia Cleo - Gestionale</title>
     <script>
+        // Applica subito il tema salvato prima del rendering per evitare sfarfallii
         if (localStorage.getItem('laundry_theme') === 'light') {
             document.documentElement.classList.remove('dark');
         } else {
@@ -44,29 +45,32 @@
             animation: modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
+        /* Regole Tema Chiaro - ALTO CONTRASTO */
         html:not(.dark) .bg-darkBg { background-color: #f8fafc !important; }
         html:not(.dark) .bg-darkSurface { background-color: #ffffff !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         html:not(.dark) .bg-darkCard { background-color: #f1f5f9 !important; }
         html:not(.dark) .border-darkBorder { border-color: #cbd5e1 !important; }
         
+        /* Testi principali e secondari ad alta leggibilità */
         html:not(.dark) .text-white { color: #0f172a !important; }
         html:not(.dark) .text-slate-100 { color: #1e293b !important; }
         html:not(.dark) .text-slate-200 { color: #334155 !important; }
         html:not(.dark) .text-slate-300 { color: #475569 !important; }
         html:not(.dark) .text-slate-400 { color: #475569 !important; font-weight: 600; }
         
+        /* Colori accento e icone intensificati per il bianco */
         html:not(.dark) .text-blue-400 { color: #2563eb !important; }
         html:not(.dark) .text-emerald-400 { color: #059669 !important; }
         html:not(.dark) .text-rose-400 { color: #e11d48 !important; }
         html:not(.dark) .text-amber-400 { color: #d97706 !important; }
         
+        /* Badge adattati alla modalità chiara */
         html:not(.dark) .bg-blue-950 { background-color: #dbeafe !important; border-color: #bfdbfe !important; }
         html:not(.dark) .bg-amber-950 { background-color: #fef3c7 !important; border-color: #fde68a !important; }
         
+        /* Placeholder sempre nitidi */
         html:not(.dark) input::placeholder, html:not(.dark) textarea::placeholder { color: #64748b !important; }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body class="bg-darkBg text-slate-100 min-h-screen font-sans selection:bg-blue-500 selection:text-white pb-20">
 
@@ -85,7 +89,7 @@
                 </div>
                 <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
                 <div class="flex gap-2">
-                    <input type="text" id="licensePhoneInput" placeholder="Es. 698754" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    <input type="text" id="licensePhoneInput" placeholder="Es. CLEO-TEST-01" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                     <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
                 </div>
             </div>
@@ -107,7 +111,7 @@
         <!-- HEADER -->
         <header class="flex flex-wrap items-center justify-between gap-4 bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm">
             <div class="flex items-center gap-3">
-                <!-- LOGO PROTETTO: Richiede 5 secondi di pressione continuata per l'uscita -->
+                <!-- LOGO PROTETTO: Richiede 5 secondi di pressione continuata -->
                 <div id="protectedLogoBtn" class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm cursor-pointer select-none relative overflow-hidden" title="Tieni premuto 5 secondi per uscire">
                     <i class="fa-solid fa-shirt"></i>
                     <div id="logoProgressFill" class="absolute bottom-0 left-0 w-full bg-blue-400/40 h-0 transition-all duration-75"></div>
@@ -140,7 +144,6 @@
                 <button onclick="toggleTheme()" class="p-2.5 bg-darkCard hover:bg-zinc-800 rounded-xl text-xs text-slate-200 cursor-pointer" title="Cambia Tema">
                     <i id="themeIcon" class="fa-solid fa-moon"></i>
                 </button>
-                <!-- PULSANTE LOGOUT: Impedisce l'uscita con avviso se licenza attiva -->
                 <button onclick="lockApp()" class="p-2.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 rounded-xl text-xs cursor-pointer" title="Esci">
                     <i class="fa-solid fa-lock"></i>
                 </button>
@@ -164,7 +167,7 @@
                 <!-- Colonna Sinistra -->
                 <div class="lg:col-span-1 space-y-6">
                     
-                    <!-- Nuovo Cliente -->
+                    <!-- Nuovo Cliente con Tabella integrata -->
                     <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
                         <div class="flex items-center justify-between">
                             <h2 class="text-sm font-bold text-white flex items-center gap-2">
@@ -173,10 +176,10 @@
                         </div>
                         <form id="clientForm" class="space-y-3">
                             <div class="relative">
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome e Cognome *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome e Cognome (Cerca con lente) *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
-                                    <input type="text" id="clientName" placeholder="Nome e Cognome..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="clientName" placeholder="Nome e Cognome (Cerca con lente)..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <input type="hidden" id="manageClientIdInput">
                                     <button type="button" id="clientSearchToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
                                         <i class="fa-solid fa-chevron-down"></i>
@@ -186,17 +189,17 @@
                             </div>
 
                             <div>
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Telefono *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Telefono (obbligatorio) *</label>
                                 <input type="tel" id="clientPhone" placeholder="Telefono" required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
                             
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Nascita</label>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Nascita (Facoltativa)</label>
                                     <input type="text" id="clientDob" placeholder="GG/MM/AAAA" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Indirizzo</label>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Indirizzo (Facoltativo)</label>
                                     <input type="text" id="clientAddress" placeholder="Indirizzo" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                             </div>
@@ -205,21 +208,21 @@
                                 <button type="button" onclick="printClientReceiptLabel()" class="w-full py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
                                     <i class="fa-solid fa-tag"></i> Stampa Etichetta
                                 </button>
-                                <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm flex items-center justify-center gap-1.5">
+                                <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1.5">
                                     <i class="fa-solid fa-check"></i> Registra
                                 </button>
                             </div>
                         </form>
                     </div>
 
-                    <!-- Inserimento Capo -->
+                    <!-- Inserimento Capo in Armadio -->
                     <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
                         <h2 class="text-sm font-bold text-white flex items-center gap-2">
                             <i class="fa-solid fa-shirt text-blue-400"></i> Accetta Capo in Armadio
                         </h2>
                         <form id="itemForm" class="space-y-3">
                             <div class="relative">
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente (Cerca con lente) *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
                                     <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono cliente..." autocomplete="off" class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -258,7 +261,7 @@
                             </div>
 
                             <div class="pt-2">
-                                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+                                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20">
                                     <i class="fa-solid fa-plus"></i> Inserisci & Stampa Ricevuta
                                 </button>
                             </div>
@@ -305,7 +308,7 @@
 
         <!-- VIEW STATS -->
         <div id="viewStats" class="space-y-6 hidden">
-            <!-- Statistiche Superiori -->
+            <!-- 1. Blocco Statistiche Superiori -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                     <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati (Periodo)</div>
@@ -325,44 +328,61 @@
                 </div>
             </div>
 
-            <!-- Filtri Periodo e Date -->
-            <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
+            <!-- 2. BARRA DEI FILTRI CON "DA" E "A" -->
+            <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
                         <button id="btnPeriodDay" onclick="setStatPeriod('day')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer">Oggi</button>
-                        <button id="btnPeriodMonth" onclick="setStatPeriod('month')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer">Mese Corrente</button>
-                        <button id="btnPeriodYear" onclick="setStatPeriod('year')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer">Anno Corrente</button>
-                        <button id="btnPeriodAll" onclick="setStatPeriod('all')" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white cursor-pointer">Tutto</button>
+                        <button id="btnPeriodMonth" onclick="setStatPeriod('month')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer">Mese</button>
+                        <button id="btnPeriodYear" onclick="setStatPeriod('year')" class="px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer">Anno</button>
+                        <button id="btnPeriodAll" onclick="setStatPeriod('all')" class="px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer">Tutto</button>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <input type="date" id="statsCustomStartDate" onchange="renderHistory()" class="px-3 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none">
-                        <span class="text-xs text-slate-400">a</span>
-                        <input type="date" id="statsCustomEndDate" onchange="renderHistory()" class="px-3 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none">
-                        <button onclick="clearCustomDateFilter()" class="p-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-slate-400 hover:text-white" title="Resetta Date"><i class="fa-solid fa-xmark"></i></button>
+                        <div class="flex items-center gap-1 bg-darkCard px-2.5 py-1.5 rounded-xl border border-darkBorder">
+                            <span class="text-[11px] text-slate-400">Da:</span>
+                            <input type="date" id="statsCustomStartDate" onchange="renderHistory()" class="bg-transparent text-xs text-white focus:outline-none">
+                        </div>
+                        <div class="flex items-center gap-1 bg-darkCard px-2.5 py-1.5 rounded-xl border border-darkBorder">
+                            <span class="text-[11px] text-slate-400">A:</span>
+                            <input type="date" id="statsCustomEndDate" onchange="renderHistory()" class="bg-transparent text-xs text-white focus:outline-none">
+                        </div>
+                        <button onclick="clearCustomDateFilter()" class="p-2 bg-darkCard hover:bg-zinc-800 text-slate-400 hover:text-white rounded-xl text-xs" title="Resetta Date">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELLA STORICO -->
+            <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-sm font-bold text-white">Storico Capi Ritirati</h2>
+                        <span id="historyCounter" class="text-xs text-slate-400">0 elementi</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportBackup()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm">
+                            <i class="fa-solid fa-file-excel mr-1"></i> Esporta Report
+                        </button>
+                        <button onclick="resetAllStatistics()" class="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-400 rounded-xl text-xs font-semibold cursor-pointer">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Azzera
+                        </button>
                     </div>
                 </div>
 
-                <!-- Tabella Storico -->
-                <div class="overflow-x-auto pt-2">
-                    <div class="flex items-center justify-between mb-3">
-                        <span id="historyCounter" class="text-xs font-bold text-slate-400">0 elementi</span>
-                        <div class="flex items-center gap-2">
-                            <button onclick="exportBackup()" class="px-3 py-1.5 bg-emerald-950 text-emerald-400 border border-emerald-900 rounded-xl text-xs font-semibold hover:bg-emerald-900 cursor-pointer"><i class="fa-solid fa-file-excel mr-1"></i> Esporta Report CSV</button>
-                            <button onclick="resetAllStatistics()" class="px-3 py-1.5 bg-rose-950 text-rose-400 border border-rose-900 rounded-xl text-xs font-semibold hover:bg-rose-900 cursor-pointer"><i class="fa-solid fa-trash-can mr-1"></i> Azzera Statistiche</button>
-                        </div>
-                    </div>
+                <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase">
                                 <th class="py-3 px-4">Data Ritiro</th>
                                 <th class="py-3 px-4">Cliente</th>
                                 <th class="py-3 px-4">Capo</th>
-                                <th class="py-3 px-4">Importo</th>
-                                <th class="py-3 px-4">Posizione</th>
+                                <th class="py-3 px-4">Prezzo</th>
+                                <th class="py-3 px-4">Armadio</th>
                             </tr>
                         </thead>
-                        <tbody id="historyTableBody" class="divide-y divide-darkBorder/50 text-xs"></tbody>
+                        <tbody id="historyTableBody" class="divide-y divide-darkBorder/50"></tbody>
                     </table>
                 </div>
             </div>
@@ -370,94 +390,88 @@
 
     </div>
 
-    <!-- MODALE ANAGRAFICA CLIENTI -->
-    <div id="clientManagerModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="bg-darkSurface p-6 rounded-3xl border border-darkBorder max-w-3xl w-full space-y-4 animate-modal max-h-[90vh] flex flex-col">
-            <div class="flex items-center justify-between">
-                <h3 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-address-book text-blue-400"></i> Anagrafica Clienti</h3>
-                <button onclick="closeClientManagerModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+    <!-- MODALE SCHEDA CLIENTE -->
+    <div id="clientModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl border border-darkBorder max-w-lg w-full space-y-5 animate-modal">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h3 id="modalClientName" class="text-lg font-bold text-white">Nome Cliente</h3>
+                    <p id="modalClientDetails" class="text-xs text-slate-400 mt-0.5">Dettagli...</p>
+                </div>
+                <button onclick="closeClientModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-            <input type="text" id="managerClientSearchInput" placeholder="Cerca cliente per nome, tel..." class="w-full px-3.5 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <div class="overflow-y-auto flex-1">
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-darkCard p-3 rounded-2xl border border-darkBorder">
+                    <div class="text-[11px] text-slate-400">Totale Capi Storico</div>
+                    <div id="modalClientTotalItems" class="text-xl font-bold text-white mt-0.5">0</div>
+                </div>
+                <div class="bg-darkCard p-3 rounded-2xl border border-darkBorder">
+                    <div class="text-[11px] text-slate-400">Spesa Complessiva</div>
+                    <div id="modalClientTotalSpent" class="text-xl font-bold text-emerald-400 mt-0.5">€ 0.00</div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider">Capi in Deposito (Attivi)</h4>
+                <div id="modalClientActiveItemsList" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div class="space-y-2">
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider">Storico Ritiri</h4>
+                <div id="modalClientHistoryList" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
+            </div>
+
+            <button onclick="closeClientModal()" class="w-full py-2.5 bg-darkCard hover:bg-zinc-800 text-white font-semibold text-xs rounded-xl border border-darkBorder cursor-pointer">Chiudi Scheda</button>
+        </div>
+    </div>
+
+    <!-- MODALE GESTIONE ANAGRAFICA CLIENTE -->
+    <div id="clientManagerModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 rounded-3xl border border-darkBorder max-w-2xl w-full space-y-4 animate-modal">
+            <div class="flex justify-between items-center">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-address-book text-blue-400"></i> Anagrafica Clienti
+                </h3>
+                <button onclick="closeClientManagerModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <input type="text" id="managerClientSearchInput" placeholder="Cerca cliente per nome, telefono o indirizzo..." class="w-full px-4 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+            <div class="max-h-80 overflow-y-auto border border-darkBorder rounded-2xl">
                 <table class="w-full text-left border-collapse text-xs">
-                    <thead>
-                        <tr class="border-b border-darkBorder text-[11px] font-bold text-slate-400 uppercase">
-                            <th class="py-2.5 px-4">Nome</th>
-                            <th class="py-2.5 px-4">Telefono</th>
-                            <th class="py-2.5 px-4">Indirizzo / Nascita</th>
-                            <th class="py-2.5 px-4 text-right">Azione</th>
+                    <thead class="bg-darkCard sticky top-0 border-b border-darkBorder">
+                        <tr class="text-[11px] font-bold text-slate-400 uppercase">
+                            <th class="py-3 px-4">Nome</th>
+                            <th class="py-3 px-4">Telefono</th>
+                            <th class="py-3 px-4">Indirizzo / Nascita</th>
+                            <th class="py-3 px-4 text-right">Azione</th>
                         </tr>
                     </thead>
                     <tbody id="managerClientsTableBody" class="divide-y divide-darkBorder/50"></tbody>
                 </table>
             </div>
-        </div>
-    </div>
 
-    <!-- MODALE SCHEDA CLIENTE -->
-    <div id="clientModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="bg-darkSurface p-6 rounded-3xl border border-darkBorder max-w-xl w-full space-y-4 animate-modal max-h-[90vh] flex flex-col">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 id="modalClientName" class="text-base font-bold text-white"></h3>
-                    <p id="modalClientDetails" class="text-xs text-slate-400"></p>
-                </div>
-                <button onclick="closeClientModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="grid grid-cols-2 gap-3 text-center">
-                <div class="bg-darkCard p-3 rounded-2xl border border-darkBorder">
-                    <div class="text-[11px] text-slate-400 font-medium">Totale Capi</div>
-                    <div id="modalClientTotalItems" class="text-lg font-bold text-white">0</div>
-                </div>
-                <div class="bg-darkCard p-3 rounded-2xl border border-darkBorder">
-                    <div class="text-[11px] text-slate-400 font-medium">Totale Speso</div>
-                    <div id="modalClientTotalSpent" class="text-lg font-bold text-emerald-400">€ 0.00</div>
-                </div>
-            </div>
-            <div class="space-y-3 overflow-y-auto flex-1 pr-1">
-                <div>
-                    <h4 class="text-xs font-bold text-slate-300 mb-2">Capi Attivi</h4>
-                    <div id="modalClientActiveItemsList" class="space-y-2"></div>
-                </div>
-                <div>
-                    <h4 class="text-xs font-bold text-slate-300 mb-2">Storico Capi Ritirati</h4>
-                    <div id="modalClientHistoryList" class="space-y-2"></div>
-                </div>
+            <div class="text-right">
+                <button onclick="closeClientManagerModal()" class="px-5 py-2 bg-darkCard hover:bg-zinc-800 text-white font-semibold text-xs rounded-xl border border-darkBorder cursor-pointer">Chiudi</button>
             </div>
         </div>
     </div>
 
-    <!-- MODALE AVVISO SCADENZA PROSSIMA -->
-    <div id="licenseWarningModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="bg-darkSurface p-6 rounded-3xl border border-amber-500/50 max-w-md w-full text-center space-y-4 animate-modal">
-            <div class="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-2xl mx-auto flex items-center justify-center text-2xl">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-            </div>
-            <h3 class="text-lg font-bold text-white">Avviso Scadenza Licenza</h3>
-            <p id="licenseWarningText" class="text-xs text-slate-300 leading-relaxed"></p>
-            <button onclick="closeWarningModal()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-xl text-xs cursor-pointer">Ho Capito</button>
-        </div>
-    </div>
-
-    <!-- MODALE LICENZA SCADUTA -->
-    <div id="licenseExpiredModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden">
-        <div class="bg-darkSurface p-6 rounded-3xl border border-rose-500/50 max-w-md w-full text-center space-y-4 animate-modal">
-            <div class="w-14 h-14 bg-rose-500/20 text-rose-400 rounded-2xl mx-auto flex items-center justify-center text-2xl">
-                <i class="fa-solid fa-lock"></i>
-            </div>
-            <h3 class="text-lg font-bold text-white">Licenza Scaduta</h3>
-            <p class="text-xs text-slate-300 leading-relaxed">La licenza per questo dispositivo è scaduta. Contatta l'amministratore per rinnovarla e inserisci un nuovo codice di attivazione.</p>
-            <button onclick="closeExpiredModalAndRelogin()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs cursor-pointer">Inserisci Nuovo Codice</button>
-        </div>
-    </div>
-
-    <!-- TOAST NOTIFICATION -->
+    <!-- NOTIFICA TOAST -->
     <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-25 opacity-0 transition-all duration-300 pointer-events-none">
-        <div class="bg-darkSurface border border-darkBorder px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
-            <span id="toastMessage" class="text-xs font-semibold text-white"></span>
+        <div class="bg-darkSurface border border-darkBorder text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold">
+            <i class="fa-solid fa-circle-info text-blue-400"></i>
+            <span id="toastMessage">Operazione completata</span>
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="ap.js"></script>
 </body>
 </html>
