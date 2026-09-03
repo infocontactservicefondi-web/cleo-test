@@ -79,6 +79,7 @@ function parseDateToTimestamp(val) {
     const numericDays = parseInt(val, 10);
     if (!isNaN(numericDays) && String(val).trim() === String(numericDays)) {
         const targetDate = new Date();
+        targetDate.setHours(0, 0, 0, 0); // Azzera l'orario odierno per partire dall'inizio pulito della giornata
         targetDate.setDate(targetDate.getDate() + numericDays);
         targetDate.setHours(23, 59, 59, 999);
         return targetDate.getTime();
