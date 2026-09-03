@@ -129,7 +129,7 @@ function initGlobalResetListener() {
 }
 
 // ==========================================
-// PROTEZIONE LOGO (5 SECONDI IN ALTO A SINISTRA)
+// PROTEZIONE LOGO (5 SECONDI PER SBLOCCO FORZATO)
 // ==========================================
 function initProtectedLogo() {
     const logoBtn = document.getElementById('protectedLogoBtn');
@@ -140,7 +140,6 @@ function initProtectedLogo() {
     if (logoBtn) {
         ['mousedown', 'touchstart'].forEach(evt => {
             logoBtn.addEventListener(evt, (e) => {
-                e.preventDefault();
                 let startTime = Date.now();
                 if(progressFill) progressFill.style.height = '100%';
                 
@@ -149,14 +148,16 @@ function initProtectedLogo() {
                     if (elapsed >= holdDuration) {
                         clearInterval(logoPressTimer);
                         if(progressFill) progressFill.style.height = '0%';
-                        showToast("Sblocco forzato attivato!", "success");
-                        lockApp(); 
+                        
+                        // Sblocco forzato completo
+                        lockAppComplete();
+                        showToast("Sblocco forzato attivato! Sessione e licenza resettate.", "success");
                     }
                 }, 100);
             });
         });
 
-        ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
+        ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(evt => {
             logoBtn.addEventListener(evt, () => {
                 if (logoPressTimer) clearInterval(logoPressTimer);
                 if(progressFill) progressFill.style.height = '0%';
@@ -351,7 +352,6 @@ function checkNumericLicense() {
                 }
 
                 if (enteredCode === "2580" || matchedKey) {
-                    // Default fallback 1 anno da oggi in caso la data non sia definita su Firebase
                     let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000);
 
                     if (customExpiryVal) {
@@ -507,6 +507,7 @@ function lockAppComplete() {
     sessionStorage.removeItem('laundry_logged_as_admin');
     localStorage.removeItem('laundry_device_activated');
     localStorage.removeItem('laundry_license_expiry');
+    localStorage.removeItem('laundry_active_license');
     
     if(appContainer) {
         appContainer.style.opacity = '0';
