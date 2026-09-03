@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initLicenseSystem();
     initTheme();
     initConnectionMonitor(); 
-    initGlobalResetListener(); // Monitoraggio reset remoto
-    initProtectedLogo(); // Gestione pressione 5 secondi sul logo
+    initGlobalResetListener(); 
+    initProtectedLogo(); 
     fixLoginPlaceholders();
     startLicenseCountdownMonitor(); 
 
@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             checkAdminPassword();
+            return false;
         });
     }
 });
@@ -112,7 +113,7 @@ function initProtectedLogo() {
     const logoBtn = document.getElementById('protectedLogoBtn');
     const progressFill = document.getElementById('logoProgressFill');
     let logoPressTimer = null;
-    const holdDuration = 5000; // 5 secondi
+    const holdDuration = 5000;
     
     if (logoBtn) {
         ['mousedown', 'touchstart'].forEach(evt => {
@@ -230,13 +231,14 @@ window.closeExpiredModalAndRelogin = function() {
 };
 
 function checkAdminPassword() {
-    const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredPassword = "";
+    const passwordField = document.getElementById('passwordInput');
+    let enteredPassword = passwordField ? passwordField.value.trim() : "";
 
-    if (inputs.length > 1) {
-        enteredPassword = inputs[1].value.trim();
-    } else if (passwordInput) {
-        enteredPassword = passwordInput.value.trim();
+    if (!enteredPassword) {
+        const inputs = document.querySelectorAll('#loginScreen input');
+        if (inputs.length > 1) {
+            enteredPassword = inputs[1].value.trim();
+        }
     }
 
     if (!enteredPassword) {
@@ -245,10 +247,13 @@ function checkAdminPassword() {
     }
 
     if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
+        let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
+        localStorage.setItem('laundry_device_activated', 'true');
+        localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         unlockApp();
-        showToast("Accesso amministratore eseguito", "success");
+        showToast("Accesso eseguito con successo!", "success");
     } else {
         showToast("Password amministratore errata", "error");
         if (loginError) {
@@ -258,13 +263,11 @@ function checkAdminPassword() {
     }
 }
 
-function checkNumericLicense() {
+function checkNumericLicense(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    
     const inputs = document.querySelectorAll('#loginScreen input');
-    let enteredCode = "";
-
-    if (inputs.length > 0) {
-        enteredCode = inputs[0].value.trim();
-    }
+    let enteredCode = inputs.length > 0 ? inputs[0].value.trim() : "";
 
     if (!enteredCode) {
         showToast("Inserisci il codice di licenza", "error");
@@ -296,7 +299,6 @@ function checkNumericLicense() {
         return;
     }
 
-    // Lettura timestamp dinamico salvato in Firebase dalla Dashboard
     db.ref('licenses/' + enteredCode).once('value').then((snapshot) => {
         const licenseData = snapshot.val();
         let expirationTimestamp = null;
@@ -314,7 +316,6 @@ function checkNumericLicense() {
             return;
         }
 
-        // Calcola la scadenza usando esclusivamente il dato inviato dalla Dashboard
         db.ref('used_licenses/' + enteredCode).set({
             usedAt: Date.now(),
             expiry: expirationTimestamp,
