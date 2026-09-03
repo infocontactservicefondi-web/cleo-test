@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (CORREZIONE EXPORT & STORICO)
+// LAVANDERIA CLEO - APP LOGIC (FORZATURA DEFINITIVA FLUSSO)
 // ==========================================
 
 const firebaseConfig = {
@@ -52,7 +52,6 @@ const activeTableFilter = document.getElementById('activeTableFilter');
 let clientsData = {};
 let itemsData = {};
 let historyData = {};
-let currentStatPeriod = 'all';
 
 let licenseCheckInterval = null;
 let activeLicenseRef = null;
@@ -203,6 +202,7 @@ function startLicenseCountdownMonitor() {
         const now = Date.now();
         const expiryTime = parseInt(licenseExpiry, 10);
 
+        // SCADENZA EFFETTIVA: BLOCCO TOTALE
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
             localStorage.clear();
@@ -211,12 +211,13 @@ function startLicenseCountdownMonitor() {
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
 
-            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta.");
+            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta a mezzanotte.");
             return;
         }
 
         if (!isDemo) return;
 
+        // AVVISO ARANCIONE SOLO NEGLI ULTIMI 5 GIORNI
         const diffMs = expiryTime - now;
         const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
@@ -269,7 +270,7 @@ function checkAdminPassword() {
     }
 }
 
-window.checkNumericLicense = function() {
+function checkNumericLicense() {
     const inputs = document.querySelectorAll('#loginScreen input');
     let enteredCode = inputs.length > 0 ? inputs[0].value.trim() : "";
 
@@ -286,11 +287,12 @@ window.checkNumericLicense = function() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'false');
         
-        unlockApp();
+        unlockApp(); // SBLOCCA SUBITO L'APP
         startLicenseCountdownMonitor();
         
         const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
         
+        // FORZATURA MESSAGGIO DI BENVENUTO DEMO (USA IL MODALE ARANCIONE/WARNING)
         const warningModal = document.getElementById('licenseWarningModal');
         const warningText = document.getElementById('licenseWarningText');
         if (warningText) {
@@ -355,7 +357,7 @@ window.checkNumericLicense = function() {
             sessionStorage.setItem('laundry_logged_as_admin', 'false');
             
             listenActiveLicenseRealtime(enteredCode);
-            unlockApp();
+            unlockApp(); // SBLOCCA SUBITO L'APP
             startLicenseCountdownMonitor();
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
@@ -372,7 +374,7 @@ window.checkNumericLicense = function() {
         .catch(() => {
             showToast("Errore di connessione al database.", "error");
         });
-};
+}
 
 function initConnectionMonitor() {
     const statusDot = document.getElementById('statusDot');
@@ -381,10 +383,10 @@ function initConnectionMonitor() {
     db.ref('.info/connected').on('value', (snap) => {
         if (snap.val() === true) {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]";
-            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400 font-medium"; }
+            if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400"; }
         } else {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
-            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400 font-medium"; }
+            if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400"; }
         }
     });
 }
@@ -442,10 +444,6 @@ function unlockApp() {
     initApp();
 }
 
-window.lockApp = function() {
-    lockAppComplete();
-};
-
 function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
     if (activeLicenseRef) {
@@ -484,13 +482,13 @@ window.switchTab = function(tab) {
     if (tab === 'active') {
         if(viewStats) viewStats.classList.add('hidden');
         if(viewActive) viewActive.classList.remove('hidden');
-        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
-        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
+        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95";
+        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95";
     } else {
         if(viewActive) viewActive.classList.add('hidden');
         if(viewStats) viewStats.classList.remove('hidden');
-        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer";
-        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer";
+        if(navTabStats) navTabStats.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm cursor-pointer active:scale-95";
+        if(navTabActive) navTabActive.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-darkSurface/50 cursor-pointer active:scale-95";
         renderHistory();
     }
 };
@@ -1021,11 +1019,11 @@ window.setStatPeriod = function(period) {
 
     ['Day', 'Month', 'Year', 'All'].forEach(p => {
         const btn = document.getElementById(`btnPeriod${p}`);
-        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer";
+        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
     });
     
     const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
-    if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer";
+    if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95";
 
     renderHistory();
 };
@@ -1065,10 +1063,7 @@ function renderHistory() {
     const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sorted) {
-        if (!item || !item.returnedAt) continue; // Salta elementi corrotti o senza data
-        const retDate = new Date(item.returnedAt);
-        if (isNaN(retDate.getTime())) continue;
-
+        const retDate = new Date(item.returnedAt || Date.now());
         const retDateStr = retDate.toISOString().split('T')[0];
 
         if (customStart || customEnd) {
@@ -1096,7 +1091,7 @@ function renderHistory() {
     document.getElementById('statTotalCount').textContent = count;
     document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
     document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-    document.getElementById('historyCounter').textContent = `${count} elementi`;
+    document.getElementById('historyCounter').textContent = `${count} elements`;
 
     let topType = "-", maxC = 0;
     for (let [t, c] of Object.entries(typeCounts)) {
@@ -1117,10 +1112,7 @@ window.exportBackup = function() {
     const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
 
     for (let [id, item] of sortedHistory) {
-        if (!item || !item.returnedAt) continue; // Evita righe fantasma o corrotte
-        const retDate = new Date(item.returnedAt);
-        if (isNaN(retDate.getTime())) continue;
-
+        const retDate = new Date(item.returnedAt || Date.now());
         if (startDate && retDate < startDate) continue;
         if (endDate && retDate > endDate) continue;
 
@@ -1129,26 +1121,23 @@ window.exportBackup = function() {
         grandTotalRevenue += (item.price || 0);
     }
 
-    // Struttura CSV pulita e priva di celle con formule o caratteri speciali corrotti
     let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT"\n`;
-    csvContent += `"Data generazione:","${generationDate}"\n`;
-    csvContent += `"Totale Capi:","${totalItemsCount}"\n`;
-    csvContent += `"Incasso Totale (EUR):","${grandTotalRevenue.toFixed(2).replace('.', ',')}"\n\n`;
+    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
+    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
     
-    csvContent += `"Data Ritiro","Cliente","Tel","Capo","Prezzo (EUR)","Armadio","Posizione"\n`;
+    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
     for (let entry of filteredHistory) {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
         const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}","${client.name}","${client.phone}","${item.type}","${(item.price || 0).toFixed(2).replace('.', ',')}","${item.cabinet}","${item.position}"\n`;
+        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
     }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
-    if(document.getElementById('toastNotification')) document.body.appendChild(link);
+    document.getElementById('toastNotification') ? document.body.appendChild(link) : null; // safe trigger
     link.click();
     document.body.removeChild(link);
     showToast("Report esportato!", "success");
@@ -1165,10 +1154,10 @@ function showToast(message, type = "success") {
     } else {
         toast.classList.add('bg-emerald-600');
     }
-    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.remove('translate-y-25', 'opacity-0');
     toast.classList.add('translate-y-0', 'opacity-100');
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-25', 'opacity-0');
     }, 3500);
 }
