@@ -112,51 +112,44 @@ function initProtectedLogo() {
     const logoBtn = document.getElementById('protectedLogoBtn');
     const progressFill = document.getElementById('logoProgressFill');
     let logoPressTimer = null;
+    let holdInterval = null;
     const holdDuration = 5000; // 5 secondi
     
     if (logoBtn) {
-        ['mousedown', 'touchstart'].forEach(evt => {
-            logoBtn.addEventListener(evt, (e) => {
-                e.preventDefault();
-                let startTime = Date.now();
-                if(progressFill) progressFill.style.height = '100%';
-                
-                logoPressTimer = setInterval(() => {
-                    let elapsed = Date.now() - startTime;
-                    if (elapsed >= holdDuration) {
-                        clearInterval(logoPressTimer);
-                        if(progressFill) progressFill.style.height = '0%';
-                        showToast("Sblocco forzato attivato!", "success");
-                        forceUnlockAndLogout(); 
-                    }
-                }, 100);
-            });
-        });
+        const startPress = (e) => {
+            e.preventDefault();
+            let startTime = Date.now();
+            
+            if (holdInterval) clearInterval(holdInterval);
+            if (logoPressTimer) clearTimeout(logoPressTimer);
 
-        ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
-            logoBtn.addEventListener(evt, () => {
-                if (logoPressTimer) clearInterval(logoPressTimer);
-                if(progressFill) progressFill.style.height = '0%';
-            });
-        });
-    }
-}
+            holdInterval = setInterval(() => {
+                let elapsed = Date.now() - startTime;
+                let pct = Math.min(100, (elapsed / holdDuration) * 100);
+                if (progressFill) progressFill.style.height = pct + '%';
+            }, 50);
 
-function forceUnlockAndLogout() {
-    sessionStorage.removeItem('laundry_auth');
-    sessionStorage.removeItem('laundry_logged_as_admin');
-    
-    if(appContainer) {
-        appContainer.style.opacity = '0';
-        setTimeout(() => appContainer.classList.add('hidden'), 400);
+            logoPressTimer = setTimeout(() => {
+                clearInterval(holdInterval);
+                if (progressFill) progressFill.style.height = '0%';
+                showToast("Procedura di uscita/sblocco eseguita con successo", "success");
+                lockAppComplete(); 
+            }, holdDuration);
+        };
+
+        const cancelPress = () => {
+            if (holdInterval) clearInterval(holdInterval);
+            if (logoPressTimer) clearTimeout(logoPressTimer);
+            if (progressFill) progressFill.style.height = '0%';
+        };
+
+        logoBtn.addEventListener('mousedown', startPress);
+        logoBtn.addEventListener('touchstart', startPress);
+
+        logoBtn.addEventListener('mouseup', cancelPress);
+        logoBtn.addEventListener('mouseleave', cancelPress);
+        logoBtn.addEventListener('touchend', cancelPress);
     }
-    if(loginScreen) {
-        loginScreen.classList.remove('hidden');
-        setTimeout(() => loginScreen.style.opacity = '1', 50);
-    }
-    
-    const inputs = document.querySelectorAll('#loginScreen input');
-    inputs.forEach(input => input.value = '');
 }
 
 // ==========================================
@@ -325,42 +318,29 @@ function checkNumericLicense() {
             return;
         }
 
-        db.ref('licenses').once('value')
+        db.ref('licenses/' + enteredCode).once('value')
             .then((snapshot) => {
-                const licenses = snapshot.val();
-                let matchedKey = null;
-                let customExpiryVal = null;
+                const licObj = snapshot.val();
 
-                if (licenses) {
-                    for (let key in licenses) {
-                        if (String(key) === String(enteredCode)) {
-                            matchedKey = key;
-                            let itemData = licenses[key];
-                            customExpiryVal = (typeof itemData === 'object' && itemData !== null) ? itemData.expiry : itemData;
-                            break;
-                        }
-                    }
-                }
+                if (licObj || enteredCode === "2580") {
+                    let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000);
 
-                if (matchedKey || enteredCode === "2580") {
-                    let expirationTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000); // Default 1 anno
-
-                    if (customExpiryVal) {
-                        let parsedTime = typeof customExpiryVal === 'number' ? customExpiryVal : new Date(customExpiryVal).getTime();
-                        if (!isNaN(parsedTime)) {
-                            expirationTimestamp = parsedTime;
-                        }
+                    if (licObj && typeof licObj === 'object' && licObj.expiry) {
+                        expirationTimestamp = licObj.expiry;
+                    } else if (licObj && typeof licObj === 'number') {
+                        expirationTimestamp = licObj;
+                    } else if (licObj && typeof licObj === 'object' && licObj.days) {
+                        expirationTimestamp = Date.now() + (licObj.days * 24 * 60 * 60 * 1000);
                     }
                     
                     db.ref('used_licenses/' + enteredCode).set({
                         usedAt: Date.now(),
                         expiry: expirationTimestamp,
-                        deviceInfo: "Tablet Lavanderia"
+                        clientName: (licObj && licObj.clientName) ? licObj.clientName : "Dispositivo Generico",
+                        deviceInfo: navigator.userAgent
                     });
 
-                    if (matchedKey) {
-                        db.ref('licenses').child(matchedKey).remove().catch(() => {});
-                    }
+                    db.ref('licenses').child(enteredCode).remove().catch(() => {});
 
                     localStorage.setItem('laundry_device_activated', 'true');
                     localStorage.setItem('laundry_active_license', enteredCode);
@@ -467,8 +447,6 @@ function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
     sessionStorage.removeItem('laundry_auth');
     sessionStorage.removeItem('laundry_logged_as_admin');
-    localStorage.removeItem('laundry_device_activated');
-    localStorage.removeItem('laundry_license_expiry');
     
     if(appContainer) {
         appContainer.style.opacity = '0';
@@ -986,231 +964,52 @@ if (globalSearch) {
                 });
                 if(clientActiveItems.length > 0) itemsHtml += `</div>`;
 
-                div.innerHTML = `<div class="flex justify-between items-start"><div><div class="font-bold text-white text-sm">${client.name}</div><div class="text-xs text-slate-400 mt-0.5">Tel: ${client.phone}</div></div><button type="button" onclick="openClientModal('${clientId}'); globalSearchDropdown.classList.add('hidden'); globalSearch.value='';" class="text-xs bg-blue-950 hover:bg-blue-900 text-blue-400 px-3 py-1.5 rounded-lg font-semibold cursor-pointer">Scheda</button></div>${itemsHtml}`;
+                div.innerHTML = `<div class="flex justify-between items-start"><div><div class="font-bold text-white text-sm">${client.name}</div><div class="text-xs text-slate-400">${client.phone}</div></div><button onclick="openClientModal('${clientId}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold cursor-pointer">Apri Scheda</button></div>${itemsHtml}`;
                 globalSearchDropdown.appendChild(div);
             }
         }
-        globalSearchDropdown.classList.toggle('hidden', resultsFound === 0);
+
+        if (resultsFound === 0) {
+            const div = document.createElement('div');
+            div.className = "p-4 text-center text-xs text-slate-400 italic";
+            div.textContent = "Nessun risultato trovato.";
+            globalSearchDropdown.appendChild(div);
+        }
+
+        globalSearchDropdown.classList.remove('hidden');
     });
 }
 
 if (searchClearBtn) {
     searchClearBtn.addEventListener('click', () => {
-        if(globalSearch) globalSearch.value = "";
-        if(globalSearchDropdown) globalSearchDropdown.classList.add('hidden');
+        if (globalSearch) globalSearch.value = "";
+        if (globalSearchDropdown) globalSearchDropdown.classList.add('hidden');
         searchClearBtn.classList.add('hidden');
     });
-}
-
-document.addEventListener('click', (e) => {
-    if (globalSearch && globalSearchDropdown && !globalSearch.contains(e.target) && !globalSearchDropdown.contains(e.target)) globalSearchDropdown.classList.add('hidden');
-    if (assignClientSearch && assignClientDropdown && assignClientToggleBtn && !assignClientSearch.contains(e.target) && !assignClientDropdown.contains(e.target) && !assignClientToggleBtn.contains(e.target)) assignClientDropdown.classList.add('hidden');
-    if (clientNameInput && clientSearchDropdown && clientSearchToggleBtn && !clientNameInput.contains(e.target) && !clientSearchDropdown.contains(e.target) && !clientSearchToggleBtn.contains(e.target)) clientSearchDropdown.classList.add('hidden');
-});
-
-window.openClientModal = function(clientId) {
-    const client = clientsData[clientId];
-    if (!client) return;
-
-    document.getElementById('modalClientName').textContent = client.name;
-    document.getElementById('modalClientDetails').textContent = `Tel: ${client.phone} | Nascita: ${client.dob || 'N/D'} | Indirizzo: ${client.address || 'N/D'}`;
-
-    let totalItems = 0, totalSpent = 0;
-    const activeList = document.getElementById('modalClientActiveItemsList');
-    activeList.innerHTML = "";
-    let activeCount = 0;
-    for (let [id, item] of Object.entries(itemsData)) {
-        if (item.clientId === clientId) {
-            activeCount++; totalItems++; totalSpent += (item.price || 0);
-            const div = document.createElement('div');
-            div.className = "p-3 bg-darkCard rounded-xl border border-darkBorder flex justify-between items-center text-xs";
-            div.innerHTML = `<span class="font-bold text-slate-200">${item.type} (Armadio ${item.cabinet})</span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
-            activeList.appendChild(div);
-        }
-    }
-    if (activeCount === 0) activeList.innerHTML = `<p class="text-xs text-slate-400 italic">Nessun capo attivo.</p>`;
-
-    const historyList = document.getElementById('modalClientHistoryList');
-    historyList.innerHTML = "";
-    let histCount = 0;
-    for (let [id, item] of Object.entries(historyData)) {
-        if (item.clientId === clientId) {
-            histCount++; totalItems++; totalSpent += (item.price || 0);
-            const dateStr = new Date(item.returnedAt).toLocaleDateString('it-IT');
-            const div = document.createElement('div');
-            div.className = "p-3 bg-darkCard rounded-xl border border-darkBorder flex justify-between items-center text-xs";
-            div.innerHTML = `<span class="text-slate-400">${dateStr} &bull; <strong class="text-slate-200">${item.type}</strong></span><span class="text-emerald-400 font-semibold">€ ${(item.price || 0).toFixed(2)}</span>`;
-            historyList.appendChild(div);
-        }
-    }
-    if (histCount === 0) historyList.innerHTML = `<p class="text-xs text-slate-400 italic">Nessun capo nello storico.</p>`;
-
-    document.getElementById('modalClientTotalItems').textContent = totalItems;
-    document.getElementById('modalClientTotalSpent').textContent = `€ ${totalSpent.toFixed(2)}`;
-    document.getElementById('clientModal').classList.remove('hidden');
-};
-
-window.closeClientModal = function() {
-    document.getElementById('clientModal').classList.add('hidden');
-};
-
-function loadHistory() {
-    const local = localStorage.getItem('laundry_history');
-    if (local) historyData = JSON.parse(local);
-
-    db.ref('history').on('value', (snapshot) => {
-        const val = snapshot.val();
-        if (val) {
-            historyData = val;
-            localStorage.setItem('laundry_history', JSON.stringify(val));
-        }
-        const statsView = document.getElementById('viewStats');
-        if (statsView && !statsView.classList.contains('hidden')) renderHistory();
-    });
-}
-
-window.setStatPeriod = function(period) {
-    currentStatPeriod = period;
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-
-    ['Day', 'Month', 'Year', 'All'].forEach(p => {
-        const btn = document.getElementById(`btnPeriod${p}`);
-        if(btn) btn.className = "px-3.5 py-2 bg-darkSurface border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 hover:bg-zinc-850 cursor-pointer active:scale-95";
-    });
-    
-    const activeBtn = document.getElementById(`btnPeriod${period.charAt(0).toUpperCase() + period.slice(1)}`);
-    if(activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 border border-blue-500 text-xs font-semibold rounded-xl text-white shadow-sm cursor-pointer active:scale-95";
-
-    renderHistory();
-};
-
-window.clearCustomDateFilter = function() {
-    document.getElementById('statsCustomStartDate').value = "";
-    document.getElementById('statsCustomEndDate').value = "";
-    renderHistory();
-};
-
-window.resetAllStatistics = function() {
-    if (confirm("Vuoi azzerare tutte le statistiche?")) {
-        historyData = {};
-        localStorage.removeItem('laundry_history');
-        db.ref('history').remove();
-        showToast("Statistiche azzerate", "success");
-        renderHistory();
-    }
-};
-
-function renderHistory() {
-    const historyTableBody = document.getElementById('historyTableBody');
-    if(!historyTableBody) return;
-    historyTableBody.innerHTML = "";
-    let count = 0, totalRevenue = 0;
-    let uniqueClients = new Set(), typeCounts = {};
-
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentMonth = now.getMonth(), currentYear = now.getFullYear();
-
-    const customStartEl = document.getElementById('statsCustomStartDate');
-    const customEndEl = document.getElementById('statsCustomEndDate');
-    let customStart = customStartEl && customStartEl.value ? new Date(customStartEl.value + "T00:00:00") : null;
-    let customEnd = customEndEl && customEndEl.value ? new Date(customEndEl.value + "T23:59:59") : null;
-
-    const sorted = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sorted) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        const retDateStr = retDate.toISOString().split('T')[0];
-
-        if (customStart || customEnd) {
-            if (customStart && retDate < customStart) continue;
-            if (customEnd && retDate > customEnd) continue;
-        } else {
-            if (currentStatPeriod === 'day' && retDateStr !== todayStr) continue;
-            if (currentStatPeriod === 'month' && (retDate.getMonth() !== currentMonth || retDate.getFullYear() !== currentYear)) continue;
-            if (currentStatPeriod === 'year' && retDate.getFullYear() !== currentYear) continue;
-        }
-
-        count++;
-        totalRevenue += (item.price || 0);
-        uniqueClients.add(item.clientId);
-        const tLower = (item.type || "Altro").toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
-
-        const client = clientsData[item.clientId] || { name: "Non trovato" };
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-darkCard text-sm";
-        tr.innerHTML = `<td class="py-3 px-4 text-xs text-slate-400">${retDate.toLocaleDateString('it-IT')}</td><td class="py-3 px-4 font-semibold text-white">${client.name}</td><td class="py-3 px-4">${item.type}</td><td class="py-3 px-4 font-semibold text-emerald-400">€ ${(item.price || 0).toFixed(2)}</td><td class="py-3 px-4 text-xs text-slate-400">Armadio ${item.cabinet}</td>`;
-        historyTableBody.appendChild(tr);
-    }
-
-    document.getElementById('statTotalCount').textContent = count;
-    document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
-    document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-    document.getElementById('historyCounter').textContent = `${count} elementi`;
-
-    let topType = "-", maxC = 0;
-    for (let [t, c] of Object.entries(typeCounts)) {
-        if (c > maxC) { maxC = c; topType = t.charAt(0).toUpperCase() + t.slice(1); }
-    }
-    document.getElementById('statTopItemType').textContent = topType;
-}
-
-window.exportBackup = function() {
-    const generationDate = new Date().toLocaleDateString('it-IT');
-    const startDateInput = document.getElementById('statsCustomStartDate');
-    const endDateInput = document.getElementById('statsCustomEndDate');
-    const startDate = startDateInput && startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDate = endDateInput && endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDate) endDate.setHours(23, 59, 59, 999);
-
-    let totalItemsCount = 0, grandTotalRevenue = 0, typeCounts = {}, filteredHistory = [];
-    const sortedHistory = Object.entries(historyData).sort((a, b) => (b[1].returnedAt || 0) - (a[1].returnedAt || 0));
-
-    for (let [id, item] of sortedHistory) {
-        const retDate = new Date(item.returnedAt || Date.now());
-        if (startDate && retDate < startDate) continue;
-        if (endDate && retDate > endDate) continue;
-
-        filteredHistory.push({ id, item, retDate });
-        totalItemsCount++;
-        grandTotalRevenue += (item.price || 0);
-        const tLower = (item.type || "Altro").trim().toLowerCase();
-        typeCounts[tLower] = (typeCounts[tLower] || 0) + 1;
-    }
-
-    let csvContent = "\uFEFF";
-    csvContent += `"LAVANDERIA CLEO - REPORT";;;;;;\n"Data generazione:";"${generationDate}";;;;;\n`;
-    csvContent += `"=== STATISTICHE ===";;;;;;\n"Totale Capi:";"${totalItemsCount}";;;;;\n"Incasso:";"€ ${grandTotalRevenue.toFixed(2).replace('.', ',')}";;;;;\n\n`;
-    
-    csvContent += `"=== STORICO ===";;;;;;\n"Data Ritiro";"Cliente";"Tel";"Capo";"Prezzo";"Armadio";"Posizione"\n`;
-    for (let entry of filteredHistory) {
-        const item = entry.item;
-        const retDateStr = entry.retDate.toLocaleDateString('it-IT');
-        const client = clientsData[item.clientId] || { name: "Non trovato", phone: "N/D" };
-        csvContent += `"${retDateStr}";"${client.name}";"${client.phone}";"${item.type}";"${(item.price || 0).toFixed(2).replace('.', ',')}";"${item.cabinet}";"${item.position}"\n`;
-    }
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Report esportato!", "success");
 }
 
 function showToast(message, type = "success") {
     const toast = document.getElementById('toastNotification');
     const toastMsg = document.getElementById('toastMessage');
-    if(!toast || !toastMsg) return;
+    if (!toast || !toastMsg) return;
+
     toastMsg.textContent = message;
-    toast.classList.remove('translate-y-25', 'opacity-0');
+    
+    if (type === "error") {
+        toast.firstElementChild.className = "bg-darkSurface border border-rose-900 shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3";
+        toast.firstElementChild.firstElementChild.className = "w-7 h-7 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center text-xs";
+        toast.firstElementChild.firstElementChild.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+    } else {
+        toast.firstElementChild.className = "bg-darkSurface border border-darkBorder shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3";
+        toast.firstElementChild.firstElementChild.className = "w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-xs";
+        toast.firstElementChild.firstElementChild.innerHTML = '<i class="fa-solid fa-check"></i>';
+    }
+
+    toast.classList.remove('translate-y-20', 'opacity-0');
     toast.classList.add('translate-y-0', 'opacity-100');
+
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-25', 'opacity-0');
-    }, 3500);
+        toast.classList.add('translate-y-20', 'opacity-0');
+    }, 3000);
 }
