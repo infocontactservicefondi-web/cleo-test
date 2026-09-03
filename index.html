@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lavanderia Cleo - Gestionale</title>
     <script>
-        // Applica subito il tema salvato prima del rendering per evitare sfarfallii
         if (localStorage.getItem('laundry_theme') === 'light') {
             document.documentElement.classList.remove('dark');
         } else {
@@ -45,30 +44,25 @@
             animation: modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Regole Tema Chiaro - ALTO CONTRASTO */
         html:not(.dark) .bg-darkBg { background-color: #f8fafc !important; }
         html:not(.dark) .bg-darkSurface { background-color: #ffffff !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         html:not(.dark) .bg-darkCard { background-color: #f1f5f9 !important; }
         html:not(.dark) .border-darkBorder { border-color: #cbd5e1 !important; }
         
-        /* Testi principali e secondari ad alta leggibilità */
         html:not(.dark) .text-white { color: #0f172a !important; }
         html:not(.dark) .text-slate-100 { color: #1e293b !important; }
         html:not(.dark) .text-slate-200 { color: #334155 !important; }
         html:not(.dark) .text-slate-300 { color: #475569 !important; }
         html:not(.dark) .text-slate-400 { color: #475569 !important; font-weight: 600; }
         
-        /* Colori accento e icone intensificati per il bianco */
         html:not(.dark) .text-blue-400 { color: #2563eb !important; }
         html:not(.dark) .text-emerald-400 { color: #059669 !important; }
         html:not(.dark) .text-rose-400 { color: #e11d48 !important; }
         html:not(.dark) .text-amber-400 { color: #d97706 !important; }
         
-        /* Badge adattati alla modalità chiara */
         html:not(.dark) .bg-blue-950 { background-color: #dbeafe !important; border-color: #bfdbfe !important; }
         html:not(.dark) .bg-amber-950 { background-color: #fef3c7 !important; border-color: #fde68a !important; }
         
-        /* Placeholder sempre nitidi */
         html:not(.dark) input::placeholder, html:not(.dark) textarea::placeholder { color: #64748b !important; }
     </style>
 </head>
@@ -87,9 +81,9 @@
                     <span class="text-xs font-bold text-white uppercase tracking-wider">Licenza Dispositivo</span>
                     <span id="licenseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In attesa</span>
                 </div>
-                <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
+                <p class="text-[11px] text-slate-400">Inserisci il codice licenza per abilitare il gestionale.</p>
                 <div class="flex gap-2">
-                    <input type="text" id="licensePhoneInput" placeholder="Es. CLEO-TEST-01" class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    <input type="text" id="licensePhoneInput" placeholder="Codice licenza..." class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                     <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
                 </div>
             </div>
@@ -111,7 +105,7 @@
         <!-- HEADER -->
         <header class="flex flex-wrap items-center justify-between gap-4 bg-darkSurface p-4 rounded-2xl border border-darkBorder shadow-sm">
             <div class="flex items-center gap-3">
-                <!-- LOGO PROTETTO: Richiede 5 secondi di pressione continuata -->
+                <!-- LOGO PROTETTO (Pressione 5 secondi) -->
                 <div id="protectedLogoBtn" class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg shadow-sm cursor-pointer select-none relative overflow-hidden" title="Tieni premuto 5 secondi">
                     <i class="fa-solid fa-shirt"></i>
                     <div id="logoProgressFill" class="absolute bottom-0 left-0 w-full bg-blue-400/40 h-0 transition-all duration-75"></div>
@@ -164,7 +158,7 @@
                 <!-- Colonna Sinistra -->
                 <div class="lg:col-span-1 space-y-6">
                     
-                    <!-- Nuovo Cliente con Tabella integrata -->
+                    <!-- Nuovo Cliente -->
                     <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
                         <div class="flex items-center justify-between">
                             <h2 class="text-sm font-bold text-white flex items-center gap-2">
@@ -173,10 +167,10 @@
                         </div>
                         <form id="clientForm" class="space-y-3">
                             <div class="relative">
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome e Cognome (Cerca con lente) *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome e Cognome *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
-                                    <input type="text" id="clientName" placeholder="Nome e Cognome (Cerca con lente)..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="clientName" placeholder="Nome e Cognome..." autocomplete="off" required class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <input type="hidden" id="manageClientIdInput">
                                     <button type="button" id="clientSearchToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
                                         <i class="fa-solid fa-chevron-down"></i>
@@ -186,17 +180,17 @@
                             </div>
 
                             <div>
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Telefono (obbligatorio) *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Telefono *</label>
                                 <input type="tel" id="clientPhone" placeholder="Telefono" required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
                             
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Nascita (Facoltativa)</label>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Nascita</label>
                                     <input type="text" id="clientDob" placeholder="GG/MM/AAAA" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Indirizzo (Facoltativo)</label>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Indirizzo</label>
                                     <input type="text" id="clientAddress" placeholder="Indirizzo" class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                             </div>
@@ -212,17 +206,17 @@
                         </form>
                     </div>
 
-                    <!-- Inserimento Capo in Armadio -->
+                    <!-- Inserimento Capo -->
                     <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm space-y-4">
                         <h2 class="text-sm font-bold text-white flex items-center gap-2">
                             <i class="fa-solid fa-shirt text-blue-400"></i> Accetta Capo in Armadio
                         </h2>
                         <form id="itemForm" class="space-y-3">
                             <div class="relative">
-                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente (Cerca con lente) *</label>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Seleziona Cliente *</label>
                                 <div class="relative flex items-center">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs"></i>
-                                    <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono cliente..." autocomplete="off" class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="assignClientSearch" placeholder="Cerca nome o telefono..." autocomplete="off" class="w-full pl-9 pr-8 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <input type="hidden" id="selectedClientIdInput" required>
                                     <button type="button" id="assignClientToggleBtn" class="absolute right-2.5 text-slate-400 hover:text-white text-xs cursor-pointer">
                                         <i class="fa-solid fa-chevron-down"></i>
@@ -233,17 +227,17 @@
 
                             <div>
                                 <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tipologia Capo *</label>
-                                <input type="text" id="itemType" placeholder="Es. Giacca, Abito, Piumino..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="text" id="itemType" placeholder="Es. Giacca, Abito..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
 
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 mb-1">Armadio *</label>
-                                    <input type="text" id="itemCabinet" placeholder="Es. A1, B2..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="itemCabinet" placeholder="Es. A1..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 mb-1">Posizione *</label>
-                                    <input type="text" id="itemPosition" placeholder="Es. 12, Gancio 4..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="itemPosition" placeholder="Es. 12..." required class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                             </div>
 
@@ -254,7 +248,7 @@
 
                             <div>
                                 <label class="block text-[11px] font-semibold text-slate-400 mb-1">Note opzionali</label>
-                                <textarea id="itemNotes" rows="2" placeholder="Es. Con cintura..." class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                                <textarea id="itemNotes" rows="2" placeholder="Note..." class="w-full px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
                             </div>
 
                             <div class="pt-2">
@@ -305,10 +299,9 @@
 
         <!-- VIEW STATS -->
         <div id="viewStats" class="space-y-6 hidden">
-            <!-- 1. Blocco Statistiche Superiori -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                    <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati (Periodo)</div>
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capi Ritirati</div>
                     <div id="statTotalCount" class="text-2xl font-bold text-white">0</div>
                 </div>
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
@@ -316,16 +309,15 @@
                     <div id="statTotalRevenue" class="text-2xl font-bold text-emerald-400">€ 0.00</div>
                 </div>
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                    <div class="text-slate-400 text-xs font-medium mb-1">Clienti Unici Serviti</div>
+                    <div class="text-slate-400 text-xs font-medium mb-1">Clienti Unici</div>
                     <div id="statUniqueClients" class="text-2xl font-bold text-white">0</div>
                 </div>
                 <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
-                    <div class="text-slate-400 text-xs font-medium mb-1">Capo più frequente</div>
+                    <div class="text-slate-400 text-xs font-medium mb-1">Capo frequente</div>
                     <div id="statTopItemType" class="text-2xl font-bold text-white truncate">-</div>
                 </div>
             </div>
 
-            <!-- 2. BARRA DEI FILTRI CON "DA" E "A" -->
             <div class="bg-darkSurface p-5 rounded-2xl border border-darkBorder shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
