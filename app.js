@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE DEFINITIVA)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA DEFINITIVA)
 // ==========================================
 
 const firebaseConfig = {
@@ -228,7 +228,7 @@ function startLicenseCountdownMonitor() {
         const now = Date.now();
         const expiryTime = parseInt(licenseExpiry, 10);
 
-        // Se la licenza è scaduta per tutti (demo o ufficiale)
+        // BLOCCO ROSSO DEFINITIVO ALLO SCADERE
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
             localStorage.clear();
@@ -247,18 +247,18 @@ function startLicenseCountdownMonitor() {
             return;
         }
 
-        // SE NON È UNA DEMO, NON MOSTRARE MAI L'AVVISO ARANCIONE
+        // SE NON È UNA DEMO, NESSUN AVVISO ARANCIONE
         if (!isDemo) return;
 
-        // CALCOLO AVVISO ARANCIONE SOLO PER LE DEMO (DA 9 GIORNI IN MENS)
+        // AVVISO ARANCIONE SOLO DA 5 GIORNI O MENO ALLA SCADENZA
         const diffMs = expiryTime - now;
         const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-        if (diffDays >= 0 && diffDays <= 9) {
+        if (diffDays >= 0 && diffDays <= 5) {
             const warningText = document.getElementById('licenseWarningText');
             if (warningText) {
                 if (diffDays === 0) {
-                    warningText.textContent = `⚠️ ATTENZIONE: La licenza demo scade OGGI a mezzanotte! Rinnovate tempestivamente.`;
+                    warningText.textContent = `⚠️ ATTENZIONE: La licenza demo scade OGGI! Rinnovate tempestivamente per evitare il blocco.`;
                 } else {
                     warningText.textContent = `⚠️ ATTENZIONE: La licenza demo sta per scadere. Mancano ${diffDays} giorni al termine.`;
                 }
@@ -330,7 +330,7 @@ function checkNumericLicense() {
         const textEl = document.getElementById('expiredModalText');
         
         if (titleEl) titleEl.textContent = "Licenza Demo Attivata";
-        if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo di test con scadenza al ${expiryDateFormatted}.`;
+        if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo di test con scadenza al ${expiryDateFormatted}. Clicca chiudi per iniziare a lavorare.`;
         if (expiredModal) expiredModal.classList.remove('hidden');
         showToast("Licenza Demo avviata con successo!", "success");
         return;
@@ -340,7 +340,7 @@ function checkNumericLicense() {
         let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-        localStorage.setItem('laundry_is_demo_license', 'false'); // Licenza ufficiale illimitata (NESSUN AVVISO)
+        localStorage.setItem('laundry_is_demo_license', 'false'); 
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         unlockApp();
@@ -362,16 +362,14 @@ function checkNumericLicense() {
 
             if (typeof licenseData === 'object' && licenseData !== null) {
                 expirationTimestamp = parseDateToTimestamp(licenseData.expiry);
-                // FORZATURA FLAG: se esplicitamente impostata o calcolata su 1 o 15 giorni
                 if (licenseData.isDemo === true) {
                     isDemoLicense = true;
                 } else {
                     const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
-                    // Se la durata è di circa 1 giorno o 15 giorni (tolleranza sui giorni), è DEMO
                     if (diffDaysCalc <= 16) {
                         isDemoLicense = true;
                     } else {
-                        isDemoLicense = false; // 1 mese, 6 mesi, 1 anno, 2 anni -> UFFICIALE SENZA AVVISI
+                        isDemoLicense = false; 
                     }
                 }
             } else {
@@ -412,7 +410,7 @@ function checkNumericLicense() {
             
             if (isDemoLicense) {
                 if (titleEl) titleEl.textContent = "Licenza Demo Attivata";
-                if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo (1 o 15 giorni) con scadenza al ${expiryDateFormatted}. Clicca ho capito per iniziare.`;
+                if (textEl) textEl.textContent = `È stata attivata una licenza in modalità Demo (1 o 15 giorni) con scadenza al ${expiryDateFormatted}. Clicca per iniziare a lavorare.`;
             } else {
                 if (titleEl) titleEl.textContent = "Licenza Ufficiale Attivata";
                 if (textEl) textEl.textContent = `La licenza ufficiale è stata attivata con successo fino al ${expiryDateFormatted}. Buon lavoro!`;
