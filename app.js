@@ -221,7 +221,8 @@ function initLicenseSystem() {
         const expiryTime = parseInt(licenseExpiry, 10);
 
         if (now < expiryTime) {
-            checkDaysBeforeExpiry(now, expiryTime);
+            // NON chiamiamo checkDaysBeforeExpiry qui all'avvio: 
+            // lasciamo che sia il monitor continuo a valutare l'avviso arancione solo nei giorni giusti
             sessionStorage.setItem('laundry_auth', 'true');
             if (activeLicense) {
                 listenActiveLicenseRealtime(activeLicense);
@@ -279,8 +280,9 @@ function checkDaysBeforeExpiry(now, expiryTime) {
     const diffMs = expiryTime - now;
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    // MOSTRA L'AVVISO ARANCIONE SOLO NEGLI ULTIMI 5 GIORNI (DA 5 FINO A 0)
-    // Su una durata totale di 15 giorni, gli ultimi 5 giorni partono dal 10° giorno in poi.
+    // REGOLE RICHIESTE:
+    // - Primi 10 giorni (da 15 a 6 giorni rimanenti): NESSUN AVVISO
+    // - Dal 9° giorno fino al giorno della scadenza (da 5 giorni a 0 giorni rimanenti): AVVISO ARANCIONE
     if (diffDays >= 0 && diffDays <= 5) {
         const warningText = document.getElementById('licenseWarningText');
         if (warningText) {
