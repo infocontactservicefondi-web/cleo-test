@@ -219,10 +219,10 @@ window.confirmB2bLicenseConsent = function() {
     
     unlockApp();
 
-    checkAndTriggerStartupDemoWarnings();
+    checkAndTriggerDemoWarningsOnly();
 };
 
-function checkAndTriggerStartupDemoWarnings() {
+function checkAndTriggerDemoWarningsOnly() {
     const isDemo = localStorage.getItem('laundry_is_demo_license') === 'true';
     const expiryTimestamp = localStorage.getItem('laundry_license_expiry');
     if (!isDemo || !expiryTimestamp) return;
@@ -400,7 +400,7 @@ function checkNumericLicense() {
             if (isDemoLicense) {
                 showToast(`Licenza DEMO attivata con successo fino al ${expiryDateFormatted}!`, "success");
             } else {
-                showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+                showToast(`Licenza ufficiale attivata con successo fino al ${expiryDateFormatted}!`, "success");
             }
         })
         .catch(() => {
