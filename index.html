@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lavanderia Gestionale</title>
+    <title>Lavanderia - Gestionale</title>
     <script>
         if (localStorage.getItem('laundry_theme') === 'light') {
             document.documentElement.classList.remove('dark');
@@ -80,7 +80,7 @@
                         <span class="text-xs font-bold text-white uppercase tracking-wider">Licenza Dispositivo</span>
                         <span id="licenseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-900">In attesa</span>
                     </div>
-                    <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo terminale.</p>
+                    <p class="text-[11px] text-slate-400">Inserisci il codice licenza fornito per abilitare questo tablet.</p>
                     <div class="flex gap-2">
                         <input type="text" id="licensePhoneInput" placeholder="Inserisci codice licenza..." class="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
                         <button type="button" onclick="checkNumericLicense()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0">Attiva</button>
@@ -109,7 +109,7 @@
                         <div id="logoProgressFill" class="absolute bottom-0 left-0 w-full bg-blue-400/40 h-0 transition-all duration-75"></div>
                     </div>
                     <div>
-                        <h1 class="text-base font-bold text-white leading-tight">Lavanderia Cleo</h1>
+                        <h1 class="text-base font-bold text-white leading-tight">Lavanderia</h1>
                         <div class="flex items-center gap-2 text-xs">
                             <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
                             <span id="statusText" class="text-emerald-400 font-medium">Online</span>
@@ -511,7 +511,7 @@
             </div>
             <h2 id="expiredModalTitle" class="text-lg font-bold text-white">Licenza Scaduta</h2>
             <p id="expiredModalText" class="text-xs text-slate-300 leading-relaxed">La licenza per questo dispositivo è scaduta.</p>
-            <button onclick="closeExpiredModalAndRelogin()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs cursor-pointer">Inserisci Nuovo Codice Licenza</button>
+            <button onclick="closeExpiredModalAndRelogin()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs cursor-pointer">Inserisci Nuovo Codice</button>
         </div>
     </div>
 
