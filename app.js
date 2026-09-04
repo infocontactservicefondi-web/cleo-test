@@ -184,8 +184,12 @@ function initLicenseSystem() {
             const activeLicense = localStorage.getItem('laundry_active_license');
             if (activeLicense) listenActiveLicenseRealtime(activeLicense);
             
-            // Richiede sempre l'accettazione dei termini all'avvio dell'app se attiva
-            checkAndShowB2bConsentModal();
+            const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
+            if (termsAccepted === 'true') {
+                unlockApp();
+            } else {
+                checkAndShowB2bConsentModal();
+            }
         } else {
             triggerHardLock("Periodo di Prova Terminato", "La licenza associata a questo dispositivo è giunta a termine. Inserisci un nuovo codice valido per continuare.");
         }
@@ -209,6 +213,7 @@ window.confirmB2bLicenseConsent = function() {
         showToast("Devi accettare i Termini di Servizio B2B per proseguire", "error");
         return;
     }
+    localStorage.setItem('laundry_b2b_terms_accepted', 'true');
     const consentModal = document.getElementById('licenseTermsConsentModal');
     if (consentModal) consentModal.classList.add('hidden');
     unlockApp();
@@ -282,7 +287,12 @@ function checkAdminPassword() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         
-        checkAndShowB2bConsentModal();
+        const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
+        if (termsAccepted === 'true') {
+            unlockApp();
+        } else {
+            checkAndShowB2bConsentModal();
+        }
         showToast("Accesso amministratore eseguito", "success");
     } else {
         showToast("Password amministratore errata", "error");
@@ -310,7 +320,12 @@ function checkNumericLicense() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         
-        checkAndShowB2bConsentModal();
+        const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
+        if (termsAccepted === 'true') {
+            unlockApp();
+        } else {
+            checkAndShowB2bConsentModal();
+        }
         showToast("Accesso Master illimitato eseguito!", "success");
         return;
     }
@@ -356,7 +371,13 @@ function checkNumericLicense() {
             sessionStorage.setItem('laundry_logged_as_admin', 'false');
             
             listenActiveLicenseRealtime(enteredCode);
-            checkAndShowB2bConsentModal();
+            
+            const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
+            if (termsAccepted === 'true') {
+                unlockApp();
+            } else {
+                checkAndShowB2bConsentModal();
+            }
             
             startLicenseCountdownMonitor();
             
