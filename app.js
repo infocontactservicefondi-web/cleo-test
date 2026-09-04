@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE CON CODICI MONO-USO)
+// LAVANDERIA - APP LOGIC (VERSIONE COMPLETA FINALE CON CODICI MONO-USO)
 // ==========================================
 
 const firebaseConfig = {
@@ -651,7 +651,7 @@ window.printClientReceiptLabel = function() {
     }
 
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x00" + dateStr + "\n--------------------------------\n\x1B\x61\x00\x1B\x21\x08Cliente: " + name + "\nTel:     " + phone + "\n";
+    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA\n\x1B\x21\x00" + dateStr + "\n--------------------------------\n\x1B\x61\x00\x1B\x21\x08Cliente: " + name + "\nTel:     " + phone + "\n";
     if (dob) printText += "Nascita: " + dob + "\n";
     if (address) printText += "Indirizzo: " + address + "\n";
     printText += "--------------------------------\n\n\n\n\x1D\x56\x41\x03"; 
@@ -878,7 +878,7 @@ window.printItemLabel = function() {
     const client = clientsData[clientId];
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
-    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel:     " + client.phone + "\nCapo:    " + type + "\n";
+    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel:     " + client.phone + "\nCapo:    " + type + "\n";
     if (notes) printText += "Note:    " + notes + "\n";
     printText += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n\n\n\n\x1D\x56\x41\x03";
 
@@ -1195,7 +1195,7 @@ window.exportBackup = function() {
     }
 
     let csvContent = "\uFEFF";
-    csvContent += "LAVANDERIA CLEO - REPORT\n";
+    csvContent += "LAVANDERIA - REPORT\n";
     csvContent += "Data generazione;" + generationDate + "\n\n";
     csvContent += "STATISTICHE\n";
     csvContent += "Totale Capi;" + totalItemsCount + "\n";
