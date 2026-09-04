@@ -3,44 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - Lavanderia Cleo</title>
+    <title>Informativa sulla Privacy - Lavanderia Cleo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#121212',
-                        darkSurface: '#1E1E1E',
-                        darkCard: '#242424',
-                        darkBorder: '#2C2C2C'
-                    }
-                }
-            }
-        }
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { darkBg: '#121212', darkSurface: '#1E1E1E', darkCard: '#242424', darkBorder: '#2C2C2C' } } } }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-darkBg text-slate-100 min-h-screen font-sans p-6 flex flex-col justify-between">
-    <div class="max-w-3xl mx-auto w-full space-y-6 bg-darkSurface p-8 rounded-3xl border border-darkBorder shadow-2xl my-auto">
+    <div class="max-w-3xl mx-auto space-y-6 w-full">
         <div class="flex items-center justify-between border-b border-darkBorder pb-4">
-            <h1 class="text-xl font-bold text-white"><i class="fa-solid fa-shield-halved text-blue-500 mr-2"></i> Informativa sulla Privacy</h1>
-            <a href="index.html" class="px-3.5 py-2 bg-darkCard hover:bg-zinc-800 text-xs font-semibold rounded-xl text-slate-300 border border-darkBorder"><i class="fa-solid fa-arrow-left mr-1"></i> Torna al Gestionale</a>
+            <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-blue-400"></i> Informativa sulla Privacy
+            </h1>
+            <a href="index.html" class="px-3.5 py-2 bg-darkSurface hover:bg-darkCard border border-darkBorder text-xs font-semibold rounded-xl text-slate-300">Torna alla Home</a>
         </div>
-        <div class="space-y-4 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-darkSurface p-6 rounded-2xl border border-darkBorder space-y-4 text-xs leading-relaxed text-slate-300">
             <h2 class="text-sm font-bold text-white">1. Titolare del Trattamento</h2>
             <p>Il trattamento dei dati personali raccolti tramite il gestionale Lavanderia Cleo avviene nel pieno rispetto della normativa vigente (GDPR - Regolamento UE 2016/679).</p>
             
-            <h2 class="text-sm font-bold text-white">2. Tipologia dei Dati Raccolti</h2>
-            <p>I dati raccolti riguardano esclusivamente le anagrafiche dei clienti (nome, telefono, indirizzo, data di nascita) e lo storico dei capi conferiti in lavanderia, necessari per l'erogazione del servizio di gestione.</p>
+            <h2 class="text-sm font-bold text-white">2. Tipologia di Dati Raccolti</h2>
+            <p>I dati raccolti includono esclusivamente le informazioni inserite volontariamente per la gestione del servizio: nome, cognome, numero di telefono ed eventuali note sui capi depositati.</p>
+
+            <h2 class="text-sm font-bold text-white">3. Finalità del Trattamento</h2>
+            <p>I dati sono trattati unicamente per finalità connesse all'erogazione del servizio di lavanderia, catalogazione in armadio e storico ritiri. Nessun dato viene ceduto a terzi o utilizzato per scopi commerciali.</p>
             
-            <h2 class="text-sm font-bold text-white">3. Conservazione e Sicurezza</h2>
-            <p>I dati sono salvati in modalità locale sul dispositivo e sincronizzati tramite database protetti (Firebase). L'accesso è subordinato a credenziali di autenticazione e codici di licenza validi gestiti dall'amministratore.</p>
-        </div>
-        <div class="border-t border-darkBorder pt-4 text-center text-[11px] text-slate-500">
-            Lavanderia Cleo &bull; Tutti i diritti riservati
+            <h2 class="text-sm font-bold text-white">4. Conservazione dei Dati</h2>
+            <p>I dati vengono memorizzati in sicurezza e possono essere cancellati o esportati in autonomia dall'amministratore del sistema in qualsiasi momento.</p>
         </div>
     </div>
+    <footer class="text-center text-xs text-slate-500 pt-6">Lavanderia Cleo &bull; Tutti i diritti riservati</footer>
 </body>
 </html>
