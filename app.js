@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE CORRETTA SENZA CARATTERI STRANI)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA AGGIORNATA)
 // ==========================================
 
 const firebaseConfig = {
@@ -457,9 +457,14 @@ function unlockApp() {
     initApp();
 }
 
-function lockApp() {
+window.lockApp = function() {
+    const deviceActivated = localStorage.getItem('laundry_device_activated');
+    if (deviceActivated === 'true') {
+        showToast("Dispositivo con licenza attiva: impossibile uscire", "error");
+        return;
+    }
     lockAppComplete();
-}
+};
 
 function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
