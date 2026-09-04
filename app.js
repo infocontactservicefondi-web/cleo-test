@@ -1151,4 +1151,3 @@ function showToast(message, type = "success") {
         toast.classList.add('translate-y-25', 'opacity-0');
     }, 3500);
 }
-```[cite: 7]
