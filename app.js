@@ -183,12 +183,36 @@ function initLicenseSystem() {
             sessionStorage.setItem('laundry_auth', 'true');
             const activeLicense = localStorage.getItem('laundry_active_license');
             if (activeLicense) listenActiveLicenseRealtime(activeLicense);
-            unlockApp();
+            
+            // Richiede sempre l'accettazione a schermo dei termini all'avvio dell'app per qualsiasi licenza
+            checkAndShowB2bConsentModal();
         } else {
             triggerHardLock("Periodo di Prova Terminato", "La licenza associata a questo dispositivo è giunta a termine. Inserisci un nuovo codice valido per continuare.");
         }
     }
 }
+
+function checkAndShowB2bConsentModal() {
+    const consentModal = document.getElementById('licenseTermsConsentModal');
+    const checkbox = document.getElementById('acceptB2bTermsCheck');
+    if (consentModal) {
+        if (checkbox) checkbox.checked = false;
+        consentModal.classList.remove('hidden');
+    } else {
+        unlockApp();
+    }
+}
+
+window.confirmB2bLicenseConsent = function() {
+    const checkbox = document.getElementById('acceptB2bTermsCheck');
+    if (!checkbox || !checkbox.checked) {
+        showToast("Devi accettare i Termini di Servizio B2B per proseguire", "error");
+        return;
+    }
+    const consentModal = document.getElementById('licenseTermsConsentModal');
+    if (consentModal) consentModal.classList.add('hidden');
+    unlockApp();
+};
 
 function startLicenseCountdownMonitor() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
@@ -257,7 +281,7 @@ function checkAdminPassword() {
     if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
-        unlockApp();
+        checkAndShowB2bConsentModal();
         showToast("Accesso amministratore eseguito", "success");
     } else {
         showToast("Password amministratore errata", "error");
@@ -284,7 +308,7 @@ function checkNumericLicense() {
         localStorage.setItem('laundry_is_demo_license', 'false'); 
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
-        unlockApp();
+        checkAndShowB2bConsentModal();
         showToast("Accesso Master illimitato eseguito!", "success");
         return;
     }
@@ -330,19 +354,11 @@ function checkNumericLicense() {
             sessionStorage.setItem('laundry_logged_as_admin', 'false');
             
             listenActiveLicenseRealtime(enteredCode);
-            unlockApp(); 
+            checkAndShowB2bConsentModal(); 
             startLicenseCountdownMonitor();
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-
-            const warningModal = document.getElementById('licenseWarningModal');
-            const warningText = document.getElementById('licenseWarningText');
-            if (warningText) {
-                warningText.textContent = `✅ Licenza attivata con successo fino al ${expiryDateFormatted}. Buon lavoro!`;
-            }
-            if (warningModal) warningModal.classList.remove('hidden');
-            
-            showToast("Licenza attivata con successo!", "success");
+            showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
         })
         .catch(() => {
             showToast("Errore di connessione al database.", "error");
