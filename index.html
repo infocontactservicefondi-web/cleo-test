@@ -33,7 +33,7 @@
                 <div class="bg-brand-600 text-white p-2 rounded-lg shadow">
                     <i class="fa-solid fa-shirt text-xl"></i>
                 </div>
-                <h1 class="text-xl font-bold tracking-wide">Lavanderia Cleo</h1>
+                <h1 class="text-xl font-bold tracking-wide">Lavanderia Cleo - Aprilia</h1>
             </div>
             <div class="flex items-center space-x-4">
                 <!-- Indicatore Connessione Firebase -->
@@ -221,18 +221,18 @@
 
     <!-- Script di Logica Applicativa e Firebase -->
     <script>
-        // Configurazione Firebase fornita
+        // Configurazione Firebase aggiornata con l'URL corretto per il database Europe-West1
         const firebaseConfig = {
-            databaseURL: "https://lavanderia-d9c29-default-rtdb.firebaseio.com/"
+            databaseURL: "https://cleo-test-36894-default-rtdb.europe-west1.firebasedatabase.app/"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Riferimenti Database Realtime
-        const refClienti = db.ref('clienti');
-        const refCapi = db.ref('capi');
-        const refLicenza = db.ref('licenza');
+        // Riferimenti Database Realtime puntati alla struttura stores/aprilia
+        const refClienti = db.ref('stores/aprilia/items/clients');
+        const refCapi = db.ref('stores/aprilia/items/capi');
+        const refLicenza = db.ref('stores/aprilia/licenza');
         const refReset = db.ref('global_reset_signal');
 
         // Stato locale app
@@ -256,7 +256,7 @@
         refClienti.on('value', (snapshot) => {
             clientiData = snapshot.val() || {};
             renderClienti();
-             aggiornaSelectClienti();
+            aggiornaSelectClienti();
         });
 
         refCapi.on('value', (snapshot) => {
@@ -272,13 +272,6 @@
                 info.innerHTML = `<span class="text-green-600 font-semibold"><i class="fa-solid fa-circle-check"></i> Licenza Attiva (${lic.tipo || 'Standard'})</span>`;
             } else {
                 info.innerHTML = `<span class="text-amber-600 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Modalità Demo o Licenza non attiva</span>`;
-            }
-        });
-
-        refReset.on('value', (snapshot) => {
-            if (snapshot.val() === true) {
-                alert("Ricevuto segnale di reset globale dal sistema.");
-                refReset.set(false);
             }
         });
 
@@ -323,8 +316,8 @@
                 const c = clientiData[key];
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td class="p-3 font-medium">${c.nome}</td>
-                        <td class="p-3 text-gray-500">${c.telefono}</td>
+                        <td class="p-3 font-medium">${c.nome || ''}</td>
+                        <td class="p-3 text-gray-500">${c.telefono || ''}</td>
                         <td class="p-3 text-right">
                             <button onclick="eliminaCliente('${key}')" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>
                         </td>
@@ -337,7 +330,9 @@
             select.innerHTML = '<option value="">Seleziona cliente...</option>';
             Object.keys(clientiData).forEach(key => {
                 const c = clientiData[key];
-                select.innerHTML += `<option value="${c.nome}">${c.nome} (${c.telefono})</option>`;
+                if(c.nome) {
+                    select.innerHTML += `<option value="${c.nome}">${c.nome} (${c.telefono || ''})</option>`;
+                }
             });
         }
 
@@ -369,17 +364,6 @@
 
             refCapi.push(nuovoCapo);
             document.getElementById('deposito-form').reset();
-
-            // Integrazione stampa RawBT (schema URL intent Android)
-            stampaRicevutaRawBT(nuovoCapo);
-        }
-
-        function stampaRicevutaRawBT(capo) {
-            const testoStampa = `LAVANDERIA CLEO\n-------------------\nData: ${capo.data}\nCliente: ${capo.cliente}\nCapo: ${capo.capo}\nPosizione: ${capo.posizione}\nPrezzo: EUR ${capo.prezzo.toFixed(2)}\n-------------------\nGrazie per aver scelto Cleo!\n\n\n`;
-            const base64Data = btoa(unescape(encodeURIComponent(testoStampa)));
-            // Se eseguito su dispositivo Android con RawBT installato apre l'intent di stampa
-            const rawbtUrl = `rawbt:base64,${base64Data}`;
-            console. comando inviato a RawBT:`, rawbtUrl;
         }
 
         function renderCapi() {
@@ -484,7 +468,7 @@
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "report_lavanderia_cleo.csv");
+            link.setAttribute("download", "report_lavanderia_cleo_aprilia.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
