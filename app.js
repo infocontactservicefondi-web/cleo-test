@@ -3,13 +3,13 @@
 // ==========================================
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD-tuo-firebase-api-key-da-completare",
-    authDomain: "lavanderia-d9c29.firebaseapp.com",
-    databaseURL: "https://lavanderia-d9c29-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "lavanderia-d9c29",
-    storageBucket: "lavanderia-d9c29.appspot.com",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abcdef"
+  apiKey: "AIzaSyBsqq_nKIFgTJycbJzdDkzC2vVya1GiasE",
+  authDomain: "cleo-test-36894.firebaseapp.com",
+  databaseURL: "https://cleo-test-36894-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "cleo-test-36894",
+  storageBucket: "cleo-test-36894.firebasestorage.app",
+  messagingSenderId: "664698660023",
+  appId: "1:664698660023:web:05c0f10bde14cbe34c1932"
 };
 
 if (!firebase.apps.length) {
