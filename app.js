@@ -174,7 +174,6 @@ function initProtectedLogo() {
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
     const licenseExpiry = localStorage.getItem('laundry_license_expiry');
-    const sessionAuth = sessionStorage.getItem('laundry_auth');
 
     if (deviceActivated === 'true' && licenseExpiry) {
         const now = Date.now();
@@ -188,8 +187,6 @@ function initLicenseSystem() {
         } else {
             triggerHardLock("Periodo di Prova Terminato", "La licenza associata a questo dispositivo è giunta a termine. Inserisci un nuovo codice valido per continuare.");
         }
-    } else if (sessionAuth === 'true') {
-        unlockApp();
     }
 }
 
