@@ -459,6 +459,39 @@
         </div>
     </div>
 
+    <!-- MODALE ACCETTAZIONE TERMINI B2B OBBLIGATORIO (AGGIUNTO) -->
+    <div id="licenseTermsConsentModal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 sm:p-8 rounded-3xl shadow-2xl w-full max-w-lg border border-blue-500/50 text-left space-y-5 animate-modal">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-file-shield"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-white">Termini di Servizio e Condizioni B2B</h2>
+                    <p class="text-xs text-slate-400">Licenza Ufficiale / Demo (Tutte le durate)</p>
+                </div>
+            </div>
+            
+            <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-xs text-slate-300 space-y-2.5 max-h-48 overflow-y-auto leading-relaxed">
+                <p><strong>1. Natura del Servizio:</strong> Il presente software gestionale è concesso in licenza d'uso professionale (B2B) esclusivamente per lavanderie e attività affini.</p>
+                <p><strong>2. Limitazione di Responsabilità:</strong> Il fornitore non è in alcun modo responsabile per interruzioni di servizio, perdita di dati, malfunzionamenti di rete o danni diretti/indiretti derivanti dall'utilizzo del software.</p>
+                <p><strong>3. Scadenza e Blocco Automatico:</strong> Alla scadenza del periodo di licenza (sia esso di 15 giorni, 1 mese, 6 mesi o 1 anno) o in caso di mancato rinnovo del bonifico, l'accesso al terminale verrà automaticamente interrotto senza preavviso.</p>
+            </div>
+
+            <div class="space-y-3 pt-1">
+                <label class="flex items-start gap-3 cursor-pointer select-none">
+                    <input type="checkbox" id="acceptB2bTermsCheck" class="mt-0.5 w-4 h-4 rounded border-darkBorder bg-darkBg text-blue-600 focus:ring-blue-500 cursor-pointer">
+                    <span class="text-xs text-slate-300 leading-tight">
+                        Dichiaro di essere un'azienda/professionista, di accettare i <a href="termini.html" target="_blank" class="text-blue-400 underline">Termini di Servizio B2B</a>, la scadenza automatica e le limitazioni di responsabilità del software.
+                    </span>
+                </label>
+                <button type="button" onclick="confirmB2bLicenseConsent()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs cursor-pointer shadow-lg shadow-blue-600/20">
+                    Ho compreso e accetto i Termini
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODALI AVVISO E SCADENZA LICENZA -->
     <div id="licenseWarningModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="bg-darkSurface p-6 rounded-3xl shadow-2xl w-full max-w-md border border-amber-900/50 text-center space-y-4 animate-modal">
