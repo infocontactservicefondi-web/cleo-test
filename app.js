@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (FORZATURA DEFINITIVA FLUSSO)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE CORRETTA SENZA CARATTERI STRANI)
 // ==========================================
 
 const firebaseConfig = {
