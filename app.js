@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE CON CODICI MONO-USO)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE CON NOME NEGOZIO DINAMICO)
 // ==========================================
 
 const firebaseConfig = {
@@ -98,6 +98,54 @@ function fixLoginPlaceholders() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// GESTIONE DINAMICA NOME NEGOZIO DA FIREBASE
+// ---------------------------------------------------------------------------
+function aggiornaNomeNegozioDinamico(licenseCode) {
+    if (!licenseCode) return;
+
+    // Se è la password master o l'admin, mostra un nome generico o di controllo
+    if (licenseCode === APP_PASSWORD || licenseCode === "CLEO-MASTER") {
+        impostaTestoBrand("Lavanderia Master");
+        return;
+    }
+
+    // Prima cerca nel nodo delle licenze attive/usate, oppure nel nodo principale delle licenze
+    db.ref('used_licenses/' + licenseCode).once('value').then((snap) => {
+        let dati = snap.val();
+        if (dati && dati.nomeNegozio) {
+            impostaTestoBrand(dati.nomeNegozio);
+        } else {
+            // Se non è salvato in used_licenses, controlla nel catalogo generale delle licenze
+            db.ref('licenses/' + licenseCode).once('value').then((licSnap) => {
+                let licData = licSnap.val();
+                if (licData && typeof licData === 'object' && licData.nomeNegozio) {
+                    impostaTestoBrand(licData.nomeNegozio);
+                } else {
+                    impostaTestoBrand("Lavanderia"); // Nome generico di fallback
+                }
+            });
+        }
+    }).catch(() => {
+        impostaTestoBrand("Lavanderia");
+    });
+}
+
+function impostaTestoBrand(nome) {
+    // Aggiorna tutti gli elementi dell'interfaccia che mostrano il nome del brand/negozio
+    const brandElements = document.querySelectorAll('.dynamic-store-name');
+    brandElements.forEach(el => {
+        el.textContent = nome;
+    });
+
+    // Cerca anche eventuali titoli principali specifici
+    const headerTitle = document.getElementById('mainStoreTitle');
+    if (headerTitle) {
+        headerTitle.textContent = nome;
+    }
+}
+// ---------------------------------------------------------------------------
+
 function listenActiveLicenseRealtime(licenseCode) {
     if (!licenseCode || licenseCode === APP_PASSWORD || licenseCode === "CLEO-MASTER") return;
 
@@ -111,6 +159,12 @@ function listenActiveLicenseRealtime(licenseCode) {
                     triggerHardLock("Licenza Revocata", "ATTENZIONE: La licenza associata a questo terminale è stata revocata o eliminata dall'amministrazione.");
                 }
             });
+        } else {
+            // Aggiorna anche il nome in tempo reale se viene modificato dalla dashboard
+            const dati = snap.val();
+            if (dati && dati.nomeNegozio) {
+                impostaTestoBrand(dati.nomeNegozio);
+            }
         }
     });
 }
@@ -182,7 +236,10 @@ function initLicenseSystem() {
         if (now < expiryTime) {
             sessionStorage.setItem('laundry_auth', 'true');
             const activeLicense = localStorage.getItem('laundry_active_license');
-            if (activeLicense) listenActiveLicenseRealtime(activeLicense);
+            if (activeLicense) {
+                listenActiveLicenseRealtime(activeLicense);
+                aggiornaNomeNegozioDinamico(activeLicense);
+            }
             
             const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
             if (termsAccepted === 'true') {
@@ -329,6 +386,8 @@ function checkAdminPassword() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         
+        aggiornaNomeNegozioDinamico("CLEO-MASTER");
+
         const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
         if (termsAccepted === 'true') {
             unlockApp();
@@ -362,6 +421,7 @@ function checkNumericLicense() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         
+        aggiornaNomeNegozioDinamico(enteredCode);
         checkAndShowB2bConsentModal();
         showToast("Accesso Master illimitato eseguito!", "success");
         return;
@@ -385,10 +445,14 @@ function checkNumericLicense() {
 
                     let expirationTimestamp = null;
                     let isDemoLicense = false;
+                    let storeNameFromDb = "Lavanderia";
 
                     if (typeof licenseData === 'object' && licenseData !== null) {
                         expirationTimestamp = parseDateToTimestamp(licenseData.expiry);
                         isDemoLicense = licenseData.isDemo === true;
+                        if (licenseData.nomeNegozio) {
+                            storeNameFromDb = licenseData.nomeNegozio;
+                        }
                     } else {
                         expirationTimestamp = parseDateToTimestamp(licenseData);
                         const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
@@ -404,7 +468,8 @@ function checkNumericLicense() {
                         usedAt: Date.now(),
                         deviceInfo: "Dispositivo Web",
                         expiry: expirationTimestamp,
-                        isDemo: isDemoLicense
+                        isDemo: isDemoLicense,
+                        nomeNegozio: storeNameFromDb
                     });
 
                     localStorage.setItem('laundry_device_activated', 'true');
@@ -418,6 +483,7 @@ function checkNumericLicense() {
                     sessionStorage.setItem('laundry_logged_as_admin', 'false');
                     
                     listenActiveLicenseRealtime(enteredCode);
+                    aggiornaNomeNegozioDinamico(enteredCode);
                     
                     checkAndShowB2bConsentModal();
                     startLicenseCountdownMonitor();
@@ -878,7 +944,7 @@ window.printItemLabel = function() {
     const client = clientsData[clientId];
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
-    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel:     " + client.phone + "\nCapo:    " + type + "\n";
+    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel:     " + client.phone + "\nCapo:    " + type + "\n";
     if (notes) printText += "Note:    " + notes + "\n";
     printText += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n\n\n\n\x1D\x56\x41\x03";
 
@@ -1195,7 +1261,7 @@ window.exportBackup = function() {
     }
 
     let csvContent = "\uFEFF";
-    csvContent += "LAVANDERIA CLEO - REPORT\n";
+    csvContent += "LAVANDERIA - REPORT\n";
     csvContent += "Data generazione;" + generationDate + "\n\n";
     csvContent += "STATISTICHE\n";
     csvContent += "Totale Capi;" + totalItemsCount + "\n";
