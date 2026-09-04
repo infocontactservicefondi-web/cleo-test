@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA AGGIORNATA)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE)
 // ==========================================
 
 const firebaseConfig = {
@@ -248,13 +248,13 @@ function startLicenseCountdownMonitor() {
         const diffMs = expiryTime - now;
         const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-        if (diffDays >= 0 && diffDays <= 5) {
+        if (diffDays >= 0) {
             const warningText = document.getElementById('licenseWarningText');
             if (warningText) {
                 if (diffDays === 0) {
-                    warningText.textContent = `⚠️ ATTENZIONE: La licenza demo scade OGGI a mezzanotte!`;
+                    warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO che scade OGGI a mezzanotte!`;
                 } else {
-                    warningText.textContent = `⚠️ ATTENZIONE: Mancano ${diffDays} giorni alla scadenza della licenza demo.`;
+                    warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. Mancano ${diffDays} giorni alla scadenza.`;
                 }
             }
             const warningModal = document.getElementById('licenseWarningModal');
@@ -320,12 +320,7 @@ function checkNumericLicense() {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         
-        const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
-        if (termsAccepted === 'true') {
-            unlockApp();
-        } else {
-            checkAndShowB2bConsentModal();
-        }
+        checkAndShowB2bConsentModal();
         showToast("Accesso Master illimitato eseguito!", "success");
         return;
     }
@@ -372,13 +367,7 @@ function checkNumericLicense() {
             
             listenActiveLicenseRealtime(enteredCode);
             
-            const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
-            if (termsAccepted === 'true') {
-                unlockApp();
-            } else {
-                checkAndShowB2bConsentModal();
-            }
-            
+            checkAndShowB2bConsentModal();
             startLicenseCountdownMonitor();
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
