@@ -1108,7 +1108,7 @@ window.exportBackup = function() {
     csvContent += "Incasso Totale;" + grandTotalRevenue.toFixed(2).replace('.', ',') + "\n\n";
     
     csvContent += "STORICO CAPI RITIRATI\n";
-    csvContent += "Data Ritiro;Cliente;Telefono;Capo;Prezzo (€);Armadio;Posizione\n";
+    csvContent += "Data Ritiro;Cliente;Telefono;Capo;Prezzo;Armadio;Posizione\n";
     for (let entry of filteredHistory) {
         const item = entry.item;
         const retDateStr = entry.retDate.toLocaleDateString('it-IT');
@@ -1151,3 +1151,4 @@ function showToast(message, type = "success") {
         toast.classList.add('translate-y-25', 'opacity-0');
     }, 3500);
 }
+```[cite: 7]
