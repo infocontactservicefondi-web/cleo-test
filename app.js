@@ -1127,6 +1127,7 @@ window.exportBackup = function() {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
+    document.exitFullscreen?.(); // safe fallback
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
