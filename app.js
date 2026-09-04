@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE AGGIORNATA)
 // ==========================================
 
 const firebaseConfig = {
@@ -219,26 +219,55 @@ window.confirmB2bLicenseConsent = function() {
     
     unlockApp();
 
+    checkAndTriggerStartupDemoWarnings();
+};
+
+function checkAndTriggerStartupDemoWarnings() {
     const isDemo = localStorage.getItem('laundry_is_demo_license') === 'true';
     const expiryTimestamp = localStorage.getItem('laundry_license_expiry');
-    if (isDemo && expiryTimestamp) {
-        const expiryDate = new Date(parseInt(expiryTimestamp, 10)).toLocaleDateString('it-IT');
-        const warningText = document.getElementById('licenseWarningText');
-        if (warningText) {
-            warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. La licenza scadrà in data ${expiryDate}. Allo scadere del periodo di prova il programma si bloccherà automaticamente.`;
+    if (!isDemo || !expiryTimestamp) return;
+
+    const now = Date.now();
+    const expiryTime = parseInt(expiryTimestamp, 10);
+    const diffMs = expiryTime - now;
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    const todayStr = new Date().toDateString();
+    const lastWarningDate = localStorage.getItem('laundry_last_demo_warning_date');
+
+    let shouldShow = false;
+    let warningMsg = "";
+    const expiryDateStr = new Date(expiryTime).toLocaleDateString('it-IT');
+
+    if (!localStorage.getItem('laundry_demo_initial_warning_shown')) {
+        shouldShow = true;
+        warningMsg = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. La licenza scadrà in data ${expiryDateStr}. Allo scadere del periodo di prova il programma si bloccherà automaticamente.`;
+        localStorage.setItem('laundry_demo_initial_warning_shown', 'true');
+    } else if (diffDays <= 5 && diffDays >= 0) {
+        if (lastWarningDate !== todayStr) {
+            shouldShow = true;
+            if (diffDays === 0) {
+                warningMsg = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO che scade OGGI (${expiryDateStr}) a mezzanotte!`;
+            } else {
+                warningMsg = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. Mancano ${diffDays} giorni alla scadenza (data scadenza: ${expiryDateStr}).`;
+            }
+            localStorage.setItem('laundry_last_demo_warning_date', todayStr);
         }
+    }
+
+    if (shouldShow) {
+        const warningText = document.getElementById('licenseWarningText');
+        if (warningText) warningText.textContent = warningMsg;
         const warningModal = document.getElementById('licenseWarningModal');
         if (warningModal) warningModal.classList.remove('hidden');
     }
-};
+}
 
 function startLicenseCountdownMonitor() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
 
     licenseCheckInterval = setInterval(() => {
         const licenseExpiry = localStorage.getItem('laundry_license_expiry');
-        const isDemo = localStorage.getItem('laundry_is_demo_license') === 'true';
-        
         if (!licenseExpiry) return;
 
         const now = Date.now();
@@ -254,23 +283,6 @@ function startLicenseCountdownMonitor() {
 
             triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta. Inserisci un nuovo codice valido.");
             return;
-        }
-
-        if (!isDemo) return;
-
-        const diffMs = expiryTime - now;
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-        if (diffDays >= 0) {
-            const warningText = document.getElementById('licenseWarningText');
-            if (warningText) {
-                const expiryDateStr = new Date(expiryTime).toLocaleDateString('it-IT');
-                if (diffDays === 0) {
-                    warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO che scade OGGI (${expiryDateStr}) a mezzanotte!`;
-                } else {
-                    warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. Mancano ${diffDays} giorni alla scadenza (data scadenza: ${expiryDateStr}).`;
-                }
-            }
         }
     }, 1000); 
 }
@@ -355,7 +367,7 @@ function checkNumericLicense() {
             } else {
                 expirationTimestamp = parseDateToTimestamp(licenseData);
                 const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
-                isDemoLicense = (diffDaysCalc <= 750);
+                isDemoLicense = (diffDaysCalc <= 31);
             }
 
             if (!expirationTimestamp || isNaN(expirationTimestamp)) {
@@ -374,6 +386,8 @@ function checkNumericLicense() {
             localStorage.setItem('laundry_active_license', enteredCode);
             localStorage.setItem('laundry_license_expiry', expirationTimestamp);
             localStorage.setItem('laundry_is_demo_license', isDemoLicense ? 'true' : 'false');
+            localStorage.removeItem('laundry_demo_initial_warning_shown');
+            localStorage.removeItem('laundry_last_demo_warning_date');
             sessionStorage.setItem('laundry_auth', 'true');
             sessionStorage.setItem('laundry_logged_as_admin', 'false');
             
