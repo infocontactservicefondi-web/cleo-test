@@ -174,6 +174,7 @@ function initProtectedLogo() {
 function initLicenseSystem() {
     const deviceActivated = localStorage.getItem('laundry_device_activated');
     const licenseExpiry = localStorage.getItem('laundry_license_expiry');
+    const sessionAuth = sessionStorage.getItem('laundry_auth');
 
     if (deviceActivated === 'true' && licenseExpiry) {
         const now = Date.now();
@@ -187,6 +188,8 @@ function initLicenseSystem() {
         } else {
             triggerHardLock("Periodo di Prova Terminato", "La licenza associata a questo dispositivo è giunta a termine. Inserisci un nuovo codice valido per continuare.");
         }
+    } else if (sessionAuth === 'true') {
+        unlockApp();
     }
 }
 
@@ -1127,7 +1130,6 @@ window.exportBackup = function() {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.exitFullscreen?.(); // safe fallback
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
