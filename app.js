@@ -417,6 +417,10 @@ function unlockApp() {
     initApp();
 }
 
+function lockApp() {
+    lockAppComplete();
+}
+
 function lockAppComplete() {
     if (licenseCheckInterval) clearInterval(licenseCheckInterval);
     if (activeLicenseRef) {
@@ -985,6 +989,8 @@ function loadHistory() {
     });
 }
 
+let currentStatPeriod = 'all';
+
 window.setStatPeriod = function(period) {
     currentStatPeriod = period;
     document.getElementById('statsCustomStartDate').value = "";
@@ -1064,7 +1070,7 @@ function renderHistory() {
     document.getElementById('statTotalCount').textContent = count;
     document.getElementById('statTotalRevenue').textContent = `€ ${totalRevenue.toFixed(2)}`;
     document.getElementById('statUniqueClients').textContent = uniqueClients.size;
-    document.getElementById('historyCounter').textContent = `${count} elements`;
+    document.getElementById('historyCounter').textContent = `${count} elementi`;
 
     let topType = "-", maxC = 0;
     for (let [t, c] of Object.entries(typeCounts)) {
