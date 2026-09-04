@@ -216,7 +216,20 @@ window.confirmB2bLicenseConsent = function() {
     localStorage.setItem('laundry_b2b_terms_accepted', 'true');
     const consentModal = document.getElementById('licenseTermsConsentModal');
     if (consentModal) consentModal.classList.add('hidden');
+    
     unlockApp();
+
+    const isDemo = localStorage.getItem('laundry_is_demo_license') === 'true';
+    const expiryTimestamp = localStorage.getItem('laundry_license_expiry');
+    if (isDemo && expiryTimestamp) {
+        const expiryDate = new Date(parseInt(expiryTimestamp, 10)).toLocaleDateString('it-IT');
+        const warningText = document.getElementById('licenseWarningText');
+        if (warningText) {
+            warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. La licenza scadrà in data ${expiryDate}. Allo scadere del periodo di prova il programma si bloccherà automaticamente.`;
+        }
+        const warningModal = document.getElementById('licenseWarningModal');
+        if (warningModal) warningModal.classList.remove('hidden');
+    }
 };
 
 function startLicenseCountdownMonitor() {
@@ -239,7 +252,7 @@ function startLicenseCountdownMonitor() {
             const warningModal = document.getElementById('licenseWarningModal');
             if (warningModal) warningModal.classList.add('hidden');
 
-            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta a mezzanotte.");
+            triggerHardLock("Periodo di Prova Terminato", "Il periodo di prova o la licenza associata a questo dispositivo è scaduta. Inserisci un nuovo codice valido.");
             return;
         }
 
@@ -251,14 +264,13 @@ function startLicenseCountdownMonitor() {
         if (diffDays >= 0) {
             const warningText = document.getElementById('licenseWarningText');
             if (warningText) {
+                const expiryDateStr = new Date(expiryTime).toLocaleDateString('it-IT');
                 if (diffDays === 0) {
-                    warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO che scade OGGI a mezzanotte!`;
+                    warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO che scade OGGI (${expiryDateStr}) a mezzanotte!`;
                 } else {
-                    warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. Mancano ${diffDays} giorni alla scadenza.`;
+                    warningText.textContent = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. Mancano ${diffDays} giorni alla scadenza (data scadenza: ${expiryDateStr}).`;
                 }
             }
-            const warningModal = document.getElementById('licenseWarningModal');
-            if (warningModal) warningModal.classList.remove('hidden');
         }
     }, 1000); 
 }
@@ -343,7 +355,7 @@ function checkNumericLicense() {
             } else {
                 expirationTimestamp = parseDateToTimestamp(licenseData);
                 const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
-                isDemoLicense = (diffDaysCalc <= 16);
+                isDemoLicense = (diffDaysCalc <= 750);
             }
 
             if (!expirationTimestamp || isNaN(expirationTimestamp)) {
@@ -371,7 +383,11 @@ function checkNumericLicense() {
             startLicenseCountdownMonitor();
             
             const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-            showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+            if (isDemoLicense) {
+                showToast(`Licenza DEMO attivata con successo fino al ${expiryDateFormatted}!`, "success");
+            } else {
+                showToast(`Licenza attivata con successo fino al ${expiryDateFormatted}!`, "success");
+            }
         })
         .catch(() => {
             showToast("Errore di connessione al database.", "error");
