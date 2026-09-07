@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE CON CODICI MONO-USO E MULTI-STORE)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE AGGIORNATA CON GENERATORE LICENZE)
 // ==========================================
 
 const firebaseConfig = {
@@ -61,6 +61,27 @@ function getStorePath(nodeName) {
     const storeId = localStorage.getItem('laundry_active_license') || 'default_store';
     return `stores/${storeId}/${nodeName}`;
 }
+
+// Funzione automatica per generare e registrare una nuova licenza direttamente su Firebase
+window.generateNewLicense = function(durationDays = 30, isDemo = true) {
+    const randomCode = "CLEO-" + Math.random().toString(36).substring(2, 7).toUpperCase();
+    const expiryTimestamp = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+    
+    const licenseData = {
+        expiry: expiryTimestamp,
+        isDemo: isDemo,
+        createdAt: Date.now()
+    };
+
+    db.ref('licenses/' + randomCode).set(licenseData)
+        .then(() => {
+            showToast(`Licenza creata: ${randomCode}`, "success");
+            console.log(`Nuova licenza generata: ${randomCode}`, licenseData);
+        })
+        .catch(() => {
+            showToast("Errore nella creazione della licenza", "error");
+        });
+};
 
 function parseDateToTimestamp(val) {
     if (!val) return null;
