@@ -1,15 +1,15 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE CON CODICI MONO-USO)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE AGGIORNATA CON AVVISI PAGATE)
 // ==========================================
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBsqq_nKIFgTJycbJzdDkzC2vVya1GiasE",
-  authDomain: "cleo-test-36894.firebaseapp.com",
-  databaseURL: "https://cleo-test-36894-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "cleo-test-36894",
-  storageBucket: "cleo-test-36894.firebasestorage.app",
-  messagingSenderId: "664698660023",
-  appId: "1:664698660023:web:05c0f10bde14cbe34c1932"
+    apiKey: "AIzaSyD-tuo-firebase-api-key-da-completare",
+    authDomain: "lavanderia-d9c29.firebaseapp.com",
+    databaseURL: "https://lavanderia-d9c29-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "lavanderia-d9c29",
+    storageBucket: "lavanderia-d9c29.appspot.com",
+    messagingSenderId: "1234567890",
+    appId: "1:1234567890:web:abcdef"
 };
 
 if (!firebase.apps.length) {
@@ -367,74 +367,63 @@ function checkNumericLicense() {
         return;
     }
 
-    db.ref('used_licenses/' + enteredCode).once('value')
-        .then((usedSnap) => {
-            if (usedSnap.exists()) {
-                showToast("Errore: Questo codice di licenza è già stato utilizzato su un altro dispositivo e non può essere riutilizzato.", "error");
+    db.ref('licenses/' + enteredCode).once('value')
+        .then((snapshot) => {
+            const licenseData = snapshot.val();
+
+            if (!licenseData) {
+                showToast("Codice licenza non valido o inesistente.", "error");
                 return;
             }
 
-            db.ref('licenses/' + enteredCode).once('value')
-                .then((snapshot) => {
-                    const licenseData = snapshot.val();
+            let expirationTimestamp = null;
+            let isDemoLicense = false;
 
-                    if (!licenseData) {
-                        showToast("Codice licenza non valido o inesistente.", "error");
-                        return;
-                    }
+            if (typeof licenseData === 'object' && licenseData !== null) {
+                expirationTimestamp = parseDateToTimestamp(licenseData.expiry);
+                isDemoLicense = licenseData.isDemo === true;
+            } else {
+                expirationTimestamp = parseDateToTimestamp(licenseData);
+                const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
+                isDemoLicense = (diffDaysCalc <= 31);
+            }
 
-                    let expirationTimestamp = null;
-                    let isDemoLicense = false;
+            if (!expirationTimestamp || isNaN(expirationTimestamp)) {
+                expirationTimestamp = Date.now() + (15 * 24 * 60 * 60 * 1000); 
+                isDemoLicense = true;
+            }
 
-                    if (typeof licenseData === 'object' && licenseData !== null) {
-                        expirationTimestamp = parseDateToTimestamp(licenseData.expiry);
-                        isDemoLicense = licenseData.isDemo === true;
-                    } else {
-                        expirationTimestamp = parseDateToTimestamp(licenseData);
-                        const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
-                        isDemoLicense = (diffDaysCalc <= 31);
-                    }
+            db.ref('used_licenses/' + enteredCode).set({
+                usedAt: Date.now(),
+                deviceInfo: "Dispositivo Web",
+                expiry: expirationTimestamp,
+                isDemo: isDemoLicense
+            });
 
-                    if (!expirationTimestamp || isNaN(expirationTimestamp)) {
-                        expirationTimestamp = Date.now() + (15 * 24 * 60 * 60 * 1000); 
-                        isDemoLicense = true;
-                    }
-
-                    db.ref('used_licenses/' + enteredCode).set({
-                        usedAt: Date.now(),
-                        deviceInfo: "Dispositivo Web",
-                        expiry: expirationTimestamp,
-                        isDemo: isDemoLicense
-                    });
-
-                    localStorage.setItem('laundry_device_activated', 'true');
-                    localStorage.setItem('laundry_active_license', enteredCode);
-                    localStorage.setItem('laundry_license_expiry', expirationTimestamp);
-                    localStorage.setItem('laundry_is_demo_license', isDemoLicense ? 'true' : 'false');
-                    localStorage.removeItem('laundry_demo_initial_warning_shown');
-                    localStorage.removeItem('laundry_paid_initial_warning_shown');
-                    localStorage.removeItem('laundry_last_warning_date');
-                    sessionStorage.setItem('laundry_auth', 'true');
-                    sessionStorage.setItem('laundry_logged_as_admin', 'false');
-                    
-                    listenActiveLicenseRealtime(enteredCode);
-                    
-                    checkAndShowB2bConsentModal();
-                    startLicenseCountdownMonitor();
-                    
-                    const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
-                    if (isDemoLicense) {
-                        showToast(`Licenza DEMO attivata con successo fino al ${expiryDateFormatted}!`, "success");
-                    } else {
-                        showToast(`Licenza ufficiale attivata con successo fino al ${expiryDateFormatted}!`, "success");
-                    }
-                })
-                .catch(() => {
-                    showToast("Errore di connessione al database.", "error");
-                });
+            localStorage.setItem('laundry_device_activated', 'true');
+            localStorage.setItem('laundry_active_license', enteredCode);
+            localStorage.setItem('laundry_license_expiry', expirationTimestamp);
+            localStorage.setItem('laundry_is_demo_license', isDemoLicense ? 'true' : 'false');
+            localStorage.removeItem('laundry_demo_initial_warning_shown');
+            localStorage.removeItem('laundry_paid_initial_warning_shown');
+            localStorage.removeItem('laundry_last_warning_date');
+            sessionStorage.setItem('laundry_auth', 'true');
+            sessionStorage.setItem('laundry_logged_as_admin', 'false');
+            
+            listenActiveLicenseRealtime(enteredCode);
+            
+            checkAndShowB2bConsentModal();
+            startLicenseCountdownMonitor();
+            
+            const expiryDateFormatted = new Date(expirationTimestamp).toLocaleDateString('it-IT');
+            if (isDemoLicense) {
+                showToast(`Licenza DEMO attivata con successo fino al ${expiryDateFormatted}!`, "success");
+            } else {
+                showToast(`Licenza ufficiale attivata con successo fino al ${expiryDateFormatted}!`, "success");
+            }
         })
         .catch(() => {
-            showToast("Errore di verifica del codice nel database.", "error");
+            showToast("Errore di connessione al database.", "error");
         });
 }
 
