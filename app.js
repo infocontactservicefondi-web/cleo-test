@@ -1,5 +1,5 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE CON CODICI MONO-USO)
+// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE CON CODICI MONO-USO E MULTI-STORE)
 // ==========================================
 
 const firebaseConfig = {
@@ -55,6 +55,12 @@ let historyData = {};
 
 let licenseCheckInterval = null;
 let activeLicenseRef = null;
+
+// Funzione helper per ottenere il percorso dinamico basato sulla licenza/store attivo
+function getStorePath(nodeName) {
+    const storeId = localStorage.getItem('laundry_active_license') || 'default_store';
+    return `stores/${storeId}/${nodeName}`;
+}
 
 function parseDateToTimestamp(val) {
     if (!val) return null;
@@ -328,6 +334,7 @@ function checkAdminPassword() {
     if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
+        localStorage.setItem('laundry_active_license', enteredPassword);
         
         const termsAccepted = localStorage.getItem('laundry_b2b_terms_accepted');
         if (termsAccepted === 'true') {
@@ -357,6 +364,7 @@ function checkNumericLicense() {
     if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER") {
         let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
         localStorage.setItem('laundry_device_activated', 'true');
+        localStorage.setItem('laundry_active_license', enteredCode);
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         localStorage.setItem('laundry_is_demo_license', 'false'); 
         sessionStorage.setItem('laundry_auth', 'true');
@@ -681,7 +689,7 @@ if (clientForm) {
 
         clientsData[clientId] = newClient;
         localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
-        db.ref('clients').child(clientId).set(newClient).catch(() => {});
+        db.ref(getStorePath('clients')).child(clientId).set(newClient).catch(() => {});
 
         clientForm.reset();
         if (document.getElementById('manageClientIdInput')) document.getElementById('manageClientIdInput').value = "";
@@ -696,11 +704,14 @@ function loadClients() {
     const local = localStorage.getItem('laundry_clients');
     if (local) clientsData = JSON.parse(local);
 
-    db.ref('clients').on('value', (snapshot) => {
+    db.ref(getStorePath('clients')).on('value', (snapshot) => {
         const val = snapshot.val();
         if (val) {
             clientsData = val;
             localStorage.setItem('laundry_clients', JSON.stringify(val));
+        } else {
+            clientsData = {};
+            localStorage.removeItem('laundry_clients');
         }
         const managerModal = document.getElementById('clientManagerModal');
         if (managerModal && !managerModal.classList.contains('hidden')) renderClientManagerTable();
@@ -756,7 +767,7 @@ window.deleteClient = function(id, name) {
     if (confirm(`Sei sicuro di voler eliminare permanentemente il cliente "${name}"?`)) {
         delete clientsData[id];
         localStorage.setItem('laundry_clients', JSON.stringify(clientsData));
-        db.ref('clients').child(id).remove();
+        db.ref(getStorePath('clients')).child(id).remove();
         showToast(`Cliente ${name} eliminato`, "success");
         if (managerClientSearchInput) renderClientManagerTable(managerClientSearchInput.value.trim());
         renderItems();
@@ -852,7 +863,7 @@ if (itemForm) {
 
         itemsData[itemId] = newItem;
         localStorage.setItem('laundry_items', JSON.stringify(itemsData));
-        db.ref('items').child(itemId).set(newItem).catch(() => {});
+        db.ref(getStorePath('items')).child(itemId).set(newItem).catch(() => {});
 
         printItemLabel();
 
@@ -892,11 +903,14 @@ function loadItems() {
     const local = localStorage.getItem('laundry_items');
     if (local) itemsData = JSON.parse(local);
 
-    db.ref('items').on('value', (snapshot) => {
+    db.ref(getStorePath('items')).on('value', (snapshot) => {
         const val = snapshot.val();
         if (val) {
             itemsData = val;
             localStorage.setItem('laundry_items', JSON.stringify(val));
+        } else {
+            itemsData = {};
+            localStorage.removeItem('laundry_items');
         }
         renderItems();
     });
@@ -962,8 +976,8 @@ window.markAsReturned = function(id) {
     delete itemsData[id];
     localStorage.setItem('laundry_items', JSON.stringify(itemsData));
 
-    db.ref('history').child(historyId).set(historyItem);
-    db.ref('items').child(id).remove();
+    db.ref(getStorePath('history')).child(historyId).set(historyItem);
+    db.ref(getStorePath('items')).child(id).remove();
     renderItems();
     showToast("Capo archiviato", "success");
 };
@@ -1072,11 +1086,14 @@ function loadHistory() {
     const local = localStorage.getItem('laundry_history');
     if (local) historyData = JSON.parse(local);
 
-    db.ref('history').on('value', (snapshot) => {
+    db.ref(getStorePath('history')).on('value', (snapshot) => {
         const val = snapshot.val();
         if (val) {
             historyData = val;
             localStorage.setItem('laundry_history', JSON.stringify(val));
+        } else {
+            historyData = {};
+            localStorage.removeItem('laundry_history');
         }
         const statsView = document.getElementById('viewStats');
         if (statsView && !statsView.classList.contains('hidden')) renderHistory();
@@ -1111,7 +1128,7 @@ window.resetAllStatistics = function() {
     if (confirm("Vuoi azzerare tutte le statistiche?")) {
         historyData = {};
         localStorage.removeItem('laundry_history');
-        db.ref('history').remove();
+        db.ref(getStorePath('history')).remove();
         showToast("Statistiche azzerate", "success");
         renderHistory();
     }
