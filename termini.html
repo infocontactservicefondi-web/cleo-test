@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sicurezza e Termini - Lavanderia Cleo</title>
+    <title>Sicurezza e Termini - Lavanderia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class', theme: { extend: { colors: { darkBg: '#121212', darkSurface: '#1E1E1E', darkCard: '#242424', darkBorder: '#2C2C2C' } } } }
@@ -16,7 +16,7 @@
             <h1 class="text-xl font-bold text-white flex items-center gap-2">
                 <i class="fa-solid fa-lock text-blue-400"></i> Sicurezza e Termini d'Uso
             </h1>
-            <button onclick="history.back()" class="px-3.5 py-2 bg-darkSurface hover:bg-darkCard border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 cursor-pointer flex items-center gap-1.5">
+            <button onclick="goBack()" class="px-3.5 py-2 bg-darkSurface hover:bg-darkCard border border-darkBorder text-xs font-semibold rounded-xl text-slate-300 cursor-pointer flex items-center gap-1.5">
                 <i class="fa-solid fa-arrow-left"></i> Torna indietro
             </button>
         </div>
@@ -25,12 +25,22 @@
             <p>L'accesso al software gestionale è protetto da chiavi di licenza univoche e codici di attivazione. È severamente vietato tentare di aggirare i controlli di sicurezza o duplicare chiavi di accesso non autorizzate.</p>
             
             <h2 class="text-sm font-bold text-white">2. Integrità dei Dati</h2>
-            <p>L'utente è responsabile della custodia dei propri dati e dell'esecuzione periodica di backup tramite le funzioni di esportazione integrate nel pannello di controllo.</p>
+            <p>L'utente è responsabile della custodia dei propri dati e dell'esecuzione periodica di backup tramite le funzioni di esportazione integrate nel pannello di controllo[cite: 6].</p>
 
             <h2 class="text-sm font-bold text-white">3. Limitazione di Responsabilità</h2>
-            <p>Il sistema viene fornito senza garanzie di immunità assoluta da guasti hardware locali. Gli sviluppatori declinano ogni responsabilità per perdite di dati imputabili a cattiva gestione dei dispositivi di archiviazione dell'utente.</p>
+            <p>Il sistema viene fornito senza garanzie di immunità assoluta da guasti hardware locali. Gli sviluppatori declinano ogni responsabilità per perdite di dati imputabili a cattiva gestione dei dispositivi di archiviazione dell'utente[cite: 6].</p>
         </div>
     </div>
-    <footer class="text-center text-xs text-slate-500 pt-6">Lavanderia Cleo &bull; Tutti i diritti riservati</footer>
+    <footer class="text-center text-xs text-slate-500 pt-6">Lavanderia &bull; Tutti i diritti riservati[cite: 6]</footer>
+
+    <script>
+        function goBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.close();
+            }
+        }
+    </script>
 </body>
 </html>
