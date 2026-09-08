@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lavanderia Cleo - Gestionale</title>
+    <title>Lavanderia - Gestionale</title>
     <script>
         if (localStorage.getItem('laundry_theme') === 'light') {
             document.documentElement.classList.remove('dark');
@@ -73,7 +73,7 @@
                 <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg shadow-blue-500/10">
                     <i class="fa-solid fa-shirt"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Lavanderia Cleo</h1>
+                <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Lavanderia</h1>
                 
                 <div id="licenseRegisterArea" class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-left space-y-3">
                     <div class="flex items-center justify-between">
@@ -109,7 +109,7 @@
                         <div id="logoProgressFill" class="absolute bottom-0 left-0 w-full bg-blue-400/40 h-0 transition-all duration-75"></div>
                     </div>
                     <div>
-                        <h1 class="text-base font-bold text-white leading-tight">Lavanderia Cleo</h1>
+                        <h1 class="text-base font-bold text-white leading-tight">Lavanderia</h1>
                         <div class="flex items-center gap-2 text-xs">
                             <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
                             <span id="statusText" class="text-emerald-400 font-medium">Online</span>
@@ -377,12 +377,12 @@
         </div>
     </div>
 
-    <!-- FOOTER CON LINK PROFESSIONALI -->
+    <!-- FOOTER CON LINK MODALI INTERNI -->
     <footer class="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 mt-8 flex justify-end">
         <div class="flex items-center gap-4 text-xs font-medium text-slate-400">
-            <a href="termini.html" class="hover:text-blue-400 transition-colors pb-0.5 border-b border-slate-600/60 hover:border-blue-400">Termini e Condizioni</a>
+            <a href="#" onclick="openTermsModal(); return false;" class="hover:text-blue-400 transition-colors pb-0.5 border-b border-slate-600/60 hover:border-blue-400">Termini e Condizioni</a>
             <span class="text-darkBorder">&bull;</span>
-            <a href="privacy.html" class="hover:text-blue-400 transition-colors pb-0.5 border-b border-slate-600/60 hover:border-blue-400">Privacy</a>
+            <a href="#" onclick="openPrivacyModal(); return false;" class="hover:text-blue-400 transition-colors pb-0.5 border-b border-slate-600/60 hover:border-blue-400">Privacy</a>
         </div>
     </footer>
 
@@ -473,20 +473,94 @@
             </div>
             
             <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-xs text-slate-300 space-y-2.5 max-h-48 overflow-y-auto leading-relaxed">
-                <p><strong>1. Natura del Servizio:</strong> Il presente software gestionale è concesso in licenza d'uso professionale (B2B) esclusivamente per lavanderie e attività affini.</p>
-                <p><strong>2. Limitazione di Responsabilità:</strong> Il fornitore non è in alcun modo responsabile per interruzioni di servizio, perdita di dati, malfunzionamenti di rete o danni diretti/indiretti derivanti dall'utilizzo del software.</p>
-                <p><strong>3. Scadenza e Blocco Automatico:</strong> Alla scadenza del periodo di licenza (sia esso di 15 giorni, 1 mese, 6 mesi o 1 anno) o in caso di mancato rinnovo del bonifico, l'accesso al terminale verrà automaticamente interrotto senza preavviso.</p>
+                <p><strong>1. Oggetto del Servizio e Natura B2B:</strong> Il presente software gestionale è concesso in licenza d'uso esclusiva per operatori professionali, aziende e titolari di lavanderie (rapporto B2B). L'utilizzo è subordinato all'attivazione tramite chiave di licenza ufficiale.</p>
+                <p><strong>2. Limitazione di Responsabilità:</strong> Il fornitore del software declina ogni responsabilità per eventuali interruzioni del servizio, perdita di dati, malfunzionamenti derivanti da guasti hardware, configurazioni errate del dispositivo o problemi di connettività internet. L'utente è tenuto a effettuare copie di backup periodiche tramite le funzioni di esportazione del sistema.</p>
+                <p><strong>3. Proprietà Intellettuale:</strong> Ogni diritto sul codice sorgente, sull'interfaccia grafica e sul marchio è riservato. È severamente vietato tentare di decompilare, manomettere, clonare o rivendere non autorizzato il software.</p>
             </div>
 
             <div class="space-y-3 pt-1">
                 <label class="flex items-start gap-3 cursor-pointer select-none">
                     <input type="checkbox" id="acceptB2bTermsCheck" class="mt-0.5 w-4 h-4 rounded border-darkBorder bg-darkBg text-blue-600 focus:ring-blue-500 cursor-pointer">
                     <span class="text-xs text-slate-300 leading-tight">
-                        Dichiaro di essere un'azienda/professionista, di accettare i <a href="termini.html" target="_blank" class="text-blue-400 underline">Termini di Servizio B2B</a>, la scadenza automatica e le limitazioni di responsabilità del software.
+                        Dichiaro di essere un'azienda/professionista, di accettare i <a href="#" onclick="openTermsModal(); return false;" class="text-blue-400 underline">Termini di Servizio B2B</a> e le limitazioni di responsabilità del software.
                     </span>
                 </label>
                 <button type="button" onclick="confirmB2bLicenseConsent()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs cursor-pointer shadow-lg shadow-blue-600/20">
                     Ho compreso e accetto i Termini
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE VISUALIZZAZIONE TERMINI E CONDIZIONI (INTERNO) -->
+    <div id="termsInfoModal" class="fixed inset-0 z-[110] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 sm:p-8 rounded-3xl shadow-2xl w-full max-w-2xl border border-darkBorder text-left space-y-5 animate-modal max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-darkBorder pb-4">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-lock text-blue-400"></i> Sicurezza e Termini d'Uso
+                </h2>
+                <button onclick="closeTermsModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-xs text-slate-300 space-y-4 overflow-y-auto leading-relaxed flex-1">
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-1">1. Sicurezza del Sistema</h3>
+                    <p>L'accesso al software gestionale è protetto da chiavi di licenza univoche e codici di attivazione. È severamente vietato tentare di aggirare i controlli di sicurezza o duplicare chiavi di accesso non autorizzate.</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-1">2. Integrità dei Dati</h3>
+                    <p>L'utente è responsabile della custodia dei propri dati e dell'esecuzione periodica di backup tramite le funzioni di esportazione integrate nel pannello di controllo.</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-1">3. Limitazione di Responsabilità</h3>
+                    <p>Il sistema viene fornito senza garanzie di immunità assoluta da guasti hardware locali. Gli sviluppatori declinano ogni responsabilità per perdite di dati imputabili a cattiva gestione dei dispositivi di archiviazione dell'utente.</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-darkBorder">
+                <button onclick="closeTermsModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer">
+                    Chiudi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE VISUALIZZAZIONE PRIVACY (INTERNO) -->
+    <div id="privacyInfoModal" class="fixed inset-0 z-[110] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-darkSurface p-6 sm:p-8 rounded-3xl shadow-2xl w-full max-w-2xl border border-darkBorder text-left space-y-5 animate-modal max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-darkBorder pb-4">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-blue-400"></i> Informativa sulla Privacy
+                </h2>
+                <button onclick="closePrivacyModal()" class="text-slate-400 hover:text-white text-sm cursor-pointer p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-xs text-slate-300 space-y-4 overflow-y-auto leading-relaxed flex-1">
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-1">1. Titolare del Trattamento</h3>
+                    <p>Il trattamento dei dati personali raccolti tramite il gestionale avviene nel pieno rispetto della normativa vigente (GDPR - Regolamento UE 2016/679).</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-1">2. Tipologia di Dati Raccolti</h3>
+                    <p>I dati raccolti includono esclusivamente le informazioni inserite volontariamente per la gestione del servizio: nome, cognome, numero di telefono ed eventuali note sui capi depositati.</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-1">3. Finalità del Trattamento</h3>
+                    <p>I dati sono trattati unicamente per finalità connesse all'erogazione del servizio di lavanderia, catalogazione in armadio e storico ritiri. Nessun dato viene ceduto a terzi o utilizzato per scopi commerciali.</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-1">4. Conservazione dei Dati</h3>
+                    <p>I dati vengono memorizzati in sicurezza e possono essere cancellati o esportati in autonomia dall'amministratore del sistema in qualsiasi momento.</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-darkBorder">
+                <button onclick="closePrivacyModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer">
+                    Chiudi
                 </button>
             </div>
         </div>
@@ -524,6 +598,21 @@
             <span id="toastMessage" class="text-xs font-semibold text-white">Operazione completata!</span>
         </div>
     </div>
+
+    <script>
+        function openTermsModal() {
+            document.getElementById('termsInfoModal').classList.remove('hidden');
+        }
+        function closeTermsModal() {
+            document.getElementById('termsInfoModal').classList.add('hidden');
+        }
+        function openPrivacyModal() {
+            document.getElementById('privacyInfoModal').classList.remove('hidden');
+        }
+        function closePrivacyModal() {
+            document.getElementById('privacyInfoModal').classList.add('hidden');
+        }
+    </script>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
