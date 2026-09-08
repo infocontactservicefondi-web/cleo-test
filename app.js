@@ -1,6 +1,19 @@
 // ==========================================
-// LAVANDERIA CLEO - APP LOGIC (VERSIONE COMPLETA FINALE CON CODICI MONO-USO)
+// LAVANDERIA - APP LOGIC (VERSIONE AGGIORNATA)
 // ==========================================
+
+function sendTelegramAlert(messaggio) {
+    const BOT_TOKEN = "8964878302:AAE8yckavKmxFBPt8FjMP6XkM1JpI5fg-lw"; 
+    const CHAT_ID = "8772314429";         
+
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(messaggio)}`;
+    fetch(url).catch(err => console.log("Errore notifica"));
+}
+
+// Funzione per ottenere il nome della lavanderia attivo
+function getCurrentLaundryName() {
+    return localStorage.getItem('laundry_custom_name') || "Lavanderia Cleo";
+}
 
 const firebaseConfig = {
     apiKey: "AIzaSyD-tuo-firebase-api-key-da-completare",
@@ -99,7 +112,7 @@ function fixLoginPlaceholders() {
 }
 
 function listenActiveLicenseRealtime(licenseCode) {
-    if (!licenseCode || licenseCode === APP_PASSWORD || licenseCode === "CLEO-MASTER") return;
+    if (!licenseCode || licenseCode === APP_PASSWORD) return;
 
     if (activeLicenseRef) activeLicenseRef.off();
 
@@ -108,6 +121,8 @@ function listenActiveLicenseRealtime(licenseCode) {
         if (!snap.exists()) {
             db.ref('licenses/' + licenseCode).once('value').then((licSnap) => {
                 if (!licSnap.exists()) {
+                    const lName = getCurrentLaundryName();
+                    sendTelegramAlert(`🛑 LICENZA REVOCATA\nLa licenza per "${lName}" è stata revocata o eliminata da remoto.`);
                     triggerHardLock("Licenza Revocata", "ATTENZIONE: La licenza associata a questo terminale è stata revocata o eliminata dall'amministrazione.");
                 }
             });
@@ -122,6 +137,8 @@ function initGlobalResetListener() {
             const localSignalProcessed = localStorage.getItem('laundry_last_reset_processed');
             if (localSignalProcessed !== String(serverSignal)) {
                 localStorage.setItem('laundry_last_reset_processed', String(serverSignal));
+                const lName = getCurrentLaundryName();
+                sendTelegramAlert(`🛑 DISPOSITIVO SCOLLEGATO\nIl terminale di "${lName}" è stato disconnesso da remoto.`);
                 triggerHardLock("Dispositivo Disconnesso", "Il terminale è stato disconnesso da remoto dall'amministratore di sistema.");
             }
         }
@@ -191,6 +208,8 @@ function initLicenseSystem() {
                 checkAndShowB2bConsentModal();
             }
         } else {
+            const lName = getCurrentLaundryName();
+            sendTelegramAlert(`⏰ LICENZA SCADUTA\nLa licenza per "${lName}" è scaduta. Il terminale è stato bloccato.`);
             triggerHardLock("Periodo di Scadenza Raggiunto", "La licenza associata a questo dispositivo è giunta a termine. Inserisci un nuovo codice valido per continuare.");
         }
     }
@@ -218,7 +237,6 @@ window.confirmB2bLicenseConsent = function() {
     if (consentModal) consentModal.classList.add('hidden');
     
     unlockApp();
-
     checkAndTriggerLicenseWarnings();
 };
 
@@ -238,35 +256,34 @@ function checkAndTriggerLicenseWarnings() {
     let shouldShow = false;
     let warningMsg = "";
     const expiryDateStr = new Date(expiryTime).toLocaleDateString('it-IT');
+    const lName = getCurrentLaundryName();
 
     if (isDemo) {
         if (!localStorage.getItem('laundry_demo_initial_warning_shown')) {
             shouldShow = true;
-            warningMsg = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. La licenza scadrà in data ${expiryDateStr}. Allo scadere del periodo di prova il programma si bloccherà automaticamente.`;
+            warningMsg = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. La licenza scadrà in data ${expiryDateStr}.`;
             localStorage.setItem('laundry_demo_initial_warning_shown', 'true');
         } else if (diffDays <= 5 && diffDays >= 0) {
             if (lastWarningDate !== todayStr) {
                 shouldShow = true;
                 if (diffDays === 0) {
-                    warningMsg = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO che scade OGGI (${expiryDateStr}) a mezzanotte!`;
+                    warningMsg = `⚠️ ATTENZIONE: La versione DEMO di "${lName}" scade OGGI (${expiryDateStr}) a mezzanotte!`;
+                    sendTelegramAlert(`⚠️ AVVISO SCADENZA OGGI\nLa licenza DEMO di "${lName}" scade oggi (${expiryDateStr})!`);
                 } else {
-                    warningMsg = `⚠️ ATTENZIONE: Stai utilizzando una versione DEMO. Mancano ${diffDays} giorni alla scadenza (data scadenza: ${expiryDateStr}).`;
+                    warningMsg = `⚠️ ATTENZIONE: Mancano ${diffDays} giorni alla scadenza della DEMO (data: ${expiryDateStr}).`;
                 }
                 localStorage.setItem('laundry_last_warning_date', todayStr);
             }
         }
     } else {
-        if (!localStorage.getItem('laundry_paid_initial_warning_shown')) {
-            shouldShow = true;
-            warningMsg = `ℹ️ NOTA LICENZA: Stai utilizzando una licenza ufficiale. La licenza scadrà in data ${expiryDateStr}. Alla scadenza il programma richiederà il rinnovo.`;
-            localStorage.setItem('laundry_paid_initial_warning_shown', 'true');
-        } else if (diffDays <= 5 && diffDays >= 0) {
+        if (diffDays <= 5 && diffDays >= 0) {
             if (lastWarningDate !== todayStr) {
                 shouldShow = true;
                 if (diffDays === 0) {
-                    warningMsg = `⚠️ NOTA SCADENZA: La tua licenza ufficiale scade OGGI (${expiryDateStr}) a mezzanotte! Ricordati di effettuare il rinnovo.`;
+                    warningMsg = `⚠️ NOTA SCADENZA: La licenza ufficiale di "${lName}" scade OGGI (${expiryDateStr})!`;
+                    sendTelegramAlert(`⚠️ AVVISO SCADENZA UFFICIALE\nLa licenza di "${lName}" scade oggi!`);
                 } else {
-                    warningMsg = `⚠️ NOTA SCADENZA: La tua licenza ufficiale scadrà tra ${diffDays} giorni (data scadenza: ${expiryDateStr}).`;
+                    warningMsg = `⚠️ NOTA SCADENZA: La licenza ufficiale scadrà tra ${diffDays} giorni (${expiryDateStr}).`;
                 }
                 localStorage.setItem('laundry_last_warning_date', todayStr);
             }
@@ -293,6 +310,9 @@ function startLicenseCountdownMonitor() {
 
         if (now >= expiryTime) {
             clearInterval(licenseCheckInterval);
+            const lName = getCurrentLaundryName();
+            sendTelegramAlert(`⏰ SCADENZA RAGGIUNTA\nLa licenza per "${lName}" è terminata. Il terminale è stato bloccato.`);
+            
             localStorage.clear();
             sessionStorage.clear();
             
@@ -325,7 +345,7 @@ function checkAdminPassword() {
         return;
     }
 
-    if (enteredPassword === APP_PASSWORD || enteredPassword === "CLEO-MASTER") {
+    if (enteredPassword === APP_PASSWORD) {
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
         
@@ -354,13 +374,16 @@ function checkNumericLicense() {
         return;
     }
 
-    if (enteredCode === APP_PASSWORD || enteredCode === "CLEO-MASTER") {
+    if (enteredCode === APP_PASSWORD) {
         let expirationTimestamp = Date.now() + (365 * 100 * 24 * 60 * 60 * 1000);
         localStorage.setItem('laundry_device_activated', 'true');
         localStorage.setItem('laundry_license_expiry', expirationTimestamp);
         localStorage.setItem('laundry_is_demo_license', 'false'); 
         sessionStorage.setItem('laundry_auth', 'true');
         sessionStorage.setItem('laundry_logged_as_admin', 'true');
+        
+        const lName = getCurrentLaundryName();
+        sendTelegramAlert(`🚨 ATTIVAZIONE MASTER\nLa lavanderia "${lName}" ha appena attivato l'accesso Master illimitato.`);
         
         checkAndShowB2bConsentModal();
         showToast("Accesso Master illimitato eseguito!", "success");
@@ -370,7 +393,7 @@ function checkNumericLicense() {
     db.ref('used_licenses/' + enteredCode).once('value')
         .then((usedSnap) => {
             if (usedSnap.exists()) {
-                showToast("Errore: Questo codice di licenza è già stato utilizzato su un altro dispositivo e non può essere riutilizzato.", "error");
+                showToast("Errore: Questo codice di licenza è già stato utilizzato su un altro dispositivo.", "error");
                 return;
             }
 
@@ -385,15 +408,22 @@ function checkNumericLicense() {
 
                     let expirationTimestamp = null;
                     let isDemoLicense = false;
+                    let licenseLaundryName = "Lavanderia Partner";
 
                     if (typeof licenseData === 'object' && licenseData !== null) {
                         expirationTimestamp = parseDateToTimestamp(licenseData.expiry);
                         isDemoLicense = licenseData.isDemo === true;
+                        if (licenseData.laundryName) {
+                            licenseLaundryName = licenseData.laundryName;
+                        }
                     } else {
                         expirationTimestamp = parseDateToTimestamp(licenseData);
                         const diffDaysCalc = Math.round((expirationTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
                         isDemoLicense = (diffDaysCalc <= 31);
                     }
+
+                    // Salviamo il nome della lavanderia associato a questa licenza
+                    localStorage.setItem('laundry_custom_name', licenseLaundryName);
 
                     if (!expirationTimestamp || isNaN(expirationTimestamp)) {
                         expirationTimestamp = Date.now() + (15 * 24 * 60 * 60 * 1000); 
@@ -404,7 +434,8 @@ function checkNumericLicense() {
                         usedAt: Date.now(),
                         deviceInfo: "Dispositivo Web",
                         expiry: expirationTimestamp,
-                        isDemo: isDemoLicense
+                        isDemo: isDemoLicense,
+                        laundryName: licenseLaundryName
                     });
 
                     localStorage.setItem('laundry_device_activated', 'true');
@@ -419,6 +450,9 @@ function checkNumericLicense() {
                     
                     listenActiveLicenseRealtime(enteredCode);
                     
+                    // Invio notifica Telegram con il nome reale della lavanderia
+                    sendTelegramAlert(`🚨 ATTIVAZIONE NUOVA\nLa lavanderia "${licenseLaundryName}" ha appena attivato la licenza con codice: ${enteredCode}`);
+
                     checkAndShowB2bConsentModal();
                     startLicenseCountdownMonitor();
                     
@@ -441,14 +475,24 @@ function checkNumericLicense() {
 function initConnectionMonitor() {
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
+    let wasOfflineReported = false;
 
     db.ref('.info/connected').on('value', (snap) => {
+        const lName = getCurrentLaundryName();
         if (snap.val() === true) {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]";
             if (statusText) { statusText.textContent = "Online"; statusText.className = "text-emerald-400"; }
+            
+            if (wasOfflineReported) {
+                sendTelegramAlert(`🟢 CONNESSIONE RIPRISTINATA\nLa lavanderia "${lName}" è nuovamente online.`);
+                wasOfflineReported = false;
+            }
         } else {
             if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
             if (statusText) { statusText.textContent = "Offline (Locale)"; statusText.className = "text-rose-400"; }
+            
+            wasOfflineReported = true;
+            sendTelegramAlert(`❌ ERRORE WIFI / INTERNET\nLa lavanderia "${lName}" ha perso la connessione di rete ed è passata in modalità offline.`);
         }
     });
 }
@@ -651,7 +695,7 @@ window.printClientReceiptLabel = function() {
     }
 
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n\x1B\x21\x00" + dateStr + "\n--------------------------------\n\x1B\x61\x00\x1B\x21\x08Cliente: " + name + "\nTel:     " + phone + "\n";
+    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA\n\x1B\x21\x00" + dateStr + "\n--------------------------------\n\x1B\x61\x00\x1B\x21\x08Cliente: " + name + "\nTel:     " + phone + "\n";
     if (dob) printText += "Nascita: " + dob + "\n";
     if (address) printText += "Indirizzo: " + address + "\n";
     printText += "--------------------------------\n\n\n\n\x1D\x56\x41\x03"; 
@@ -878,7 +922,7 @@ window.printItemLabel = function() {
     const client = clientsData[clientId];
     const dateStr = new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
-    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA CLEO\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel:     " + client.phone + "\nCapo:    " + type + "\n";
+    let printText = "\x1B\x40\x1B\x61\x01\x1B\x21\x10LAVANDERIA\n" + dateStr + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x00Cliente: " + client.name + "\nTel:     " + client.phone + "\nCapo:    " + type + "\n";
     if (notes) printText += "Note:    " + notes + "\n";
     printText += "--------------------------------\n\x1B\x61\x01\x1B\x21\x30ARM: " + cabinet + "\nPOS: " + position + "\n\x1B\x21\x00--------------------------------\n\x1B\x61\x02\x1B\x21\x10Prezzo: EUR " + parseFloat(price || 0).toFixed(2) + "\n\x1B\x21\x00\x1B\x61\x01\n\n\n\n\x1D\x56\x41\x03";
 
@@ -1195,7 +1239,7 @@ window.exportBackup = function() {
     }
 
     let csvContent = "\uFEFF";
-    csvContent += "LAVANDERIA CLEO - REPORT\n";
+    csvContent += "LAVANDERIA - REPORT\n";
     csvContent += "Data generazione;" + generationDate + "\n\n";
     csvContent += "STATISTICHE\n";
     csvContent += "Totale Capi;" + totalItemsCount + "\n";
